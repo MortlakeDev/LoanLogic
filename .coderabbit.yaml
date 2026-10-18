@@ -1,0 +1,111 @@
+# yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
+language: en-US
+
+reviews:
+  profile: assertive
+  request_changes_workflow: false
+  high_level_summary: true
+  review_status: true
+  poem: false
+  auto_review:
+    enabled: true
+    drafts: false
+  path_filters:
+    - '!package-lock.json'
+    - '!dist/**'
+    - '!dist-single/**'
+    - '!coverage/**'
+    - '!playwright-report/**'
+    - '!test-results/**'
+    - '!blob-report/**'
+    - '!**/THIRD-PARTY-NOTICES.txt'
+  path_instructions:
+    - path: 'src/engine/**'
+      instructions: |
+        The financial engine. Review for financial correctness against docs/SPEC-finance.md.
+        The SPEC is normative: flag every deviation from it, and flag any place where the code
+        decides something the SPEC leaves ambiguous or does not cover (the implementer must
+        report SPEC questions, not invent financial rules).
+        - Ledger money uses decimal.js at currency minor units only. Flag JS `number`
+          arithmetic, parseFloat or Number() on money. Floats are allowed only in analytics
+          (rate solvers, NPV), on values converted from exact decimals (SPEC §0).
+        - Rounding happens only at the posting points and with the modes in SPEC §1.
+        - The ledger invariants I1–I9 (SPEC §8.3) must hold exactly; check that changes keep
+          them and that property tests cover them.
+        - Determinism: same input → same output, independent of locale, time zone and device.
+          No Math.random, clocks or environment reads.
+        - Purity: no DOM, no UI/i18n/app imports, no global or module-level mutable state,
+          no I/O. The only dependency is decimal.js.
+        - Dates use the engine's LocalDate with integer arithmetic. Flag any JS `Date`
+          arithmetic (SPEC §2.1).
+        - Errors and unsupported combinations return structured errors `{ code, field,
+          params }` (SPEC §13); no silent fallbacks, no thrown raw messages meant for users.
+        - Public APIs have TSDoc that states units (e.g. "annual rate as a decimal", "amount in
+          major units as a decimal string").
+
+    - path: 'src/i18n/**'
+      instructions: |
+        Internationalization.
+        - Key parity: en, zh-CN, ru and uk define exactly the same keys, with no empty values.
+          en.json is the source of truth. Keys are flat and dotted; `_` appears only in a
+          plural suffix (_zero, _one, _two, _few, _many, _other), and ru/uk provide the forms
+          their plural rules need.
+        - Translations must be natural for a native speaker, not word-for-word, and use the
+          correct financial terminology of each language and market (e.g. 等额本息 and 年化利率
+          in zh-CN, ПСК in ru, реальна річна процентна ставка in uk, APR/APRC in en).
+        - Placeholders such as {app}, {author}, {year} and {count} are preserved exactly in
+          every locale and never translated.
+        - Numbers, money, percentages and dates are formatted only through the Intl-based
+          helpers in src/i18n/format.ts with an explicit locale; dates in UTC.
+
+    - path: 'src/app/**'
+      instructions: |
+        The UI (Preact + @preact/signals).
+        - Accessibility (WCAG 2.2 AA): semantic HTML, a label for every input, full keyboard
+          support, visible focus, contrast in both the dark and the light theme, and
+          prefers-reduced-motion respected. No horizontal scroll at 360 px.
+        - No hard-coded user-facing strings: every string goes through i18n keys, and numbers,
+          amounts and dates through the i18n formatting helpers.
+        - No business or financial logic in components: they call engine or app-state
+          functions.
+        - Idiomatic Preact function components and signals; no needless re-renders or
+          effects that duplicate computed signals.
+        - localStorage access goes through src/app/storage.ts.
+
+    - path: 'tests/**'
+      instructions: |
+        Tests.
+        - Assertions must be meaningful; no snapshot-only tests for logic.
+        - Property tests (fast-check) wherever an invariant applies, such as I1–I9.
+        - Golden vectors in tests/vectors are compared exactly as decimal strings (rates as
+          defined in SPEC §14) and are never edited by hand.
+        - e2e tests (Playwright) check behavior in Chromium and WebKit and run axe in both
+          themes; no arbitrary sleeps.
+
+    - path: '**/*.test.{ts,tsx}'
+      instructions: |
+        Unit and component tests (Vitest, next to the code they test).
+        - Assertions must be meaningful; no snapshot-only tests for logic.
+        - Property tests (fast-check) wherever an invariant applies, such as I1–I9.
+        - Import test APIs explicitly from vitest (no globals); DOM tests opt in with
+          `// @vitest-environment jsdom`.
+        - Tests must not hard-code design values (colours, fonts) that docs/DESIGN.md owns.
+
+    - path: 'scripts/**'
+      instructions: |
+        Build and repository tooling.
+        - Reproducible and deterministic; no network access at runtime.
+        - Keep the SPDX header check, the license allowlist (CLAUDE.md rule 11) and the
+          third-party notices generation intact; flag anything that weakens them.
+
+    - path: '.github/**'
+      instructions: |
+        CI, deployment and repository templates.
+        - Workflows are reproducible (npm ci, pinned Node version) and need no network at
+          app runtime.
+        - Keep lint, typecheck, tests, builds, e2e, SPDX and license checks in CI; flag
+          anything that skips or weakens them.
+        - Use least-privilege permissions for workflow tokens.
+
+chat:
+  auto_reply: true

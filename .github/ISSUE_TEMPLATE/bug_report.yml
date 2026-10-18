@@ -1,0 +1,108 @@
+name: Bug report
+description: Something is wrong, such as a wrong number, a broken control or a bad translation.
+title: '[Bug]: '
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for reporting a problem. Please **remove any personal data** (names,
+        account numbers, real addresses) from the inputs you share. Made-up values that still
+        show the problem are perfect.
+
+  - type: textarea
+    id: description
+    attributes:
+      label: What happened?
+      description: A short, clear description of the problem.
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: Exactly what you did, step by step.
+      placeholder: |
+        1. Open LoanLogic
+        2. Enter …
+        3. Look at …
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected result
+      description: >-
+        What you expected to see. For a wrong number, give the figure you expected and where
+        it comes from (lender's schedule, regulator example, spreadsheet, …).
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual result
+      description: What LoanLogic showed instead. Screenshots help.
+    validations:
+      required: true
+
+  - type: textarea
+    id: scenario
+    attributes:
+      label: Inputs / scenario
+      description: >-
+        The values you entered (amount, rate, term, repayment type, fees, dates, region
+        profile, …), or an exported scenario file or link once that feature exists.
+      render: text
+
+  - type: dropdown
+    id: build
+    attributes:
+      label: Which build?
+      options:
+        - Website
+        - Single file (LoanLogic.html)
+        - Local development build
+    validations:
+      required: true
+
+  - type: input
+    id: environment
+    attributes:
+      label: Browser and operating system
+      placeholder: e.g. Firefox 145 on Windows 11, Safari on iOS 26
+    validations:
+      required: true
+
+  - type: dropdown
+    id: language
+    attributes:
+      label: Interface language
+      options:
+        - English
+        - 简体中文
+        - Русский
+        - Українська
+    validations:
+      required: true
+
+  - type: dropdown
+    id: theme
+    attributes:
+      label: Theme
+      description: If you chose System, also say which theme your system uses.
+      options:
+        - System
+        - Dark
+        - Light
+    validations:
+      required: true
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Anything else?
+      description: Console errors, assistive technology used, screen width, related issues.

@@ -1,0 +1,78 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 Mortlake
+#
+# Deploys the multi-file build (`dist/`) to GitHub Pages on every push to main, or on
+# demand. One-time setup: in the repository settings, under Pages, set
+# Source = "GitHub Actions"; otherwise the configure step fails.
+
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# Deployments run one at a time; an in-progress deployment is never cancelled midway.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+# Each job below gets only what it needs: the build job never holds deploy rights.
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      pages: read # actions/configure-pages reads the Pages site settings
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      # Runs first so a repository without Pages enabled fails before the build.
+      - name: Configure GitHub Pages
+        id: pages
+        uses: actions/configure-pages@v6
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      # Pages reports where the site is served: "/<repository>" for a project site, "" for a
+      # custom domain or a user site, so the build's base path is always right.
+      - name: Build
+        run: npm run build
+        env:
+          BASE_PATH: ${{ steps.pages.outputs.base_path }}/
+
+      - name: Upload the Pages artifact
+        uses: actions/upload-pages-artifact@v5
+        with:
+          path: dist
+
+  deploy:
+    name: Deploy
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      pages: write # to create the Pages deployment
+      id-token: write # to prove the deployment comes from this workflow
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v5

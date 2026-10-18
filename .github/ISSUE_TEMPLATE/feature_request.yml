@@ -1,0 +1,49 @@
+name: Feature request
+description: Suggest a new calculation, option or improvement.
+title: '[Feature]: '
+labels:
+  - enhancement
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Please check the feature catalogue in `docs/PLAN.md` first. Your idea may already be
+        planned for a later milestone.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What are you trying to do, and what gets in the way today?
+      placeholder: As a loan advisor, I need to …
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: How you would like it to work. Include inputs, outputs and an example if you can.
+    validations:
+      required: true
+
+  - type: textarea
+    id: regulation
+    attributes:
+      label: Region and regulation references
+      description: >-
+        If the feature depends on a country, a regulator or a market practice, name it and
+        link the source (law, regulator guidance, worked example). Leave empty if it does not
+        apply.
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Other approaches or workarounds you have tried.
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Anything else?
+      description: Screenshots, sample schedules, related issues.

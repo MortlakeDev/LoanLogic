@@ -1,0 +1,36 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+dist-single/
+
+# Test output
+coverage/
+playwright-report/
+test-results/
+blob-report/
+
+# Tool caches
+.eslintcache
+*.tsbuildinfo
+.vite/
+
+# Logs
+*.log
+npm-debug.log*
+
+# Environment
+.env
+.env.*
+!.env.example
+
+# Editors and OS
+.vscode/*
+!.vscode/extensions.json
+.idea/
+.DS_Store
+Thumbs.db
+
+# Local agent memory
+.remember/

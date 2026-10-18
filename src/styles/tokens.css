@@ -1,0 +1,179 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later */
+/* Copyright (C) 2026 Mortlake */
+
+/*
+ * Design tokens. The token NAMES and the dark/light structure are the contract. Every
+ * VALUE below (palette, accent, fonts, shadows) is a temporary placeholder: the final
+ * palette and fonts come from docs/DESIGN.md (deliverable R2) and replace values only.
+ *
+ * Colors are hex only: a unit test resolves these tokens and checks WCAG 2.2 AA contrast
+ * for both themes, so whatever values DESIGN.md brings are checked the same way.
+ */
+
+:root {
+  /* Neutral scale: black → graphite → grays → white. */
+  --neutral-0: #000000;
+  --neutral-50: #0b0b0c;
+  --neutral-100: #121214;
+  --neutral-150: #19191c;
+  --neutral-200: #222226;
+  --neutral-250: #2c2c31;
+  --neutral-300: #3b3b41;
+  --neutral-350: #45454d;
+  --neutral-400: #5c5c65;
+  --neutral-500: #73737c;
+  --neutral-600: #94949d;
+  --neutral-700: #b9b9c0;
+  --neutral-800: #d6d6db;
+  --neutral-850: #e6e6e9;
+  --neutral-900: #f0f0f2;
+  --neutral-950: #f6f6f7;
+  --neutral-1000: #ffffff;
+
+  /* Accent (provisional "ice blue"; DESIGN.md picks the final accent). */
+  --accent-100: #e3effa;
+  --accent-200: #b8dbfa;
+  --accent-300: #90c8f8;
+  --accent-700: #0a5ea8;
+  --accent-800: #084b87;
+  --accent-900: #14273a;
+
+  /* Desaturated semantic hues. */
+  --green-300: #6cc896;
+  --green-700: #1b7343;
+  --amber-300: #e2b866;
+  --amber-700: #8a5a00;
+  --red-300: #f08c8c;
+  --red-700: #b42828;
+  --blue-300: #8dbbe8;
+  --blue-700: #1d5d97;
+
+  /* Typography (provisional: Inter per the T01 brief, loaded in fonts.ts; CJK uses system fonts). */
+  --font-sans:
+    'Inter Variable', system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial,
+    'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', 'Noto Sans CJK SC', sans-serif;
+  --font-sans-cjk:
+    'Inter Variable', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', 'Noto Sans CJK SC',
+    'Noto Sans SC', 'Source Han Sans SC', system-ui, sans-serif;
+  --font-mono:
+    ui-monospace, 'SF Mono', 'Cascadia Mono', 'Segoe UI Mono', Menlo, Consolas, monospace;
+
+  /* Multiplies the type scale (user-adjustable font scale comes later). */
+  --font-scale: 1;
+  --font-size-xs: calc(0.75rem * var(--font-scale));
+  --font-size-sm: calc(0.875rem * var(--font-scale));
+  --font-size-md: calc(1rem * var(--font-scale));
+  --font-size-lg: calc(1.125rem * var(--font-scale));
+  --font-size-xl: calc(1.25rem * var(--font-scale));
+  --font-size-2xl: calc(1.5rem * var(--font-scale));
+  --font-size-3xl: calc(1.875rem * var(--font-scale));
+  --font-size-4xl: calc(2.25rem * var(--font-scale));
+  /* Text size inside form controls (raised to 16px on touch screens, see base.css). */
+  --font-size-control: var(--font-size-sm);
+
+  --font-weight-regular: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
+
+  --line-height-tight: 1.2;
+  --line-height-snug: 1.35;
+  --line-height-normal: 1.55;
+
+  /* Spacing scale (4 px steps at the default root size). */
+  --space-0: 0;
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.25rem;
+  --space-6: 1.5rem;
+  --space-8: 2rem;
+  --space-10: 2.5rem;
+  --space-12: 3rem;
+  --space-16: 4rem;
+
+  /* Radii. */
+  --radius-sm: 0.25rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.75rem;
+  --radius-xl: 1rem;
+  --radius-full: 999px;
+
+  /* Focus ring. */
+  --focus-ring-width: 2px;
+  --focus-ring-offset: 2px;
+
+  /* Motion (disabled under prefers-reduced-motion, see themes.css). */
+  --duration-fast: 120ms;
+  --duration-normal: 200ms;
+  --easing-standard: cubic-bezier(0.2, 0, 0, 1);
+
+  /* Layout. */
+  --layout-max-width: 90rem;
+  --layout-sidebar-width: 26rem;
+  --layout-gutter: clamp(1rem, 4vw, 2rem);
+}
+
+/* Dark theme (default; also used before the theme script runs). */
+:root,
+:root[data-theme='dark'] {
+  --color-bg: var(--neutral-50);
+  --color-surface-1: var(--neutral-100);
+  --color-surface-2: var(--neutral-150);
+  --color-surface-3: var(--neutral-200);
+
+  --color-text-primary: var(--neutral-900);
+  --color-text-secondary: var(--neutral-700);
+  --color-text-muted: var(--neutral-600);
+
+  /* `border` is decorative; `border-strong` outlines controls (≥ 3:1). */
+  --color-border: var(--neutral-250);
+  --color-border-strong: var(--neutral-500);
+
+  --color-accent: var(--accent-300);
+  --color-accent-hover: var(--accent-200);
+  --color-accent-subtle: var(--accent-900);
+  --color-on-accent: var(--neutral-50);
+
+  --color-success: var(--green-300);
+  --color-warning: var(--amber-300);
+  --color-danger: var(--red-300);
+  --color-info: var(--blue-300);
+
+  --color-focus-ring: var(--accent-300);
+
+  --shadow-1: 0 1px 2px rgb(0 0 0 / 0.45);
+  --shadow-2: 0 2px 8px rgb(0 0 0 / 0.5);
+  --shadow-3: 0 8px 24px rgb(0 0 0 / 0.55);
+}
+
+:root[data-theme='light'] {
+  --color-bg: var(--neutral-950);
+  --color-surface-1: var(--neutral-1000);
+  --color-surface-2: var(--neutral-900);
+  --color-surface-3: var(--neutral-850);
+
+  --color-text-primary: var(--neutral-100);
+  --color-text-secondary: var(--neutral-350);
+  --color-text-muted: var(--neutral-400);
+
+  --color-border: var(--neutral-800);
+  --color-border-strong: var(--neutral-500);
+
+  --color-accent: var(--accent-700);
+  --color-accent-hover: var(--accent-800);
+  --color-accent-subtle: var(--accent-100);
+  --color-on-accent: var(--neutral-1000);
+
+  --color-success: var(--green-700);
+  --color-warning: var(--amber-700);
+  --color-danger: var(--red-700);
+  --color-info: var(--blue-700);
+
+  --color-focus-ring: var(--accent-700);
+
+  --shadow-1: 0 1px 2px rgb(16 16 20 / 0.08);
+  --shadow-2: 0 2px 8px rgb(16 16 20 / 0.1);
+  --shadow-3: 0 8px 24px rgb(16 16 20 / 0.14);
+}
