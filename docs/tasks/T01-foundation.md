@@ -1,6 +1,6 @@
 # T01 — Foundation: scaffold, tooling, CI, app shell, i18n, themes
 
-- **Milestone:** M0 · **Status:** ready · **Depends on:** — · **Blocks:** everything
+- **Milestone:** M0 · **Status:** in review · **Depends on:** — · **Blocks:** everything
 - **Branch:** `task/T01-foundation`
 
 ## Goal
@@ -129,4 +129,62 @@ Financial engine, real inputs, charts and exports (later tasks).
 
 ## Completion notes
 
-_(to be filled by the implementer)_
+**Status:** in review, [PR #1](https://github.com/MortlakeDev/LoanLogic/pull/1) (branch
+`task/T01-foundation`).
+
+**Acceptance criteria (local evidence, 2026-10-19):**
+
+- `npm ci && npm run check && npm run e2e` pass locally on Windows (Node 24.19). CI runs
+  on the PR; its first result is not in yet. `check`: lint, format, typecheck, SPDX
+  (60 files), licenses, 591 unit/component tests at 100 % coverage of `src/` (gate 90 %),
+  both builds and the size budget. `e2e`: 148 passed, 8 skipped, 0 failed across Chromium
+  and WebKit.
+- Four languages switch instantly without a reload, update `<html lang>`, the title and the
+  meta description, and persist (e2e `i18n.spec.ts`).
+- System/Dark/Light works, persists and follows `prefers-color-scheme` live. No flash: the
+  inline head script applies the theme even with the app JS blocked (e2e `theme.spec.ts`).
+- axe finds no serious or critical violations in either theme, at 360 and 1280 px, in all
+  four languages (e2e `a11y.spec.ts`).
+- No horizontal scroll at 360 px in any language or theme. Two columns at ≥ 1024 px,
+  stacked below (e2e `layout.spec.ts`).
+- `dist-single/LoanLogic.html` opens from `file://` with every http(s) request blocked;
+  zero requests are attempted (e2e `single-file.spec.ts`).
+- Initial JS is **13.97 KiB gzip** (budget 60 KiB).
+- README, CONTRIBUTING, PR/issue templates, `.coderabbit.yaml`, SPDX and license checks
+  are present. The author is Mortlake everywhere.
+
+**Deviations and decisions (details in the PR):**
+
+- Toolchain: Preact 10.29 (Preact 11 is three weeks old); ESLint 10, with an npm override
+  for jsx-a11y's stale peer range; TypeScript 6.0 (typescript-eslint does not support 7).
+- Third-party notices come from a small custom Vite plugin, not `rollup-plugin-license`.
+  It covers the OFL font asset, fails on a disallowed license or a missing license file,
+  and embeds the notices verbatim in the single file.
+- Theme work covers mechanics and token structure only; every palette and font value is a
+  placeholder for `docs/DESIGN.md` (font swap point: `src/styles/fonts.ts`). Tests check
+  contrast rules, not values.
+- Plural keys carry exactly the categories `Intl.PluralRules` gives for each language;
+  base keys are identical across locales.
+- `ci.yml` runs on PRs, pushes to `main` and manual dispatch. `deploy.yml` takes the base
+  path from `configure-pages`.
+- `.gitattributes` now forces `eol=lf`. Without it, a Windows checkout gets CRLF and
+  Prettier's LF check fails `npm run check`.
+- `engines.node` is `^22.22.2 || ^24.15.0 || >=26.0.0`, because jsdom 30 and ESLint 10
+  need these minimums.
+- The language switcher applies keyboard browsing of the closed select on Enter or blur
+  (WCAG 3.2.2). Mouse and touch picks apply instantly.
+
+**Open questions for the owner:**
+
+1. Confirm the dev-only transitive license exceptions: BlueOak-1.0.0, MIT-0, CC0-1.0,
+   CC-BY-4.0.
+2. CSP (PLAN §5.7) is deferred: the single-file build needs hashed inline script and
+   style. Which task should take it?
+3. How should an amount that rounds to zero but is negative be shown? Today it shows as
+   "-$0.00"; the SPEC is silent.
+4. A shared financial glossary for zh-CN, ru and uk (PLAN §10). The PR lists the terms
+   the translation reviews suggested.
+5. GitHub Pages must be set to *Source = GitHub Actions* in the repository settings.
+6. CLAUDE.md's command table describes `npm run check` as fewer steps than it now runs.
+7. 2 keyboard tests skip in WebKit on Windows, which does not Tab to links. They are
+   expected to run on Linux CI.
