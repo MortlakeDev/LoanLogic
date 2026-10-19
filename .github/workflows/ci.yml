@@ -117,9 +117,11 @@ jobs:
       # both go into the cache key; the browser list is fixed below.
       - name: Compute the Playwright browser cache key
         id: playwright-cache-key
+        # The lockfile comes from the PR, so the version is validated before it reaches
+        # GITHUB_OUTPUT: a newline in it could otherwise inject extra output lines.
         run: |
-          version="$(node -p "require('./package-lock.json').packages['node_modules/@playwright/test'].version")"
-          echo "key=playwright-${ImageOS:-$RUNNER_OS}-${RUNNER_ARCH}-${version}-chromium-webkit" >> "$GITHUB_OUTPUT"
+          version="$(node -p "const v = require('./package-lock.json').packages['node_modules/@playwright/test'].version; if (!/^[0-9A-Za-z.+-]+$/.test(v)) throw new Error('unexpected @playwright/test version'); v")"
+          printf 'key=playwright-%s-%s-%s-chromium-webkit\n' "${ImageOS:-$RUNNER_OS}" "$RUNNER_ARCH" "$version" >> "$GITHUB_OUTPUT"
 
       - name: Cache Playwright browsers
         uses: actions/cache@v6
