@@ -1,0 +1,27 @@
+{
+  "schemaVersion": 1,
+  "id": "error-date-invalid",
+  "description": "2026-02-30 does not exist.",
+  "source": "SPEC-finance §13",
+  "kind": "loan",
+  "input": {
+    "currency": "USD",
+    "amount": "1000.00",
+    "annualRatePct": "5",
+    "repayment": "annuity",
+    "frequency": "monthly",
+    "term": {
+      "payments": 12
+    },
+    "disbursementDate": "2026-02-30"
+  },
+  "expected": {
+    "ok": false,
+    "errors": [
+      {
+        "code": "DATE_INVALID",
+        "field": "disbursementDate"
+      }
+    ]
+  }
+}

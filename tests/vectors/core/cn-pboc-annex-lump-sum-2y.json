@@ -1,0 +1,64 @@
+{
+  "schemaVersion": 1,
+  "id": "cn-pboc-annex-lump-sum-2y",
+  "description": "PBOC annex example 1: borrow 100 000 for 2 years, repay 110 000 at maturity: annualized rate (IRR method) about 4.88 %. As a single payment longer than a year, the US APR uses a one-year unit-period (also 4.881 %).",
+  "source": "PBOC Announcement [2021] No. 3, annex 采用内部收益率法计算贷款年化利率示例, example 1; Regulation Z, Appendix J (b)(4)(ii), (b)(5)(v)",
+  "kind": "cashflows",
+  "input": {
+    "frequency": "annual",
+    "flows": [
+      {"period": 0, "date": "2021-04-15", "amount": "100000"},
+      {"period": 2, "date": "2023-04-15", "amount": "-110000"}
+    ]
+  },
+  "expected": {
+    "ok": true,
+    "rates": {
+      "irrNominal": {
+        "value": "4.880884817015",
+        "display": "4.88",
+        "precision": 2
+      },
+      "irrEffective": {
+        "value": "4.880884817015",
+        "display": "4.88",
+        "precision": 2
+      },
+      "xirr": {
+        "value": "4.880884817015",
+        "display": "4.88",
+        "precision": 2
+      },
+      "usRegZApr": {
+        "value": "4.880884817015",
+        "display": "4.881",
+        "precision": 3
+      },
+      "ukAprc": {
+        "value": "4.880884817015",
+        "display": "4.9",
+        "precision": 1
+      },
+      "euAprc": {
+        "value": "4.880884817015",
+        "display": "4.9",
+        "precision": 1
+      },
+      "cnAnnualized": {
+        "value": "4.880884817015",
+        "display": "4.88",
+        "precision": 2
+      },
+      "uaRealAnnual": {
+        "value": "4.880884817015",
+        "display": "4.88",
+        "precision": 2
+      },
+      "international": {
+        "value": "4.880884817015",
+        "display": "4.88",
+        "precision": 2
+      }
+    }
+  }
+}

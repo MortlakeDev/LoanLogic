@@ -1,0 +1,76 @@
+{
+  "schemaVersion": 1,
+  "id": "cashflows-same-date-flows",
+  "description": "A fee of 50 and the advance of 1 000 on the same date, listed fee first: flows at the same time are summed before sign changes are counted, so there is one sign change and no IRR_MULTIPLE.",
+  "source": "SPEC-finance §10, §15",
+  "kind": "cashflows",
+  "input": {
+    "frequency": "monthly",
+    "flows": [
+      {"period": 0, "date": "2026-01-15", "amount": "-50"},
+      {"period": 0, "date": "2026-01-15", "amount": "1000"},
+      {"period": 1, "date": "2026-02-15", "amount": "-90"},
+      {"period": 2, "date": "2026-03-15", "amount": "-90"},
+      {"period": 3, "date": "2026-04-15", "amount": "-90"},
+      {"period": 4, "date": "2026-05-15", "amount": "-90"},
+      {"period": 5, "date": "2026-06-15", "amount": "-90"},
+      {"period": 6, "date": "2026-07-15", "amount": "-90"},
+      {"period": 7, "date": "2026-08-15", "amount": "-90"},
+      {"period": 8, "date": "2026-09-15", "amount": "-90"},
+      {"period": 9, "date": "2026-10-15", "amount": "-90"},
+      {"period": 10, "date": "2026-11-15", "amount": "-90"},
+      {"period": 11, "date": "2026-12-15", "amount": "-90"},
+      {"period": 12, "date": "2027-01-15", "amount": "-90"}
+    ]
+  },
+  "expected": {
+    "ok": true,
+    "rates": {
+      "irrNominal": {
+        "value": "24.366069771002",
+        "display": "24.37",
+        "precision": 2
+      },
+      "irrEffective": {
+        "value": "27.280090656782",
+        "display": "27.28",
+        "precision": 2
+      },
+      "xirr": {
+        "value": "27.410948868431",
+        "display": "27.41",
+        "precision": 2
+      },
+      "usRegZApr": {
+        "value": "24.366069771002",
+        "display": "24.366",
+        "precision": 3
+      },
+      "ukAprc": {
+        "value": "27.280090656782",
+        "display": "27.3",
+        "precision": 1
+      },
+      "euAprc": {
+        "value": "27.280090656782",
+        "display": "27.3",
+        "precision": 1
+      },
+      "cnAnnualized": {
+        "value": "24.366069771002",
+        "display": "24.37",
+        "precision": 2
+      },
+      "uaRealAnnual": {
+        "value": "27.410948868431",
+        "display": "27.41",
+        "precision": 2
+      },
+      "international": {
+        "value": "27.410948868431",
+        "display": "27.41",
+        "precision": 2
+      }
+    }
+  }
+}

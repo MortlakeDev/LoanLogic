@@ -1,0 +1,36 @@
+{
+  "schemaVersion": 1,
+  "id": "xirr-excel-documentation-example",
+  "description": "Irregular cash flows from the Microsoft Excel XIRR documentation (expected 0.373362535 = 37.34 %).",
+  "source": "Microsoft Support, XIRR function, example",
+  "kind": "cashflows",
+  "input": {
+    "flows": [
+      {"date": "2008-01-01", "amount": "-10000"},
+      {"date": "2008-03-01", "amount": "2750"},
+      {"date": "2008-10-30", "amount": "4250"},
+      {"date": "2009-02-15", "amount": "3250"},
+      {"date": "2009-04-01", "amount": "2750"}
+    ]
+  },
+  "expected": {
+    "ok": true,
+    "rates": {
+      "xirr": {
+        "value": "37.336253351883",
+        "display": "37.34",
+        "precision": 2
+      },
+      "uaRealAnnual": {
+        "value": "37.336253351883",
+        "display": "37.34",
+        "precision": 2
+      },
+      "international": {
+        "value": "37.336253351883",
+        "display": "37.34",
+        "precision": 2
+      }
+    }
+  }
+}

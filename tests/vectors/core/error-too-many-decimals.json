@@ -1,0 +1,41 @@
+{
+  "schemaVersion": 1,
+  "id": "error-too-many-decimals",
+  "description": "More decimals than the currency allows: 100 000.5 JPY and a 200.25 JPY fee.",
+  "source": "SPEC-finance §1.2, §13",
+  "kind": "loan",
+  "input": {
+    "currency": "JPY",
+    "amount": "100000.5",
+    "annualRatePct": "2",
+    "repayment": "annuity",
+    "frequency": "monthly",
+    "term": {
+      "payments": 12
+    },
+    "disbursementDate": "2026-01-15",
+    "fees": [
+      {
+        "id": "stamp",
+        "kind": "upfront",
+        "calc": "fixed",
+        "value": "200.25",
+        "financing": "paid",
+        "inApr": true
+      }
+    ]
+  },
+  "expected": {
+    "ok": false,
+    "errors": [
+      {
+        "code": "TOO_MANY_DECIMALS",
+        "field": "amount"
+      },
+      {
+        "code": "TOO_MANY_DECIMALS",
+        "field": "fees[0].value"
+      }
+    ]
+  }
+}

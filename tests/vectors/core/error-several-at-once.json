@@ -1,0 +1,39 @@
+{
+  "schemaVersion": 1,
+  "id": "error-several-at-once",
+  "description": "All independent input errors are reported together.",
+  "source": "SPEC-finance §13",
+  "kind": "loan",
+  "input": {
+    "currency": "USD",
+    "amount": "-5.00",
+    "annualRatePct": "-25",
+    "repayment": "annuity",
+    "frequency": "monthly",
+    "term": {
+      "payments": 0
+    },
+    "disbursementDate": "2026-13-01"
+  },
+  "expected": {
+    "ok": false,
+    "errors": [
+      {
+        "code": "AMOUNT_RANGE",
+        "field": "amount"
+      },
+      {
+        "code": "RATE_RANGE",
+        "field": "annualRatePct"
+      },
+      {
+        "code": "DATE_INVALID",
+        "field": "disbursementDate"
+      },
+      {
+        "code": "TERM_RANGE",
+        "field": "term.payments"
+      }
+    ]
+  }
+}

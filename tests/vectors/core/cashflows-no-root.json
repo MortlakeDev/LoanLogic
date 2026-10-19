@@ -1,0 +1,55 @@
+{
+  "schemaVersion": 1,
+  "id": "cashflows-no-root",
+  "description": "Cash flows that never change sign have no rate of return: every metric fails with IRR_NO_CONVERGENCE and no number is substituted.",
+  "source": "SPEC-finance §10",
+  "kind": "cashflows",
+  "input": {
+    "frequency": "monthly",
+    "flows": [
+      {"period": 0, "date": "2026-01-15", "amount": "100"},
+      {"period": 1, "date": "2026-02-15", "amount": "10"}
+    ]
+  },
+  "expected": {
+    "ok": true,
+    "rates": {
+      "irrNominal": {
+        "ok": false,
+        "reason": "IRR_NO_CONVERGENCE"
+      },
+      "irrEffective": {
+        "ok": false,
+        "reason": "IRR_NO_CONVERGENCE"
+      },
+      "xirr": {
+        "ok": false,
+        "reason": "IRR_NO_CONVERGENCE"
+      },
+      "usRegZApr": {
+        "ok": false,
+        "reason": "IRR_NO_CONVERGENCE"
+      },
+      "ukAprc": {
+        "ok": false,
+        "reason": "IRR_NO_CONVERGENCE"
+      },
+      "euAprc": {
+        "ok": false,
+        "reason": "IRR_NO_CONVERGENCE"
+      },
+      "cnAnnualized": {
+        "ok": false,
+        "reason": "IRR_NO_CONVERGENCE"
+      },
+      "uaRealAnnual": {
+        "ok": false,
+        "reason": "IRR_NO_CONVERGENCE"
+      },
+      "international": {
+        "ok": false,
+        "reason": "IRR_NO_CONVERGENCE"
+      }
+    }
+  }
+}

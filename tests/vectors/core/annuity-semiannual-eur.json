@@ -1,0 +1,126 @@
+{
+  "schemaVersion": 1,
+  "id": "annuity-semiannual-eur",
+  "description": "Semi-annual annuity, 2 000 000.00 EUR at 4.2 % for 10 years.",
+  "source": "Reference implementation (tools/reference)",
+  "kind": "loan",
+  "input": {
+    "currency": "EUR",
+    "amount": "2000000.00",
+    "annualRatePct": "4.2",
+    "repayment": "annuity",
+    "frequency": "semiannual",
+    "term": {
+      "payments": 20
+    },
+    "disbursementDate": "2026-08-31"
+  },
+  "expected": {
+    "ok": true,
+    "warnings": [],
+    "summary": {
+      "amount": "2000000.00",
+      "principalFinanced": "2000000.00",
+      "netProceeds": "2000000.00",
+      "upfrontFeesPaid": "0.00",
+      "upfrontFeesFinanced": "0.00",
+      "amountFinancedForRates": "2000000.00",
+      "regularInstalment": "123496.97",
+      "principalPerPeriod": null,
+      "firstPayment": "123496.97",
+      "lastPayment": "123496.93",
+      "maxPayment": "123496.97",
+      "paymentsCount": 20,
+      "firstPaymentDate": "2027-02-28",
+      "payoffDate": "2036-08-31",
+      "totalPayments": "2469939.36",
+      "totalPaid": "2469939.36",
+      "totalInterest": "469939.36",
+      "totalPrincipal": "2000000.00",
+      "totalFees": "0.00",
+      "totalInsurance": "0.00",
+      "totalPenalties": "0.00",
+      "costOfCredit": "469939.36",
+      "balloon": null
+    },
+    "rates": {
+      "nominal": {
+        "value": "4.200000000000",
+        "display": "4.20",
+        "precision": 2
+      },
+      "effective": {
+        "value": "4.244100000000",
+        "display": "4.24",
+        "precision": 2
+      },
+      "irrNominal": {
+        "value": "4.199999884344",
+        "display": "4.20",
+        "precision": 2
+      },
+      "irrEffective": {
+        "value": "4.244099881915",
+        "display": "4.24",
+        "precision": 2
+      },
+      "xirr": {
+        "value": "4.242520162966",
+        "display": "4.24",
+        "precision": 2
+      },
+      "usRegZApr": {
+        "value": "4.199999884344",
+        "display": "4.200",
+        "precision": 3
+      },
+      "ukAprc": {
+        "value": "4.244099881915",
+        "display": "4.2",
+        "precision": 1
+      },
+      "euAprc": {
+        "value": "4.244099881915",
+        "display": "4.2",
+        "precision": 1
+      },
+      "cnAnnualized": {
+        "value": "4.199999884344",
+        "display": "4.20",
+        "precision": 2
+      },
+      "uaRealAnnual": {
+        "value": "4.242520162966",
+        "display": "4.24",
+        "precision": 2
+      },
+      "international": {
+        "value": "4.242520162966",
+        "display": "4.24",
+        "precision": 2
+      }
+    },
+    "rows": [
+      {"index": 1, "date": "2027-02-28", "days": 181, "opening": "2000000.00", "interestAccrued": "42000.00", "interestPaid": "42000.00", "principal": "81496.97", "fees": "0.00", "insurance": "0.00", "payment": "123496.97", "closing": "1918503.03", "cumulativeInterest": "42000.00", "cumulativePrincipal": "81496.97"},
+      {"index": 2, "date": "2027-08-31", "days": 184, "opening": "1918503.03", "interestAccrued": "40288.56", "interestPaid": "40288.56", "principal": "83208.41", "fees": "0.00", "insurance": "0.00", "payment": "123496.97", "closing": "1835294.62", "cumulativeInterest": "82288.56", "cumulativePrincipal": "164705.38"},
+      {"index": 3, "date": "2028-02-29", "days": 182, "opening": "1835294.62", "interestAccrued": "38541.19", "interestPaid": "38541.19", "principal": "84955.78", "fees": "0.00", "insurance": "0.00", "payment": "123496.97", "closing": "1750338.84", "cumulativeInterest": "120829.75", "cumulativePrincipal": "249661.16"},
+      {"index": 4, "date": "2028-08-31", "days": 184, "opening": "1750338.84", "interestAccrued": "36757.12", "interestPaid": "36757.12", "principal": "86739.85", "fees": "0.00", "insurance": "0.00", "payment": "123496.97", "closing": "1663598.99", "cumulativeInterest": "157586.87", "cumulativePrincipal": "336401.01"},
+      {"index": 5, "date": "2029-02-28", "days": 181, "opening": "1663598.99", "interestAccrued": "34935.58", "interestPaid": "34935.58", "principal": "88561.39", "fees": "0.00", "insurance": "0.00", "payment": "123496.97", "closing": "1575037.60", "cumulativeInterest": "192522.45", "cumulativePrincipal": "424962.40"},
+      {"index": 6, "date": "2029-08-31", "days": 184, "opening": "1575037.60", "interestAccrued": "33075.79", "interestPaid": "33075.79", "principal": "90421.18", "fees": "0.00", "insurance": "0.00", "payment": "123496.97", "closing": "1484616.42", "cumulativeInterest": "225598.24", "cumulativePrincipal": "515383.58"},
+      {"index": 7, "date": "2030-02-28", "days": 181, "opening": "1484616.42", "interestAccrued": "31176.94", "interestPaid": "31176.94", "principal": "92320.03", "fees": "0.00", "insurance": "0.00", "payment": "123496.97", "closing": "1392296.39", "cumulativeInterest": "256775.18", "cumulativePrincipal": "607703.61"},
+      {"index": 8, "date": "2030-08-31", "days": 184, "opening": "1392296.39", "interestAccrued": "29238.22", "interestPaid": "29238.22", "principal": "94258.75", "fees": "0.00", "insurance": "0.00", "payment": "123496.97", "closing": "1298037.64", "cumulativeInterest": "286013.40", "cumulativePrincipal": "701962.36"},
+      {"index": 9, "date": "2031-02-28", "days": 181, "opening": "1298037.64", "interestAccrued": "27258.79", "interestPaid": "27258.79", "principal": "96238.18", "fees": "0.00", "insurance": "0.00", "payment": "123496.97", "closing": "1201799.46", "cumulativeInterest": "313272.19", "cumulativePrincipal": "798200.54"},
+      {"index": 10, "date": "2031-08-31", "days": 184, "opening": "1201799.46", "interestAccrued": "25237.79", "interestPaid": "25237.79", "principal": "98259.18", "fees": "0.00", "insurance": "0.00", "payment": "123496.97", "closing": "1103540.28", "cumulativeInterest": "338509.98", "cumulativePrincipal": "896459.72"},
+      {"index": 11, "date": "2032-02-29", "days": 182, "opening": "1103540.28", "interestAccrued": "23174.35", "interestPaid": "23174.35", "principal": "100322.62", "fees": "0.00", "insurance": "0.00", "payment": "123496.97", "closing": "1003217.66", "cumulativeInterest": "361684.33", "cumulativePrincipal": "996782.34"},
+      {"index": 12, "date": "2032-08-31", "days": 184, "opening": "1003217.66", "interestAccrued": "21067.57", "interestPaid": "21067.57", "principal": "102429.40", "fees": "0.00", "insurance": "0.00", "payment": "123496.97", "closing": "900788.26", "cumulativeInterest": "382751.90", "cumulativePrincipal": "1099211.74"},
+      {"index": 13, "date": "2033-02-28", "days": 181, "opening": "900788.26", "interestAccrued": "18916.55", "interestPaid": "18916.55", "principal": "104580.42", "fees": "0.00", "insurance": "0.00", "payment": "123496.97", "closing": "796207.84", "cumulativeInterest": "401668.45", "cumulativePrincipal": "1203792.16"},
+      {"index": 14, "date": "2033-08-31", "days": 184, "opening": "796207.84", "interestAccrued": "16720.36", "interestPaid": "16720.36", "principal": "106776.61", "fees": "0.00", "insurance": "0.00", "payment": "123496.97", "closing": "689431.23", "cumulativeInterest": "418388.81", "cumulativePrincipal": "1310568.77"},
+      {"index": 15, "date": "2034-02-28", "days": 181, "opening": "689431.23", "interestAccrued": "14478.06", "interestPaid": "14478.06", "principal": "109018.91", "fees": "0.00", "insurance": "0.00", "payment": "123496.97", "closing": "580412.32", "cumulativeInterest": "432866.87", "cumulativePrincipal": "1419587.68"},
+      {"index": 16, "date": "2034-08-31", "days": 184, "opening": "580412.32", "interestAccrued": "12188.66", "interestPaid": "12188.66", "principal": "111308.31", "fees": "0.00", "insurance": "0.00", "payment": "123496.97", "closing": "469104.01", "cumulativeInterest": "445055.53", "cumulativePrincipal": "1530895.99"},
+      {"index": 17, "date": "2035-02-28", "days": 181, "opening": "469104.01", "interestAccrued": "9851.18", "interestPaid": "9851.18", "principal": "113645.79", "fees": "0.00", "insurance": "0.00", "payment": "123496.97", "closing": "355458.22", "cumulativeInterest": "454906.71", "cumulativePrincipal": "1644541.78"},
+      {"index": 18, "date": "2035-08-31", "days": 184, "opening": "355458.22", "interestAccrued": "7464.62", "interestPaid": "7464.62", "principal": "116032.35", "fees": "0.00", "insurance": "0.00", "payment": "123496.97", "closing": "239425.87", "cumulativeInterest": "462371.33", "cumulativePrincipal": "1760574.13"},
+      {"index": 19, "date": "2036-02-29", "days": 182, "opening": "239425.87", "interestAccrued": "5027.94", "interestPaid": "5027.94", "principal": "118469.03", "fees": "0.00", "insurance": "0.00", "payment": "123496.97", "closing": "120956.84", "cumulativeInterest": "467399.27", "cumulativePrincipal": "1879043.16"},
+      {"index": 20, "date": "2036-08-31", "days": 184, "opening": "120956.84", "interestAccrued": "2540.09", "interestPaid": "2540.09", "principal": "120956.84", "fees": "0.00", "insurance": "0.00", "payment": "123496.93", "closing": "0.00", "cumulativeInterest": "469939.36", "cumulativePrincipal": "2000000.00"}
+    ]
+  }
+}

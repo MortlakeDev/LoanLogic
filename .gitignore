@@ -34,3 +34,7 @@ Thumbs.db
 
 # Local agent memory
 .remember/
+
+# Python bytecode (tools/reference)
+__pycache__/
+*.py[cod]

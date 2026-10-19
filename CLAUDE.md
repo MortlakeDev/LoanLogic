@@ -9,8 +9,9 @@ app. **Author:** Mortlake. **License:** AGPL-3.0-or-later.
 2. `docs/SPEC-finance.md` — financial methodology. It is **normative**: if code and SPEC
    disagree, the SPEC wins. If the SPEC is ambiguous, incomplete or looks wrong, **stop
    and report** (in the PR description and the task file). Never invent financial rules.
-3. `docs/DESIGN.md` — design system (once it exists).
-4. `docs/tasks/Txx-*.md` — the current task brief and its acceptance criteria.
+3. `docs/DESIGN.md` — design system (normative for UI work).
+4. `docs/GLOSSARY.md` — financial terms in en / zh-CN / ru / uk (normative for strings).
+5. `docs/tasks/Txx-*.md` — the current task brief and its acceptance criteria.
 
 ## Hard rules
 
@@ -21,16 +22,21 @@ app. **Author:** Mortlake. **License:** AGPL-3.0-or-later.
    (use `/* */` in CSS and `<!-- -->` in HTML). JSON files are exempt.
 3. **Clean room.** Write everything from the documents in this repository. Do not copy
    code or text from other projects or from folders outside this repository.
-4. **Money is decimal.** Ledger amounts use decimal.js at currency minor units. Never use
-   JS `number` for ledger money. Floats are allowed only in analytics (SPEC §0).
+   `tools/reference` is the architect's independent test oracle: never read or port its
+   code into `src/` (its ISO 4217 data table is the only exception), and never edit the
+   generated vectors in `tests/vectors` by hand.
+4. **Money is exact.** Ledger amounts are exact: BigInt rationals for values that must be
+   exact (SPEC §1.6), decimal.js with ≥ 40 digits for irrational ones, posted at currency
+   minor units. Never use JS `number` for ledger money. Floats are allowed only in
+   analytics (SPEC §0).
 5. **Dates without time zones.** Use the engine's `LocalDate`. Never do date arithmetic
    with JS `Date`.
 6. **Pure engine.** `src/engine/**` has no DOM, no UI imports, no global state, no I/O,
    and depends only on decimal.js. Same input → same output.
 7. **i18n everywhere.** Every user-facing string goes through i18n keys, added to all four
    locales (`en`, `zh-CN`, `ru`, `uk`) in the same change. Translations must be natural,
-   not word-for-word. Numbers, dates and currencies are formatted only through the i18n
-   formatting helpers (Intl).
+   not word-for-word, and use the terms in `docs/GLOSSARY.md`. Numbers, dates and
+   currencies are formatted only through the i18n formatting helpers (Intl).
 8. **No runtime network.** No CDNs, remote fonts, analytics or telemetry. Everything is
    bundled. Works offline and from `file://` (single-file build).
 9. **Tests with every change.** Engine changes need unit tests, property tests where
@@ -39,8 +45,9 @@ app. **Author:** Mortlake. **License:** AGPL-3.0-or-later.
 10. **Accessibility.** Semantic HTML, a label for every input, full keyboard support,
     visible focus, WCAG 2.2 AA contrast in dark and light themes, `prefers-reduced-motion`.
 11. **Dependencies.** Allowed licenses: MIT, ISC, BSD-2/3, Apache-2.0, OFL (fonts);
-    MPL-2.0 for dev-only tools. List every new dependency with license and gzip size in
-    the PR. Prefer no dependency over a large one.
+    MPL-2.0 for dev-only tools; BlueOak-1.0.0, MIT-0, CC0-1.0 and CC-BY-4.0 (data) for
+    transitive dev-only packages that never ship. List every new dependency with license
+    and gzip size in the PR. Prefer no dependency over a large one.
 12. **No silent fallbacks.** Errors and unsupported combinations surface as structured,
     localized messages; never compute something different from what was asked.
 
@@ -55,7 +62,9 @@ app. **Author:** Mortlake. **License:** AGPL-3.0-or-later.
 | `npm run typecheck` | `tsc --noEmit` |
 | `npm test` / `npm run coverage` | Vitest |
 | `npm run e2e` | Playwright |
-| `npm run check` | lint + typecheck + test + build (must pass before a PR) |
+| `npm run check` | lint, format check, typecheck, SPDX, licenses, unit tests with coverage, both builds, size budget (must pass before a PR) |
+| `python tools/reference/generate.py --check` | golden vectors are up to date (Python 3.10+, no packages) |
+| `python -m unittest discover -s tools/reference -p "test_*.py"` | reference implementation self-tests |
 
 ## Workflow
 

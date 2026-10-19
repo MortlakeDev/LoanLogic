@@ -1,0 +1,31 @@
+{
+  "schemaVersion": 1,
+  "id": "error-negative-amortization",
+  "description": "ACT/360 interest on a long high-rate loan exceeds the instalment computed from j/12: NEG_AMORTIZATION, never a silently different schedule.",
+  "source": "SPEC-finance §0.5, §13",
+  "kind": "loan",
+  "input": {
+    "currency": "USD",
+    "amount": "100000.00",
+    "annualRatePct": "30",
+    "repayment": "annuity",
+    "frequency": "monthly",
+    "term": {
+      "payments": 360
+    },
+    "disbursementDate": "2026-01-15",
+    "accrual": {
+      "mode": "daycount",
+      "method": "act-360"
+    }
+  },
+  "expected": {
+    "ok": false,
+    "errors": [
+      {
+        "code": "NEG_AMORTIZATION",
+        "field": null
+      }
+    ]
+  }
+}

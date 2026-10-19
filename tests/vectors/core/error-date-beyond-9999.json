@@ -1,0 +1,27 @@
+{
+  "schemaVersion": 1,
+  "id": "error-date-beyond-9999",
+  "description": "A 30-year schedule disbursed on 9990-06-15 would end after 9999-12-31: DATE_INVALID on the disbursement date.",
+  "source": "SPEC-finance §2.1, §13",
+  "kind": "loan",
+  "input": {
+    "currency": "USD",
+    "amount": "1000.00",
+    "annualRatePct": "5",
+    "repayment": "annuity",
+    "frequency": "monthly",
+    "term": {
+      "years": 30
+    },
+    "disbursementDate": "9990-06-15"
+  },
+  "expected": {
+    "ok": false,
+    "errors": [
+      {
+        "code": "DATE_INVALID",
+        "field": "disbursementDate"
+      }
+    ]
+  }
+}
