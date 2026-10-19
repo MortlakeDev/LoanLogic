@@ -1,13 +1,15 @@
 # LoanLogic — Product & Engineering Plan
 
-Status: v0.1 (approved scope draft) · Owner: Mortlake · License: AGPL-3.0-or-later
+Status: v0.2 (2026-10-19) · Owner: Mortlake · License: AGPL-3.0-or-later
 
 LoanLogic is a precise, private and good-looking loan & savings calculator for bank
 professionals and for anyone in the US, UK, EU, China, Ukraine and beyond. It runs
 entirely in the browser (no server, no tracking), works offline and is open source.
 
-Normative financial rules live in [`SPEC-finance.md`](SPEC-finance.md). Rules for the
-coding agent live in [`../CLAUDE.md`](../CLAUDE.md). Task briefs live in [`tasks/`](tasks/).
+Normative financial rules live in [`SPEC-finance.md`](SPEC-finance.md), the design system
+in [`DESIGN.md`](DESIGN.md) and the financial terms per language in
+[`GLOSSARY.md`](GLOSSARY.md). Rules for the coding agent live in
+[`../CLAUDE.md`](../CLAUDE.md). Task briefs live in [`tasks/`](tasks/).
 
 ---
 
@@ -158,8 +160,9 @@ Milestone tags refer to §7. "Must" = required for v1.0.
 
 ### K. Experience & platform
 
-- **K1** Dark (default), light and system themes; black/graphite/gray palette with one
-  accent; charts follow the theme; adjustable density and font scale. *M2, Must*
+- **K1** System (default: follows the OS), dark and light themes; dark when the system
+  states no preference; black/graphite/gray palette with one accent; charts follow the
+  theme; adjustable density and font scale. *M2, Must*
 - **K2** Responsive, mobile-first; sticky summary on small screens. *M2, Must*
 - **K3** Live recalculation with inline, localized validation. *M2, Must*
 - **K4** Accessibility WCAG 2.2 AA in both themes. *All milestones, Must*
@@ -205,7 +208,7 @@ Details and sources: SPEC-finance §9 and §11.11.
 | Language | TypeScript (strict) | Type safety for a large financial engine |
 | Build | Vite | Fast, simple static output; single-file plugin |
 | UI | Preact + @preact/signals | ~10 KB runtime, React-compatible knowledge, fine-grained reactivity for live recalculation |
-| Money | decimal.js | Exact decimal arithmetic and rounding modes |
+| Money | decimal.js + BigInt rationals | Exact decimal arithmetic and rounding modes; exact rationals where a value must be exact at ties (SPEC §1.6) |
 | Charts | Custom SVG components + d3-scale / d3-shape | Full design control, theme via CSS variables, crisp in print |
 | Validation | valibot | Tiny schema validation for imports and URL state |
 | Exports | ExcelJS, docx (lazy-loaded), print CSS for PDF | No CJK font embedding problems; small initial bundle |
@@ -241,7 +244,8 @@ tests/
   e2e/           Playwright specs
 tools/
   reference/     independent reference implementation used to generate vectors
-docs/            PLAN, SPEC-finance, DESIGN, tasks/
+docs/            PLAN, SPEC-finance, DESIGN, GLOSSARY, design/ (reference renders, wordmark),
+                 tasks/
 ```
 
 ### 5.5 Data model and persistence
@@ -265,20 +269,22 @@ docs/            PLAN, SPEC-finance, DESIGN, tasks/
 - AGPL-3.0-or-later; SPDX header in every source file; "Source code" link in the UI
   footer; third-party notices generated at build time.
 
+### 5.8 Supported browsers
+
+- Chrome and Edge 111+, Firefox 116+, Safari and iOS Safari 16.4+ (all released by
+  August 2023). The baseline covers BigInt, `Intl.NumberFormat` v3 (`signDisplay:
+  'negative'`, `roundingMode`), `color-mix()` and `:focus-visible`.
+- T03 sets the build target and `eslint-plugin-compat` to this baseline (DESIGN §12);
+  T18 adds a short "unsupported browser" notice.
+
 ## 6. Design direction
 
-Full design system goes into `DESIGN.md` after the concept is approved.
-
-- Dark-first: black and graphite surfaces, gray text levels; light theme for daylight and
-  print; "system" by default.
-- One accent color used sparingly (interest/cost highlights, primary action, focus).
-  Candidates for the concept: acid lime, warm amber, ice blue.
-- Monochrome charts with the accent for cost/interest; desaturated semantic colors.
-- Typography: Inter (self-hosted, OFL) with tabular numerals; system CJK fonts for
-  Chinese. Amounts right-aligned, tabular.
-- Layout: desktop — sticky input panel left, results right (summary → charts →
-  schedule); mobile — stacked, sticky summary bar.
-- Motion: subtle number and chart transitions; respects `prefers-reduced-motion`.
+The design system is [`DESIGN.md`](DESIGN.md) ("Graphite Ledger", approved 2026-10-19):
+black/graphite/gray surfaces with one lime accent for interest, cost, selection, focus and
+links; Onest for the interface, JetBrains Mono for every amount and rate, the wordmark
+drawn from Unbounded; dark-first with light and system themes; numbers right-aligned
+and tabular; desktop two columns (sticky inputs, results), mobile stacked with a sticky
+summary.
 
 ## 7. Milestones
 
@@ -297,8 +303,8 @@ Architect deliverables (Cowork) that gate tasks:
 
 | ID | Deliverable | Needed before |
 |---|---|---|
-| R1 | Reference implementation (`tools/reference`) + core vectors | T02 |
-| R2 | Design concept (3 accent options) → `DESIGN.md` | T03 |
+| R1 | Reference implementation (`tools/reference`) + core vectors — delivered 2026-10-19 | T02 |
+| R2 | Design concept → `DESIGN.md` + `GLOSSARY.md` — delivered 2026-10-19 | T03 |
 | R3 | Event vectors (prepayments, rate changes, holidays, odd period) | T06 |
 | R4 | Analytics vectors (comparison, refinance, goal seek, affordability, deposits) | T08–T13 |
 
@@ -329,8 +335,8 @@ addressed → architect acceptance → merge → task file marked done.
 | Risk | Mitigation |
 |---|---|
 | Misreading a regional rule | Sources cited in SPEC; vectors from regulator examples; "verify" flags; disclaimer |
-| Float rounding errors | Decimal ledger; exact invariants; property tests |
+| Float rounding errors | Decimal ledger; exact rationals at ties (SPEC §1.6); exact invariants; property tests; independent reference with tie guards |
 | Scope creep | Milestones with Must/Should; v1 scope frozen in this plan |
 | Bundle bloat | Lazy-loaded exports; size budget check in CI |
-| Translation quality (zh-CN) | Shared glossary of financial terms; native-speaker review before v1.0 |
+| Translation quality (zh-CN) | Shared glossary (`GLOSSARY.md`); native-speaker review before v1.0 |
 | Spec ambiguity during coding | Implementer stops and reports; architect resolves in SPEC |

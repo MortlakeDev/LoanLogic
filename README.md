@@ -133,7 +133,7 @@ tests/
 tools/
   reference/   independent reference implementation used to generate the vectors
 scripts/       repository checks (SPDX, licenses, bundle size) and Vite plugins
-docs/          plan, financial specification, task briefs
+docs/          plan, financial specification, design system, glossary, task briefs
 ```
 
 ## Documentation
@@ -141,6 +141,11 @@ docs/          plan, financial specification, task briefs
 - [`docs/PLAN.md`](docs/PLAN.md): scope, architecture, milestones and Definition of Done.
 - [`docs/SPEC-finance.md`](docs/SPEC-finance.md): the financial methodology. It is normative:
   where the code and the SPEC disagree, the SPEC wins.
+- [`docs/DESIGN.md`](docs/DESIGN.md): the design system ("Graphite Ledger").
+- [`docs/GLOSSARY.md`](docs/GLOSSARY.md): financial terms in English, Chinese, Russian and
+  Ukrainian.
+- [`tools/reference/`](tools/reference/): the independent reference implementation that
+  generates the golden test vectors in [`tests/vectors/`](tests/vectors/).
 - [`docs/tasks/`](docs/tasks/): task briefs and their acceptance criteria.
 - [`CLAUDE.md`](CLAUDE.md): the rules every change follows, whoever writes it.
 

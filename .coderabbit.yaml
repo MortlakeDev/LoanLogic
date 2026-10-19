@@ -19,6 +19,7 @@ reviews:
     - '!test-results/**'
     - '!blob-report/**'
     - '!**/THIRD-PARTY-NOTICES.txt'
+    - '!tests/vectors/**/*.json'
   path_instructions:
     - path: 'src/engine/**'
       instructions: |
@@ -26,9 +27,13 @@ reviews:
         The SPEC is normative: flag every deviation from it, and flag any place where the code
         decides something the SPEC leaves ambiguous or does not cover (the implementer must
         report SPEC questions, not invent financial rules).
-        - Ledger money uses decimal.js at currency minor units only. Flag JS `number`
-          arithmetic, parseFloat or Number() on money. Floats are allowed only in analytics
-          (rate solvers, NPV), on values converted from exact decimals (SPEC §0).
+        - Ledger money is exact: rational values with BigInt rationals, irrational ones with
+          decimal.js at >= 40 significant digits, posted at currency minor units (SPEC §1.6).
+          Flag JS `number` arithmetic, parseFloat or Number() on money. Floats are allowed
+          only in analytics (rate solvers, NPV), on values converted from exact decimals
+          (SPEC §0).
+        - Rate solvers follow SPEC §10: sign-change rules, grid enumeration of several
+          roots, a bracket-width stopping rule (never a test on |f|).
         - Rounding happens only at the posting points and with the modes in SPEC §1.
         - The ledger invariants I1–I9 (SPEC §8.3) must hold exactly; check that changes keep
           them and that property tests cover them.
@@ -43,6 +48,24 @@ reviews:
         - Public APIs have TSDoc that states units (e.g. "annual rate as a decimal", "amount in
           major units as a decimal string").
 
+    - path: 'tools/reference/**'
+      instructions: |
+        The architect's independent reference implementation (Python 3.10+, standard library
+        only). It generates the golden vectors in tests/vectors from cases.py.
+        - Fidelity to docs/SPEC-finance.md: exact rational ledger arithmetic, rounding only at
+          the posting points of SPEC §1.4, the exactness rules of §1.6, the guards that keep
+          near-tie inputs out of vectors, correct solvers and time measurement (§9, §10).
+        - Independence: it never imports from src/, and src/ never imports from it.
+        - The generated JSON is not reviewed line by line; cases.py is the reviewable source.
+
+    - path: 'docs/**'
+      instructions: |
+        Normative documents: SPEC-finance (financial rules), DESIGN (design system), GLOSSARY
+        (terms per language), PLAN and the task briefs.
+        - Flag contradictions between documents, ambiguous normative statements (MUST/SHOULD
+          without a testable meaning) and terminology that conflicts with GLOSSARY.md.
+        - Financial statements should cite their regulatory source.
+
     - path: 'src/i18n/**'
       instructions: |
         Internationalization.
@@ -51,8 +74,9 @@ reviews:
           plural suffix (_zero, _one, _two, _few, _many, _other), and ru/uk provide the forms
           their plural rules need.
         - Translations must be natural for a native speaker, not word-for-word, and use the
-          correct financial terminology of each language and market (e.g. 等额本息 and 年化利率
-          in zh-CN, ПСК in ru, реальна річна процентна ставка in uk, APR/APRC in en).
+          correct financial terminology of each language and market as fixed in
+          docs/GLOSSARY.md (e.g. 等额本息 and 年化利率（单利） in zh-CN, Переплата in ru with ПСК
+          only for the Russian method, реальна річна процентна ставка in uk, APR/APRC in en).
         - Placeholders such as {app}, {author}, {year} and {count} are preserved exactly in
           every locale and never translated.
         - Numbers, money, percentages and dates are formatted only through the Intl-based
