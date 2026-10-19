@@ -51,6 +51,10 @@ async function expectLanguage(page: Page, language: Language): Promise<void> {
   await expect(languageSelect(page, language)).toHaveValue(language);
 }
 
+/**
+ * Picks `to` in the language select and asserts the whole shell switched to it. `from` is
+ * the current language, needed because the select's accessible name is translated.
+ */
 async function switchLanguage(page: Page, from: Language, to: Language): Promise<void> {
   await languageSelect(page, from).selectOption(to);
   await expectLanguage(page, to);

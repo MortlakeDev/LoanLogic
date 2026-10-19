@@ -44,6 +44,10 @@ class FakeMediaQueryList extends EventTarget implements MediaQueryList {
   readonly #listeners = new Set<EventListenerOrEventListenerObject>();
   readonly #legacy = new Map<NonNullable<ChangeHandler>, EventListener>();
 
+  /**
+   * @param media The query exactly as passed to `matchMedia`.
+   * @param evaluate Tells whether a query matches the fake system scheme at call time.
+   */
   constructor(
     readonly media: string,
     private readonly evaluate: (query: string) => boolean,
@@ -51,6 +55,7 @@ class FakeMediaQueryList extends EventTarget implements MediaQueryList {
     super();
   }
 
+  /** Evaluated on every read against the fake scheme's current state; nothing is cached. */
   get matches(): boolean {
     return this.evaluate(this.media);
   }
@@ -60,6 +65,7 @@ class FakeMediaQueryList extends EventTarget implements MediaQueryList {
     return this.#listeners.size;
   }
 
+  /** Also records `change` listeners, so tests can check that subscriptions are removed. */
   override addEventListener(
     type: string,
     listener: EventListenerOrEventListenerObject | null,
@@ -71,6 +77,7 @@ class FakeMediaQueryList extends EventTarget implements MediaQueryList {
     super.addEventListener(type, listener, options);
   }
 
+  /** Also drops the listener from the `change` listeners counted by `listenerCount`. */
   override removeEventListener(
     type: string,
     listener: EventListenerOrEventListenerObject | null,
@@ -82,6 +89,10 @@ class FakeMediaQueryList extends EventTarget implements MediaQueryList {
     super.removeEventListener(type, listener, options);
   }
 
+  /**
+   * Deprecated listener API that `MediaQueryList` still declares. The callback is wrapped
+   * in a `change` listener, so it is notified and counted like `addEventListener` ones.
+   */
   addListener(callback: ChangeHandler): void {
     if (callback === null) {
       return;
@@ -93,6 +104,7 @@ class FakeMediaQueryList extends EventTarget implements MediaQueryList {
     this.addEventListener('change', listener);
   }
 
+  /** Removes a callback added with `addListener`; unknown callbacks are ignored. */
   removeListener(callback: ChangeHandler): void {
     if (callback === null) {
       return;
@@ -135,6 +147,10 @@ export function createColorScheme(prefersLight: boolean): FakeColorScheme {
   let light = prefersLight;
   const queries: string[] = [];
   const lists: FakeMediaQueryList[] = [];
+  /**
+   * Understands only the light and dark `prefers-color-scheme` queries (ignoring case and
+   * whitespace); any other query never matches.
+   */
   const evaluate = (query: string): boolean => {
     const normalized = query.replace(/\s+/g, '').toLowerCase();
     if (normalized === '(prefers-color-scheme:light)') {
@@ -146,6 +162,7 @@ export function createColorScheme(prefersLight: boolean): FakeColorScheme {
     return false;
   };
   return {
+    /** Records the query and, like the real API, returns a new list on every call. */
     matchMedia(query: string): MediaQueryList {
       queries.push(query);
       const list = new FakeMediaQueryList(query, evaluate);
@@ -156,6 +173,7 @@ export function createColorScheme(prefersLight: boolean): FakeColorScheme {
     get prefersLight(): boolean {
       return light;
     },
+    /** Lists on dark queries fire too; setting the current value again fires nothing. */
     setPrefersLight(next: boolean): void {
       const before = lists.map((list) => list.matches);
       light = next;
@@ -165,6 +183,7 @@ export function createColorScheme(prefersLight: boolean): FakeColorScheme {
         }
       });
     },
+    /** Sums over every list ever handed out, including ones the caller has dropped. */
     listenerCount(): number {
       return lists.reduce((total, list) => total + list.listenerCount, 0);
     },

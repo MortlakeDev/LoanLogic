@@ -26,12 +26,22 @@ const TOKENS = {
  * description, and a <noscript> message in every UI language.
  */
 export function htmlI18n(options: HtmlI18nOptions): Plugin {
+  /**
+   * Reads and parses `<localesDir>/<language>.json`. Not cached: every transform reads the
+   * files again. Throws if the file is missing or is not valid JSON.
+   */
   const load = (language: string): Readonly<Record<string, string>> =>
     JSON.parse(readFileSync(path.join(options.localesDir, `${language}.json`), 'utf8')) as Record<
       string,
       string
     >;
 
+  /**
+   * Looks up `key`, fills its `{name}` placeholders from `options.params` (unknown names
+   * stay as written) and HTML-escapes the result, substituted values included.
+   *
+   * @throws Error if the catalog has no message for `key`.
+   */
   const message = (catalog: Readonly<Record<string, string>>, key: string): string => {
     const template = catalog[key];
     if (template === undefined) {
@@ -48,6 +58,14 @@ export function htmlI18n(options: HtmlI18nOptions): Plugin {
     name: 'loanlogic:html-i18n',
     transformIndexHtml: {
       order: 'pre',
+      /**
+       * Replaces the first occurrence of each token, before Vite's own HTML processing:
+       * title and meta description in the first configured language, then one
+       * `<p lang>` per language inside <noscript>.
+       *
+       * @throws Error if a token is missing from the page, no language is configured, or a
+       *   locale file or message cannot be loaded.
+       */
       handler(html): string {
         for (const token of Object.values(TOKENS)) {
           if (!html.includes(token)) {
@@ -75,6 +93,11 @@ export function htmlI18n(options: HtmlI18nOptions): Plugin {
   };
 }
 
+/**
+ * Escapes `&`, `<`, `>` and `"`: enough for element text and double-quoted attribute
+ * values, which is where index.html puts the tokens; not for single-quoted or unquoted
+ * attributes.
+ */
 function escapeHtml(text: string): string {
   return text
     .replace(/&/g, '&amp;')

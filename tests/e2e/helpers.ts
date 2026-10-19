@@ -15,8 +15,10 @@ export type Theme = 'dark' | 'light';
 /** What the user can pick in the theme switcher. */
 export type ThemePreference = 'system' | Theme;
 
+/** Both applied themes, for tests that run once per theme. */
 export const THEMES: readonly Theme[] = ['dark', 'light'];
 
+/** Every theme switcher option, in the order the switcher shows them. */
 export const THEME_PREFERENCES: readonly ThemePreference[] = ['system', 'dark', 'light'];
 
 /** The other theme. */
@@ -46,6 +48,7 @@ type Catalog = Readonly<Record<string, string>>;
 
 const catalogs = new Map<Language, Catalog>();
 
+/** Whether parsed JSON is a flat object whose values are all strings (no nesting, no arrays). */
 function isCatalog(value: unknown): value is Catalog {
   return (
     typeof value === 'object' &&
@@ -217,6 +220,7 @@ export async function measureThemeBackgrounds(
     freeze.textContent =
       '*, *::before, *::after { transition: none !important; animation: none !important; }';
     document.head.append(freeze);
+    /** Applies `theme` to `<html data-theme>` and returns the body background it computes to. */
     const measure = (theme: string): string => {
       root.setAttribute('data-theme', theme);
       return getComputedStyle(document.body).backgroundColor;
@@ -343,6 +347,10 @@ export const NO_LINK_TAB_REASON =
 export async function linkTabKey(page: Page): Promise<TabKey | undefined> {
   const probe = await page.context().newPage();
   try {
+    /**
+     * Loads a fresh document (a link followed by a button) into the probe, so focus starts
+     * from the top each time, presses `key` once and reports whether the link took focus.
+     */
     const reachesLink = async (key: TabKey): Promise<boolean> => {
       await probe.setContent('<a href="#first">first</a> <button type="button">second</button>');
       await probe.keyboard.press(key);

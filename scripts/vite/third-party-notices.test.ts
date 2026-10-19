@@ -20,6 +20,10 @@ interface RunResult {
 
 let root = '';
 
+/**
+ * Creates a fake package under the temporary root: package.json, `files` (by default a
+ * LICENSE naming the package) and an index.js, whose path it returns as a module id.
+ */
 function writePackage(
   relativeDir: string,
   manifest: Record<string, unknown>,

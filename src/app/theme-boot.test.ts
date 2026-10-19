@@ -24,7 +24,11 @@ interface BootEnvironment {
   readonly matchMedia?: (query: string) => MediaQueryList;
 }
 
-// The source is static, trusted text from index.html; executing it is the point of the test.
+/**
+ * The boot script compiled as a function of `window` and `document`, so each test can hand
+ * it a fake environment and a fresh document. The source is static, trusted text from
+ * index.html; executing it is the point of the test.
+ */
 // eslint-disable-next-line @typescript-eslint/no-implied-eval
 const executeBootScript = new Function('window', 'document', bootScript) as (
   win: BootEnvironment,
@@ -51,6 +55,7 @@ function runBootScript(env: {
   );
   const win: BootEnvironment = {};
   Object.defineProperty(win, 'localStorage', {
+    /** Throws like a browser that blocks storage; otherwise returns the in-memory storage. */
     get(): Storage {
       if (env.stored.kind === 'blocked') {
         throw new DOMException('The operation is insecure.', 'SecurityError');
@@ -69,6 +74,10 @@ function runBootScript(env: {
   return doc.documentElement.getAttribute('data-theme');
 }
 
+/**
+ * Storage holding exactly `value` under the theme key, not JSON-encoded, so a case can plant
+ * corrupt or unquoted text.
+ */
 const raw = (value: string): StoredCase => ({ kind: 'raw', raw: value });
 
 const CASES: readonly BootCase[] = [

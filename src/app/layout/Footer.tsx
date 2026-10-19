@@ -5,6 +5,10 @@ import type { JSX } from 'preact';
 import { AUTHOR, COPYRIGHT_YEAR, LICENSE_ID, LICENSE_URL, SOURCE_CODE_URL } from '../../config';
 import { t } from '../state/i18n';
 
+/**
+ * Link that opens in a new tab without giving the target page `window.opener` or a
+ * referrer, and tells screen-reader users that it opens a new tab.
+ */
 function ExternalLink(props: { href: string; children: string }): JSX.Element {
   return (
     <a href={props.href} target="_blank" rel="noopener noreferrer">
@@ -13,6 +17,10 @@ function ExternalLink(props: { href: string; children: string }): JSX.Element {
   );
 }
 
+/**
+ * Page footer: copyright, links to the license and to the source code (the AGPL "Source"
+ * offer), and the on-device privacy and not-financial-advice notes.
+ */
 export function Footer(): JSX.Element {
   return (
     <footer class="app-footer">

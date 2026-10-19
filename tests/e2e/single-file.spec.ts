@@ -37,8 +37,13 @@ interface WebFontState {
  */
 async function webFontState(page: Page, sample: string): Promise<WebFontState> {
   return page.evaluate((text) => {
+    /** Trims a family name and drops a quote at either end, so quoted and bare spellings match. */
     const unquote = (name: string): string => name.trim().replace(/^["']|["']$/g, '');
     const family = unquote(getComputedStyle(document.body).fontFamily.split(',')[0] ?? '');
+    /**
+     * Whether a `unicode-range` value (comma-separated `U+20`, `U+0-7F` or wildcard `U+4??`
+     * entries) includes the code point; entries it cannot parse count as not covering.
+     */
     const covers = (range: string, codePoint: number): boolean =>
       range.split(',').some((part) => {
         const match = /^U\+([0-9A-F?]+)(?:-([0-9A-F]+))?$/i.exec(part.trim());

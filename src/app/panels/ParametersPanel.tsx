@@ -7,7 +7,7 @@ import { t } from '../state/i18n';
 
 const TITLE_ID = 'parameters-title';
 
-// Abstract form fields: three labelled rows and a slider.
+/** Decorative art of abstract form fields: two labelled input rows and a slider. */
 function FieldsArt(): JSX.Element {
   return (
     <svg viewBox="0 0 160 96" focusable="false">
@@ -23,6 +23,10 @@ function FieldsArt(): JSX.Element {
   );
 }
 
+/**
+ * Workspace panel for the loan inputs, labelled by its heading. For now it shows an empty
+ * state; the input form replaces it in a later task.
+ */
 export function ParametersPanel(): JSX.Element {
   return (
     <section class="panel panel--parameters" aria-labelledby={TITLE_ID}>

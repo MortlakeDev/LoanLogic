@@ -28,6 +28,10 @@ export const THEME_STORAGE_KEY = themeSlot.key;
 // Dark-first: light is used only when the system explicitly asks for it.
 const LIGHT_QUERY = '(prefers-color-scheme: light)';
 
+/**
+ * The window's `prefers-color-scheme: light` query, or `undefined` when there is no window
+ * or it has no `matchMedia` (jsdom, for one, does not implement it).
+ */
 function lightMedia(win: Window | undefined): MediaQueryList | undefined {
   return typeof win?.matchMedia === 'function' ? win.matchMedia(LIGHT_QUERY) : undefined;
 }

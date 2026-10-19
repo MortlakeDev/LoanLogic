@@ -27,6 +27,10 @@ interface Box {
   readonly height: number;
 }
 
+/**
+ * The element's bounding box in CSS pixels, relative to the viewport. Fails the test if the
+ * element is not visible; the zero box after that check only satisfies the type checker.
+ */
 async function boxOf(locator: Locator): Promise<Box> {
   const box = await locator.boundingBox();
   expect(box, 'element should be rendered').not.toBeNull();
@@ -60,6 +64,10 @@ async function overflowingElements(page: Page): Promise<string[]> {
   }, EPSILON);
 }
 
+/**
+ * Asserts that the element's left and right edges lie within the layout viewport, within
+ * `EPSILON`; only the horizontal axis is checked. `name` labels the failure messages.
+ */
 async function expectInsideViewport(page: Page, name: string, locator: Locator): Promise<void> {
   const width = await viewportWidth(page);
   const box = await boxOf(locator);
@@ -67,6 +75,11 @@ async function expectInsideViewport(page: Page, name: string, locator: Locator):
   expect(box.x + box.width, `${name}: right edge`).toBeLessThanOrEqual(width + EPSILON);
 }
 
+/**
+ * Asserts the one-column layout: the results panel starts below the parameters panel and
+ * both share the left edge and width, within `EPSILON`. `language` is the UI language the
+ * panel names are in.
+ */
 async function expectStacked(page: Page, language: Language): Promise<void> {
   const { parameters, results } = panels(page, language);
   const top = await boxOf(parameters);
@@ -78,6 +91,11 @@ async function expectStacked(page: Page, language: Language): Promise<void> {
   expect(Math.abs(top.width - bottom.width), 'panels share the width').toBeLessThanOrEqual(EPSILON);
 }
 
+/**
+ * The header, its settings controls, both panels and the footer as [description, locator]
+ * pairs, for per-part layout checks; `language` is the UI language the accessible names are
+ * in.
+ */
 function shellParts(page: Page, language: Language): [string, Locator][] {
   const { parameters, results } = panels(page, language);
   return [
@@ -197,6 +215,7 @@ test.describe('workspace columns', () => {
     test('switches between columns and a stack without a reload', async ({ page }) => {
       await gotoApp(page);
       const { parameters, results } = panels(page);
+      /** Whether the panels form two columns: same top edge, parameters left of results. */
       const sideBySide = async (): Promise<boolean> => {
         const left = await boxOf(parameters);
         const right = await boxOf(results);

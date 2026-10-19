@@ -39,8 +39,9 @@ const VIRTUAL_OWNERS: readonly (readonly [prefix: string, packageName: string])[
 ];
 
 /**
- * Collects every third-party package whose code or assets end up in the bundle, fails the
- * build on a license outside the runtime allowlist, and emits THIRD-PARTY-NOTICES.txt.
+ * Collects every third-party package in the build's module graph (a superset of what ships:
+ * modules removed by tree-shaking still count), fails the build on a license outside the
+ * runtime allowlist, and emits the notices as `options.fileName`.
  */
 export function thirdPartyNotices(options: ThirdPartyNoticesOptions): Plugin {
   const root = process.cwd();
@@ -52,6 +53,14 @@ export function thirdPartyNotices(options: ThirdPartyNoticesOptions): Plugin {
     // final HTML file.
     generateBundle: {
       order: 'post',
+      /**
+       * Attributes every third-party module in the build graph to its package (including
+       * modules that tree-shaking removed, so the list errs on the inclusive side), emits the
+       * notices asset and, with `embedInHtml`, inserts the same text as a comment before that
+       * HTML asset's closing `</html>`. Stops the build via `this.error` when a package has no
+       * package.json, a license is missing or outside the allowlist, a package has no license
+       * file, or the notices cannot be embedded.
+       */
       handler(_outputOptions, bundle): void {
         const packages = new Map<string, BundledPackage>();
         for (const id of this.getModuleIds()) {
@@ -165,6 +174,11 @@ export function htmlComment(text: string): string | undefined {
   return `<!--\n${text}\n-->`;
 }
 
+/**
+ * Builds the plain-text notices: LoanLogic's own copyright and license, then one section
+ * per package, in the given order, headed `name@version — license` and followed by the
+ * full text of each of its license files (read from disk via `licenseTexts`).
+ */
 function renderNotices(packages: readonly BundledPackage[]): string {
   const header = [
     'LoanLogic — third-party notices',

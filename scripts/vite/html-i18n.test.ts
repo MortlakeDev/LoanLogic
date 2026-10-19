@@ -32,6 +32,10 @@ const TOKENS = {
 /** The transform hook without Vite's plugin `this`, which html-i18n does not use. */
 type HtmlTransform = (html: string, context: IndexHtmlTransformContext) => unknown;
 
+/**
+ * The plugin's transformIndexHtml handler, whether registered as a function or as an
+ * `{ order, handler }` object; throws if the plugin has none.
+ */
 function transformOf(plugin: Plugin): HtmlTransform {
   const hook = plugin.transformIndexHtml;
   if (hook === undefined) {
@@ -40,6 +44,10 @@ function transformOf(plugin: Plugin): HtmlTransform {
   return typeof hook === 'function' ? hook : hook.handler;
 }
 
+/**
+ * Runs html-i18n with `options` over `html` (the real index.html by default); throws unless
+ * the plugin returns the page synchronously as a plain string.
+ */
 function transform(options: HtmlI18nOptions, html: string = INDEX_HTML): string {
   const result = transformOf(htmlI18n(options))(html, {
     path: '/index.html',
@@ -51,6 +59,7 @@ function transform(options: HtmlI18nOptions, html: string = INDEX_HTML): string 
   return result;
 }
 
+/** A real locale file parsed straight from disk, independently of the plugin under test. */
 function catalog(language: string): Readonly<Record<string, string>> {
   return JSON.parse(readFileSync(path.join(LOCALES_DIR, `${language}.json`), 'utf8')) as Record<
     string,
@@ -58,6 +67,10 @@ function catalog(language: string): Readonly<Record<string, string>> {
   >;
 }
 
+/**
+ * Builds the expected text: fills `{name}` placeholders from `params`, keeping unknown ones,
+ * without HTML escaping. Throws if the message is missing.
+ */
 function fill(template: string | undefined, params: Readonly<Record<string, string>>): string {
   if (template === undefined) {
     throw new Error('message missing from the locale file');
@@ -147,10 +160,12 @@ describe('htmlI18n with fixture locales', () => {
     rmSync(localesDir, { recursive: true, force: true });
   });
 
+  /** Writes `<language>.json` into this test's temporary locales directory. */
   const writeLocale = (language: string, messages: Readonly<Record<string, string>>): void => {
     writeFileSync(path.join(localesDir, `${language}.json`), JSON.stringify(messages), 'utf8');
   };
 
+  /** Plugin options that read the temporary locales; `params` defaults to `{ app: APP }`. */
   const options = (
     languages: readonly string[],
     params: Readonly<Record<string, string>> = { app: APP },

@@ -14,6 +14,7 @@ interface TextFileReader {
   readFileSync(path: URL, encoding: 'utf8'): string;
 }
 
+/** Narrows the untyped `node:fs` import below to the one method this test calls. */
 function isTextFileReader(module: unknown): module is TextFileReader {
   return (
     typeof module === 'object' &&
@@ -72,6 +73,10 @@ const REQUIRED_THEME_TOKENS = [
 const HEX_COLOR = /^#[0-9a-f]{6}$/i;
 const VAR_REFERENCE = /var\(\s*(--[\w-]+)\s*\)/g;
 
+/**
+ * Trims, collapses whitespace, writes commas as `, ` and double quotes as single ones, so a
+ * selector matches SELECTORS whatever its line breaks, comma spacing or quote style.
+ */
 function normalizeSelector(selector: string): string {
   return selector
     .trim()
@@ -107,6 +112,7 @@ function parseBlocks(css: string): ReadonlyMap<string, Declarations> {
 
 const blocks = parseBlocks(tokensCss);
 
+/** The custom properties of one of the three blocks; throws if tokens.css lacks it. */
 function block(name: keyof typeof SELECTORS): Declarations {
   const declarations = blocks.get(SELECTORS[name]);
   if (declarations === undefined) {
@@ -145,6 +151,10 @@ function resolve(name: string, scope: Declarations, trail: readonly string[] = [
   return resolved;
 }
 
+/**
+ * Resolves a colour token in a theme to its final value; throws unless that is #rrggbb, the
+ * only form the contrast helpers read.
+ */
 function resolveColor(name: string, theme: Theme): string {
   const value = resolve(name, themeScope(theme));
   if (!HEX_COLOR.test(value)) {
@@ -183,6 +193,7 @@ const TEXT = 4.5;
 const NON_TEXT = 3;
 const SURFACES = ['--color-bg', '--color-surface-1', '--color-surface-2', '--color-surface-3'];
 
+/** One contrast rule per foreground and background pair, sharing one minimum and purpose. */
 function rules(
   foregrounds: readonly string[],
   backgrounds: readonly string[],

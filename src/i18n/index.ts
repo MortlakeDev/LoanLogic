@@ -74,6 +74,13 @@ export function matchLanguage(tag: string): Language | undefined {
   }
 }
 
+/**
+ * Classifies a Chinese language tag for `detectLanguage`. `traditional`: the likely script
+ * is not Simplified (zh-TW, zh-HK, zh-Hant, …). `bare`: the tag has neither script nor
+ * region (plain `zh`).
+ *
+ * @returns `undefined` for non-Chinese or malformed tags.
+ */
 function chineseScriptOf(tag: string): { traditional: boolean; bare: boolean } | undefined {
   try {
     const locale = new Intl.Locale(tag);
@@ -124,6 +131,11 @@ export function detectLanguage(saved: unknown, preferred: readonly string[]): La
 
 const pluralRules = new Map<string, Intl.PluralRules>();
 
+/**
+ * The cardinal plural category of `count` in `language` (in Russian: 1 → one, 3 → few,
+ * 5 → many). `Intl.PluralRules` objects are cached per language because messages are
+ * resolved on every render.
+ */
 function pluralCategory(language: string, count: number): PluralCategory {
   let rules = pluralRules.get(language);
   if (rules === undefined) {

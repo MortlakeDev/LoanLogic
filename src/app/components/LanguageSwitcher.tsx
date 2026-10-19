@@ -21,6 +21,11 @@ const NAVIGATION_KEYS = new Set([
   'PageDown',
 ]);
 
+/**
+ * Whether a key press steps the selection of a closed select: any navigation key, or a
+ * printable character for type-ahead, except Space (which opens the list) and characters
+ * typed with Ctrl/Cmd (shortcuts).
+ */
 function movesSelection(event: KeyboardEvent): boolean {
   if (NAVIGATION_KEYS.has(event.key)) {
     return true;
@@ -40,6 +45,7 @@ export function LanguageSwitcher(): JSX.Element {
   const pending = useSignal<Language | undefined>(undefined);
   const keyboardStep = useRef(false);
 
+  /** Clears the pending keyboard choice and applies it if it differs from the current language. */
   const commit = (): void => {
     const next = pending.value;
     pending.value = undefined;
@@ -48,6 +54,11 @@ export function LanguageSwitcher(): JSX.Element {
     }
   };
 
+  /**
+   * Enter applies the pending choice and Escape discards it. A key that steps the
+   * selection flags the `change` it is about to cause as a keyboard step, so that change
+   * is only held as pending.
+   */
   const onKeyDown = (event: TargetedKeyboardEvent<HTMLSelectElement>): void => {
     if (event.key === 'Enter') {
       commit();
@@ -63,6 +74,11 @@ export function LanguageSwitcher(): JSX.Element {
     }
   };
 
+  /**
+   * A keyboard step only records the pending choice (WCAG 3.2.2); any other change (mouse,
+   * touch, a pick from the opened list) switches the language at once. Values that are not
+   * supported languages are ignored.
+   */
   const onChange = (event: TargetedEvent<HTMLSelectElement>): void => {
     const next = event.currentTarget.value;
     if (!isLanguage(next)) {

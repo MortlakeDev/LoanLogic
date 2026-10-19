@@ -22,7 +22,12 @@ export interface StorageSlot<T> {
   remove(): boolean;
 }
 
-/** Builds a namespaced, versioned key: `loanlogic:<name>:v<version>`. */
+/**
+ * Builds a namespaced, versioned key: `loanlogic:<name>:v<version>`.
+ *
+ * @throws RangeError if `name` is not lower-case letters, digits and hyphens starting with
+ *   a letter, or `version` is not an integer of at least 1.
+ */
 export function storageKey(name: string, version: number): string {
   if (!/^[a-z][a-z0-9-]*$/.test(name) || !Number.isInteger(version) || version < 1) {
     throw new RangeError(`Invalid storage key: ${name} v${String(version)}`);
@@ -47,6 +52,7 @@ export function defaultStorage(): Storage | undefined {
  * @param version Schema version, starting at 1.
  * @param isValid Validates parsed JSON before it is returned.
  * @param storage Storage provider; defaults to `localStorage`.
+ * @throws RangeError from `storageKey` if `name` or `version` is invalid.
  */
 export function createStorageSlot<T>(
   name: string,

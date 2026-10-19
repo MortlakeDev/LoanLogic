@@ -16,7 +16,11 @@ interface Rendered {
   readonly select: HTMLSelectElement;
 }
 
-// The state module reads storage and navigator at import time: import it fresh per test.
+/**
+ * Renders the switcher with freshly imported modules, because the state module reads
+ * storage and navigator at import time. Returns that state module and the `<select>`;
+ * throws if the control is not a `<select>`.
+ */
 async function renderSwitcher(): Promise<Rendered> {
   vi.resetModules();
   const { LanguageSwitcher } = await import('./LanguageSwitcher');

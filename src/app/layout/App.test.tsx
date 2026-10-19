@@ -49,6 +49,7 @@ async function renderShell(options: { syncDocument?: boolean } = {}): Promise<Sh
   return { i18n, theme, container };
 }
 
+/** Escapes regular-expression metacharacters so `text` matches literally inside a `RegExp`. */
 function escapeRegExp(text: string): string {
   return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
@@ -226,6 +227,7 @@ describe('theme switcher', () => {
 
   it('checks the radio of the current preference', async () => {
     const { theme } = await renderShell();
+    /** Values of all checked radios: a list, so the test also proves only one is checked. */
     const checked = (): string[] =>
       screen
         .getAllByRole<HTMLInputElement>('radio')

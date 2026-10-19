@@ -15,6 +15,12 @@ const DEFAULT_BASE = '/LoanLogic/';
 const NOTICES_FILE = 'THIRD-PARTY-NOTICES.txt';
 const SINGLE_FILE_NAME = 'LoanLogic.html';
 
+/**
+ * Any mode but `single` (dev server, `npm run build`, preview): the multi-file site under
+ * `BASE_PATH` or /LoanLogic/, built into dist/. `--mode single` (`npm run build:single`):
+ * one self-contained dist-single/LoanLogic.html with relative URLs and the third-party
+ * notices embedded. Also holds the Vitest configuration.
+ */
 export default defineConfig(({ mode }) => {
   const single = mode === 'single';
   return {

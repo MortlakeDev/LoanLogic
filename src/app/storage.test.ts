@@ -6,7 +6,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { blockLocalStorage, createMemoryStorage } from './__tests__/fakes';
 import { createStorageSlot, defaultStorage, STORAGE_NAMESPACE, storageKey } from './storage';
 
+/** Validator that accepts only strings, the value type of most slots in these tests. */
 const isString = (value: unknown): value is string => typeof value === 'string';
+/**
+ * Validator that accepts every value `JSON.parse` can return (never `undefined`), for slots
+ * that store arbitrary JSON.
+ */
 const isDefined = (value: unknown): value is unknown => value !== undefined;
 
 const VALID_NAME = /^[a-z][a-z0-9-]*$/;
@@ -104,6 +109,7 @@ describe('createStorageSlot with a working storage', () => {
   it('returns undefined when the validator rejects the stored value', () => {
     const storage = createMemoryStorage({ 'loanlogic:theme:v1': '42' });
     const validated: unknown[] = [];
+    /** Accepts only strings and records each value, so the test sees what read() parsed. */
     const isValid = (value: unknown): value is string => {
       validated.push(value);
       return isString(value);
@@ -172,6 +178,7 @@ describe('createStorageSlot without usable storage', () => {
 
   it('never throws when every storage method throws SecurityError', () => {
     const storage = createMemoryStorage();
+    /** Throws the SecurityError that browsers raise when storage access is denied. */
     const denied = (): never => {
       throw new DOMException('The operation is insecure.', 'SecurityError');
     };

@@ -30,6 +30,7 @@ function sync(module: typeof ThemeModule): () => void {
   return stop;
 }
 
+/** The theme on `<html data-theme>`, or `undefined` while none has been applied. */
 function documentTheme(): string | undefined {
   return document.documentElement.dataset.theme;
 }

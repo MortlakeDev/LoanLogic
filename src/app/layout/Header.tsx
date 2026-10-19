@@ -7,6 +7,10 @@ import { LanguageSwitcher } from '../components/LanguageSwitcher';
 import { ThemeSwitcher } from '../components/ThemeSwitcher';
 import { t } from '../state/i18n';
 
+/**
+ * Page header: the wordmark (the page's `<h1>`) with the author byline, and the
+ * language and theme controls in a labelled group.
+ */
 export function Header(): JSX.Element {
   return (
     <header class="app-header">

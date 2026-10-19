@@ -24,14 +24,20 @@ async function loadI18n(): Promise<typeof I18nModule> {
   return import('./i18n');
 }
 
+/**
+ * Fakes `navigator.languages` (and `navigator.language`, which defaults to the first entry)
+ * until the test ends.
+ */
 function preferLanguages(languages: readonly string[], language?: string): void {
   cleanups.push(setNavigatorLanguages(languages, language));
 }
 
+/** The document title expected for a language: its `meta.title` with the app name filled in. */
 function expectedTitle(language: Language): string {
   return LOCALES[language]['meta.title'].replace('{app}', APP_NAME);
 }
 
+/** The document's meta description, or `null` if the element or its content is missing. */
 function metaDescription(): string | null {
   return document.head.querySelector('meta[name="description"]')?.getAttribute('content') ?? null;
 }

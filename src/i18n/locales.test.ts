@@ -28,6 +28,7 @@ interface KeyShape {
   readonly categories: ReadonlySet<string>;
 }
 
+/** Decodes a quoted JSON string token, escapes included; throws if it is not a JSON string. */
 function parseJsonString(token: string): string {
   const value: unknown = JSON.parse(token);
   if (typeof value !== 'string') {
@@ -60,6 +61,7 @@ function readEntries(text: string): Entries {
   return entries;
 }
 
+/** Keys seen before in `entries`: one item per repeated occurrence, in file order. */
 function duplicateKeys(entries: Entries): string[] {
   const seen = new Set<string>();
   const duplicates: string[] = [];
@@ -72,6 +74,10 @@ function duplicateKeys(entries: Entries): string[] {
   return duplicates;
 }
 
+/**
+ * Splits a key into its base and plural category (`files_one` → `files`, `one`);
+ * `category` is `undefined` for a key without a plural suffix.
+ */
 function splitKey(key: string): { base: string; category: string | undefined } {
   const match = PLURAL_KEY.exec(key);
   return match?.[1] === undefined
@@ -79,6 +85,7 @@ function splitKey(key: string): { base: string; category: string | undefined } {
     : { base: match[1], category: match[2] };
 }
 
+/** Groups keys by base key, noting whether the plain key exists and which plural forms do. */
 function keyShapes(keys: Iterable<string>): Map<string, KeyShape> {
   const shapes = new Map<string, { plain: boolean; categories: Set<string> }>();
   for (const key of keys) {
@@ -119,6 +126,7 @@ function pluralProblems(language: string, keys: Iterable<string>): string[] {
   return problems;
 }
 
+/** The distinct `{name}` placeholder names in a message, sorted. */
 function placeholders(value: string): string[] {
   return [...new Set(Array.from(value.matchAll(PLACEHOLDER), (match) => match[1] ?? ''))].sort();
 }
@@ -135,10 +143,15 @@ function placeholdersByBase(catalog: FlatCatalog): Map<string, string[]> {
   return new Map(Array.from(pooled, ([base, names]) => [base, [...names].sort()]));
 }
 
+/**
+ * Whether a message has letters once its placeholders are removed, i.e. words that need
+ * translating (`© {year} {author}` has none).
+ */
 function hasLettersOutsidePlaceholders(value: string): boolean {
   return /\p{L}/u.test(value.replace(PLACEHOLDER, ''));
 }
 
+/** The raw text of a locale file; throws if there is no file for the language. */
 function rawLocale(language: Language): string {
   const text = RAW_LOCALES[`./locales/${language}.json`];
   if (text === undefined) {
@@ -147,6 +160,10 @@ function rawLocale(language: Language): string {
   return text;
 }
 
+/**
+ * A locale's messages as scanned from its file by readEntries, so the checks see the file
+ * itself rather than the bundled catalog; a repeated key keeps its last value.
+ */
 function localeCatalog(language: Language): FlatCatalog {
   return Object.fromEntries(readEntries(rawLocale(language)));
 }

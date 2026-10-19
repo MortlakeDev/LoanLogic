@@ -7,7 +7,10 @@ import { t } from '../state/i18n';
 
 const TITLE_ID = 'results-title';
 
-// Abstract amortization chart: shrinking principal bars under a falling balance curve.
+/**
+ * Decorative art of an amortization chart: shrinking principal bars under a falling
+ * balance curve.
+ */
 function ChartArt(): JSX.Element {
   const bars = [62, 56, 50, 44, 37, 30, 23, 15];
   return (
@@ -22,6 +25,10 @@ function ChartArt(): JSX.Element {
   );
 }
 
+/**
+ * Workspace panel for the calculation results, labelled by its heading. For now it shows
+ * an empty state; payments, the schedule and charts replace it in later tasks.
+ */
 export function ResultsPanel(): JSX.Element {
   return (
     <section class="panel panel--results" aria-labelledby={TITLE_ID}>

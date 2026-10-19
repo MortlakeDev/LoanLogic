@@ -19,6 +19,10 @@ const VIEWPORTS = [
   { width: 1280, height: 800 },
 ] as const;
 
+/**
+ * Formats axe violations for a failure message or annotation: per rule its impact, id, help
+ * text and URL, then the selector and failure summary of each failing node.
+ */
 function describeViolations(violations: readonly AxeViolation[]): string {
   return violations
     .map((violation) => {
@@ -33,6 +37,12 @@ function describeViolations(violations: readonly AxeViolation[]): string {
     .join('\n\n');
 }
 
+/**
+ * Scans the current page with axe's WCAG 2.2 AA rules and fails on any serious or critical
+ * violation; moderate and minor ones are attached to the test as an annotation instead.
+ * Also fails if the contrast, title, lang or select-name rules were not evaluated, as on a
+ * page that has not rendered.
+ */
 async function expectNoBlockingViolations(page: Page): Promise<void> {
   const results = await new AxeBuilder({ page }).withTags(WCAG_TAGS).analyze();
   const blocking = results.violations.filter((violation) =>
@@ -61,6 +71,10 @@ async function expectNoBlockingViolations(page: Page): Promise<void> {
 /** Longest transition or animation duration (seconds) of any element or pseudo-element. */
 async function longestMotion(page: Page): Promise<number> {
   return page.evaluate(() => {
+    /**
+     * Longest entry of a computed duration list such as "0.2s, 150ms", in seconds;
+     * unparsable entries count as 0.
+     */
     const seconds = (list: string): number =>
       Math.max(
         0,

@@ -45,6 +45,11 @@ async function focusRingProblems(locator: Locator): Promise<string[]> {
   });
 }
 
+/**
+ * Asserts that the element has focus and draws a visible focus ring (see
+ * `focusRingProblems`), retrying both checks until they pass or time out; `name` labels the
+ * failure messages.
+ */
 async function expectVisibleFocus(locator: Locator, name: string): Promise<void> {
   await expect(locator, `${name} should be focused`).toBeFocused();
   await expect
@@ -52,10 +57,15 @@ async function expectVisibleFocus(locator: Locator, name: string): Promise<void>
     .toEqual([]);
 }
 
+/** The skip link to `<main>`, by its English accessible name. */
 function skipLink(page: Page): Locator {
   return page.getByRole('link', { name: message('en', 'a11y.skipToContent'), exact: true });
 }
 
+/**
+ * The footer's license and source code links, by their English accessible names: the link
+ * text plus the visually hidden "opens in a new tab" note.
+ */
 function footerLinks(page: Page): { license: Locator; source: Locator } {
   const footer = page.getByRole('contentinfo');
   const newTab = message('en', 'footer.opensInNewTab');

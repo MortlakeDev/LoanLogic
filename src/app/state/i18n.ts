@@ -16,6 +16,10 @@ import { createStorageSlot } from '../storage';
 
 const languageSlot = createStorageSlot<Language>('language', 1, isLanguage);
 
+/**
+ * The browser's language preferences, most preferred first: `navigator.languages`, or
+ * `navigator.language` alone when that list is empty. Empty where there is no `navigator`.
+ */
 function preferredLanguages(): readonly string[] {
   if (typeof navigator === 'undefined') {
     return [];
