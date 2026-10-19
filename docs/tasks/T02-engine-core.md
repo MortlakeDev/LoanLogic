@@ -140,4 +140,79 @@ function computeRateMetrics(input: unknown):   // validated as CashFlowInput (§
 
 ## Completion notes
 
-_(to be filled by the implementer)_
+**Status:** in review, [PR #4](https://github.com/MortlakeDev/LoanLogic/pull/4) (branch
+`task/T02-engine-core`). Implemented against SPEC v0.2.1 (the months-back
+clarification of PR #3).
+
+**Acceptance criteria (local evidence, 2026-10-20, Windows, Node 24.19):**
+
+- All 89 core vectors pass through the public API (`src/engine/vectors.test.ts`, one test
+  per vector, SPEC §14 rules, plus I1–I9 on every loan). The three vectors PR #3 adds
+  (`regz-single-payment-month-end-clamp`, `regz-single-payment-month-end-days`,
+  `cashflows-aprc-month-end-clamp`) pass in a local run; `main` is merged into this
+  branch once PR #3 is merged.
+- `npm run check` passes: 1 922 tests (1 299 in the engine). Coverage of `src/engine`
+  is 99.9 % statements, 99.9 % branches and 100 % functions; `vite.config.ts` enforces
+  ≥ 95 %. `npm run e2e`: 148 passed, 8 skipped (the known WebKit-on-Windows cases).
+- The engine imports only decimal.js; ledger money is `bigint` minor units and exact
+  rationals; there is no JS `Date` and no `Intl` (ESLint bans both in `src/engine`).
+- TSDoc with units on the public API and on every input field.
+- CI sets up Python 3.12 and runs `generate.py --check` and the reference self-tests;
+  `scripts/lib/spdx.mjs` requires the `#` header in `.py` files.
+- Benchmark: a 1 200-period annuity with all eleven rate metrics takes a median of
+  14–16 ms in Node (budget 50 ms), via `npm run bench`.
+- Every SPEC ambiguity is listed below and in the PR, with a proposed resolution.
+
+**Deviations and decisions:**
+
+- The performance budget runs as `npm run bench` (`vitest.bench.config.ts`) and as its
+  own CI step, not inside `npm run coverage`. Under coverage instrumentation and dozens of
+  parallel test files the timing was not meaningful (50.6 ms there against 14–16 ms on
+  its own).
+- Module layout follows the brief. Additions: `money.ts` (DecimalString and minor units),
+  `types.ts` (shared types), `metrics/solve.ts` and `metrics/display.ts` (shared metric
+  helpers), and `validate-cashflows.ts` (cash-flow validation, re-exported by
+  `validate.ts`).
+- Irrational values use a decimal.js clone isolated from the global configuration
+  (`defaults: true`). It works at 50 + 10 digits, plus one digit per leading zero of
+  `j/m`, plus the digits of `P` in minor units. Without this widening a tiny rate or a
+  huge financed fee lost digits.
+- The rate solvers scale every amount by one exact power of two before the conversion to
+  doubles, so values beyond the double range (fees have no upper bound) can neither throw
+  nor underflow into a false root. In the normal range results are bit-identical.
+- A second, independent multi-agent review found six confirmed defects, all fixed with
+  tests that fail without the fix: a crash on a huge fee, underflow and overflow in the
+  solvers, lost digits for tiny rates and for huge principals, untested warning and
+  explanation paths, the benchmark time missing from CI logs, and missing TSDoc units.
+  Among the checks, one reviewer compared the engine with its own SPEC-only reference on
+  7 567 random loans and found no mismatch.
+- Independence: nothing under `tools/reference` was read except the ISO 4217 data lines
+  of `currency.py` (extracted as code/digit pairs); its scripts were run.
+
+**Open questions for the architect (details and proposals in PR #4):**
+
+1. Reg Z single-payment rule: are "exactly two flows" counted before or after summing
+   same-date flows, and does a loan with N ≥ 2 that closes early after one payment use it?
+   Today: the flows are counted as given, and the actual payments count for loans.
+2. Should the single-payment closed form be held to the §10 range `[−0.99, 1e7]`?
+3. Input bounds: a maximum for fee values and for the number of decimals of rates and
+   percentages. Long percentage strings slow the exact evaluation.
+4. Upfront fees larger than the amount are accepted. Should that be a validation error?
+5. Is a negative balloon instalment acceptable with a negative rate? §3.4 names only equal
+   principal and bullet.
+6. Equal principal, remainder first, `q = 0`: early close at k = 1. Keep?
+7. APRC (solved in X) and irrEffective (from r) can differ in availability at the range
+   edges, and irrEffective can overflow (reported as `IRR_NO_CONVERGENCE`).
+8. The exact payment basis gives `NEG_AMORTIZATION` on very long terms. Intended?
+9. What `i` should `instalment.annuity` show for the day-count exact basis? Omitted today.
+10. Interpretations to confirm:
+    - ledger `annualRate` as entered;
+    - warning params;
+    - validation details (non-object input, term forms, `rateMethods: []`, options
+      irrelevant to the type, cash-flow date order and period rules);
+    - the §10 scaling wording;
+    - backward counting mapping several dates to one time;
+    - 40 digits read as relative precision;
+    - cross-engine `Math.exp`, within the §9.4 tolerance;
+    - 20-digit explanation strings;
+    - generic metrics fixed at 2 decimals.
