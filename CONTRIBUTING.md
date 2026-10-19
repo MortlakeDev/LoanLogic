@@ -30,6 +30,9 @@ accepted work into a task.
   number, deviations from the brief and open questions.
 - The lifecycle of a task: brief → implementation PR → CI green → CodeRabbit comments
   addressed → architect acceptance → merge → task marked done.
+- GitHub Actions in `.github/workflows` are pinned to a full commit SHA with the release
+  as a comment (`uses: actions/checkout@<sha> # v7.0.1`); Dependabot proposes updates
+  weekly. Pin a new action the same way.
 
 ## Commits
 

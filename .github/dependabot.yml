@@ -1,0 +1,18 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 Mortlake
+#
+# The workflows pin every action to a full commit SHA (with the release as a comment), so
+# a moved or compromised tag cannot change what CI runs. Dependabot keeps those pins
+# current: once a week it proposes one pull request with every action update.
+
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      github-actions:
+        patterns: ['*']
+    commit-message:
+      prefix: ci
