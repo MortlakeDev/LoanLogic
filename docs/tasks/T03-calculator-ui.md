@@ -149,7 +149,8 @@ comparison and other tabs (M4–M5); exports and Share (T14–T15).
 
 - [ ] The UI matches DESIGN.md in both themes at 1 280 px and 360 px (screenshots in the
       PR: desktop dark/light, 360 px dark/light, and one zh-CN 360 px).
-- [ ] Every number on screen comes from the engine and is formatted by the i18n helpers;
+- [ ] Every calculated figure on screen comes from the engine, and every number is
+      formatted by the i18n helpers;
       the two e2e scenarios show the exact golden-vector figures.
 - [ ] Live recalculation without a button; invalid input never shows stale results.
 - [ ] Every engine error and warning code has a natural message in all four languages.
@@ -158,8 +159,9 @@ comparison and other tabs (M4–M5); exports and Share (T14–T15).
 
 ## Notes
 
-- Every number on screen comes from the engine; components never compute money or
-  rates themselves.
+- Every calculated figure on screen (payments, totals, rates, schedule values) comes
+  from the engine; inputs show what the user entered. Components never compute money
+  or rates themselves.
 - `docs/DESIGN.md` and `docs/GLOSSARY.md` are normative: report a gap or a
   contradiction in the PR instead of inventing a style or a term.
 - Never edit the vector JSON or read `tools/reference` code; a figure that looks wrong
