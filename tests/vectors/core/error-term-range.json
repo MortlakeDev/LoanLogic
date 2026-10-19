@@ -1,0 +1,27 @@
+{
+  "schemaVersion": 1,
+  "id": "error-term-range",
+  "description": "More than 1 200 payments.",
+  "source": "SPEC-finance §2.4, §13",
+  "kind": "loan",
+  "input": {
+    "currency": "USD",
+    "amount": "1000.00",
+    "annualRatePct": "5",
+    "repayment": "annuity",
+    "frequency": "monthly",
+    "term": {
+      "payments": 1201
+    },
+    "disbursementDate": "2026-01-15"
+  },
+  "expected": {
+    "ok": false,
+    "errors": [
+      {
+        "code": "TERM_RANGE",
+        "field": "term.payments"
+      }
+    ]
+  }
+}

@@ -1,0 +1,107 @@
+{
+  "schemaVersion": 1,
+  "id": "bullet-single-payment",
+  "description": "A single payment of principal and interest after one month (N = 1).",
+  "source": "Reference implementation (tools/reference)",
+  "kind": "loan",
+  "input": {
+    "currency": "USD",
+    "amount": "5000.00",
+    "annualRatePct": "9.9",
+    "repayment": "bullet",
+    "frequency": "monthly",
+    "term": {
+      "payments": 1
+    },
+    "disbursementDate": "2026-01-10"
+  },
+  "expected": {
+    "ok": true,
+    "warnings": [],
+    "summary": {
+      "amount": "5000.00",
+      "principalFinanced": "5000.00",
+      "netProceeds": "5000.00",
+      "upfrontFeesPaid": "0.00",
+      "upfrontFeesFinanced": "0.00",
+      "amountFinancedForRates": "5000.00",
+      "regularInstalment": null,
+      "principalPerPeriod": null,
+      "firstPayment": "5041.25",
+      "lastPayment": "5041.25",
+      "maxPayment": "5041.25",
+      "paymentsCount": 1,
+      "firstPaymentDate": "2026-02-10",
+      "payoffDate": "2026-02-10",
+      "totalPayments": "5041.25",
+      "totalPaid": "5041.25",
+      "totalInterest": "41.25",
+      "totalPrincipal": "5000.00",
+      "totalFees": "0.00",
+      "totalInsurance": "0.00",
+      "totalPenalties": "0.00",
+      "costOfCredit": "41.25",
+      "balloon": null
+    },
+    "rates": {
+      "nominal": {
+        "value": "9.900000000000",
+        "display": "9.90",
+        "precision": 2
+      },
+      "effective": {
+        "value": "10.361798208912",
+        "display": "10.36",
+        "precision": 2
+      },
+      "irrNominal": {
+        "value": "9.900000000000",
+        "display": "9.90",
+        "precision": 2
+      },
+      "irrEffective": {
+        "value": "10.361798208912",
+        "display": "10.36",
+        "precision": 2
+      },
+      "xirr": {
+        "value": "10.157238110700",
+        "display": "10.16",
+        "precision": 2
+      },
+      "usRegZApr": {
+        "value": "9.900000000000",
+        "display": "9.900",
+        "precision": 3
+      },
+      "ukAprc": {
+        "value": "10.361798208912",
+        "display": "10.4",
+        "precision": 1
+      },
+      "euAprc": {
+        "value": "10.361798208912",
+        "display": "10.4",
+        "precision": 1
+      },
+      "cnAnnualized": {
+        "value": "9.900000000000",
+        "display": "9.90",
+        "precision": 2
+      },
+      "uaRealAnnual": {
+        "value": "10.157238110700",
+        "display": "10.16",
+        "precision": 2
+      },
+      "international": {
+        "value": "10.157238110700",
+        "display": "10.16",
+        "precision": 2
+      }
+    },
+    "rows": [
+      {"index": 1, "date": "2026-02-10", "days": 31, "opening": "5000.00", "interestAccrued": "41.25", "interestPaid": "41.25", "principal": "5000.00", "fees": "0.00", "insurance": "0.00", "payment": "5041.25", "closing": "0.00", "cumulativeInterest": "41.25", "cumulativePrincipal": "5000.00"}
+    ]
+  }
+}

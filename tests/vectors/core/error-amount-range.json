@@ -1,0 +1,27 @@
+{
+  "schemaVersion": 1,
+  "id": "error-amount-range",
+  "description": "Amount must be greater than zero.",
+  "source": "SPEC-finance §13",
+  "kind": "loan",
+  "input": {
+    "currency": "USD",
+    "amount": "0.00",
+    "annualRatePct": "5",
+    "repayment": "annuity",
+    "frequency": "monthly",
+    "term": {
+      "payments": 12
+    },
+    "disbursementDate": "2026-01-15"
+  },
+  "expected": {
+    "ok": false,
+    "errors": [
+      {
+        "code": "AMOUNT_RANGE",
+        "field": "amount"
+      }
+    ]
+  }
+}

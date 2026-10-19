@@ -1,0 +1,75 @@
+{
+  "schemaVersion": 1,
+  "id": "cn-pboc-annex-fee-loan",
+  "description": "PBOC annex example 3: 100 000 for one year with a 1 000 service fee paid upfront (99 000 received) and 12 monthly payments of 8 833.3: about 12.80 % simple (单利), about 13.58 % by the IRR method.",
+  "source": "PBOC Announcement [2021] No. 3, annex 采用内部收益率法计算贷款年化利率示例, example 3",
+  "kind": "cashflows",
+  "input": {
+    "frequency": "monthly",
+    "flows": [
+      {"period": 0, "date": "2021-04-15", "amount": "99000"},
+      {"period": 1, "date": "2021-05-15", "amount": "-8833.3"},
+      {"period": 2, "date": "2021-06-15", "amount": "-8833.3"},
+      {"period": 3, "date": "2021-07-15", "amount": "-8833.3"},
+      {"period": 4, "date": "2021-08-15", "amount": "-8833.3"},
+      {"period": 5, "date": "2021-09-15", "amount": "-8833.3"},
+      {"period": 6, "date": "2021-10-15", "amount": "-8833.3"},
+      {"period": 7, "date": "2021-11-15", "amount": "-8833.3"},
+      {"period": 8, "date": "2021-12-15", "amount": "-8833.3"},
+      {"period": 9, "date": "2022-01-15", "amount": "-8833.3"},
+      {"period": 10, "date": "2022-02-15", "amount": "-8833.3"},
+      {"period": 11, "date": "2022-03-15", "amount": "-8833.3"},
+      {"period": 12, "date": "2022-04-15", "amount": "-8833.3"}
+    ]
+  },
+  "expected": {
+    "ok": true,
+    "rates": {
+      "irrNominal": {
+        "value": "12.803801851035",
+        "display": "12.80",
+        "precision": 2
+      },
+      "irrEffective": {
+        "value": "13.582557632733",
+        "display": "13.58",
+        "precision": 2
+      },
+      "xirr": {
+        "value": "13.549019617359",
+        "display": "13.55",
+        "precision": 2
+      },
+      "usRegZApr": {
+        "value": "12.803801851035",
+        "display": "12.804",
+        "precision": 3
+      },
+      "ukAprc": {
+        "value": "13.582557632733",
+        "display": "13.6",
+        "precision": 1
+      },
+      "euAprc": {
+        "value": "13.582557632733",
+        "display": "13.6",
+        "precision": 1
+      },
+      "cnAnnualized": {
+        "value": "12.803801851035",
+        "display": "12.80",
+        "precision": 2
+      },
+      "uaRealAnnual": {
+        "value": "13.549019617359",
+        "display": "13.55",
+        "precision": 2
+      },
+      "international": {
+        "value": "13.549019617359",
+        "display": "13.55",
+        "precision": 2
+      }
+    }
+  }
+}

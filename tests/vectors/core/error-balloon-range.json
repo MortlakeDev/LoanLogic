@@ -1,0 +1,31 @@
+{
+  "schemaVersion": 1,
+  "id": "error-balloon-range",
+  "description": "A balloon equal to the principal is a bullet loan, not a balloon.",
+  "source": "SPEC-finance §5.5, §13",
+  "kind": "loan",
+  "input": {
+    "currency": "USD",
+    "amount": "40000.00",
+    "annualRatePct": "7.2",
+    "repayment": "balloon",
+    "balloon": {
+      "kind": "amount",
+      "value": "40000.00"
+    },
+    "frequency": "monthly",
+    "term": {
+      "payments": 60
+    },
+    "disbursementDate": "2026-02-17"
+  },
+  "expected": {
+    "ok": false,
+    "errors": [
+      {
+        "code": "BALLOON_RANGE",
+        "field": "balloon.value"
+      }
+    ]
+  }
+}

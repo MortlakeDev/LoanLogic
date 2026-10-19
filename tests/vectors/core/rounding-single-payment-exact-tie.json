@@ -1,0 +1,110 @@
+{
+  "schemaVersion": 1,
+  "id": "rounding-single-payment-exact-tie",
+  "description": "N = 1 annuity: A* = 1 500.00 x (1 + 0.065/12) = 1 508.125 exactly, rounded half-up to 1 508.13; interest 8.125 is posted half-even as 8.12.",
+  "source": "SPEC-finance §1.5, §1.6",
+  "kind": "loan",
+  "input": {
+    "currency": "USD",
+    "amount": "1500.00",
+    "annualRatePct": "6.5",
+    "repayment": "annuity",
+    "frequency": "monthly",
+    "term": {
+      "payments": 1
+    },
+    "disbursementDate": "2026-01-15",
+    "rounding": {
+      "interest": "half-even"
+    }
+  },
+  "expected": {
+    "ok": true,
+    "warnings": [],
+    "summary": {
+      "amount": "1500.00",
+      "principalFinanced": "1500.00",
+      "netProceeds": "1500.00",
+      "upfrontFeesPaid": "0.00",
+      "upfrontFeesFinanced": "0.00",
+      "amountFinancedForRates": "1500.00",
+      "regularInstalment": "1508.13",
+      "principalPerPeriod": null,
+      "firstPayment": "1508.12",
+      "lastPayment": "1508.12",
+      "maxPayment": "1508.12",
+      "paymentsCount": 1,
+      "firstPaymentDate": "2026-02-15",
+      "payoffDate": "2026-02-15",
+      "totalPayments": "1508.12",
+      "totalPaid": "1508.12",
+      "totalInterest": "8.12",
+      "totalPrincipal": "1500.00",
+      "totalFees": "0.00",
+      "totalInsurance": "0.00",
+      "totalPenalties": "0.00",
+      "costOfCredit": "8.12",
+      "balloon": null
+    },
+    "rates": {
+      "nominal": {
+        "value": "6.500000000000",
+        "display": "6.50",
+        "precision": 2
+      },
+      "effective": {
+        "value": "6.697185200254",
+        "display": "6.70",
+        "precision": 2
+      },
+      "irrNominal": {
+        "value": "6.496000000000",
+        "display": "6.50",
+        "precision": 2
+      },
+      "irrEffective": {
+        "value": "6.692940383426",
+        "display": "6.69",
+        "precision": 2
+      },
+      "xirr": {
+        "value": "6.562953580469",
+        "display": "6.56",
+        "precision": 2
+      },
+      "usRegZApr": {
+        "value": "6.496000000000",
+        "display": "6.496",
+        "precision": 3
+      },
+      "ukAprc": {
+        "value": "6.692940383426",
+        "display": "6.7",
+        "precision": 1
+      },
+      "euAprc": {
+        "value": "6.692940383426",
+        "display": "6.7",
+        "precision": 1
+      },
+      "cnAnnualized": {
+        "value": "6.496000000000",
+        "display": "6.50",
+        "precision": 2
+      },
+      "uaRealAnnual": {
+        "value": "6.562953580469",
+        "display": "6.56",
+        "precision": 2
+      },
+      "international": {
+        "value": "6.562953580469",
+        "display": "6.56",
+        "precision": 2
+      }
+    },
+    "rows": [
+      {"index": 1, "date": "2026-02-15", "days": 31, "opening": "1500.00", "interestAccrued": "8.12", "interestPaid": "8.12", "principal": "1500.00", "fees": "0.00", "insurance": "0.00", "payment": "1508.12", "closing": "0.00", "cumulativeInterest": "8.12", "cumulativePrincipal": "1500.00"}
+    ]
+  }
+}

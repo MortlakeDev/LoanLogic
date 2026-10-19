@@ -1,0 +1,37 @@
+{
+  "schemaVersion": 1,
+  "id": "error-cashflows-invalid",
+  "description": "Invalid cash flows: an unknown frequency, a date earlier than the previous flow, a date that does not exist and an amount with an exponent are all reported.",
+  "source": "SPEC-finance §13, §15",
+  "kind": "cashflows",
+  "input": {
+    "frequency": "fortnightly",
+    "flows": [
+      {"date": "2026-01-15", "amount": "1000"},
+      {"date": "2026-01-10", "amount": "-500"},
+      {"date": "2026-02-30", "amount": "-300"},
+      {"date": "2026-03-15", "amount": "-3e2"}
+    ]
+  },
+  "expected": {
+    "ok": false,
+    "errors": [
+      {
+        "code": "INPUT_INVALID",
+        "field": "frequency"
+      },
+      {
+        "code": "INPUT_INVALID",
+        "field": "flows[1].date"
+      },
+      {
+        "code": "DATE_INVALID",
+        "field": "flows[2].date"
+      },
+      {
+        "code": "INPUT_INVALID",
+        "field": "flows[3].amount"
+      }
+    ]
+  }
+}

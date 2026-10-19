@@ -1,0 +1,48 @@
+{
+  "schemaVersion": 1,
+  "id": "cashflows-irregular-aprc-backward-counting",
+  "description": "Irregular dates, monthly frequency, no periods: the APRC counts whole months back from each date and divides the remaining days by the complete year counted back from their last day: 2028-04-05 is 1 month + 14/366 (the year back from 2028-03-05 contains 29 February), 2028-04-25 is 2 months + 5/365.",
+  "source": "Directive (EU) 2023/2225 Annex III (c); MCOB 10A.2.3 R; SPEC-finance §9.3 b",
+  "kind": "cashflows",
+  "input": {
+    "frequency": "monthly",
+    "flows": [
+      {"date": "2028-02-20", "amount": "1000.00"},
+      {"date": "2028-04-05", "amount": "-210.00"},
+      {"date": "2028-04-25", "amount": "-210.00"},
+      {"date": "2028-06-15", "amount": "-210.00"},
+      {"date": "2028-09-01", "amount": "-210.00"},
+      {"date": "2029-01-10", "amount": "-210.00"}
+    ]
+  },
+  "expected": {
+    "ok": true,
+    "rates": {
+      "xirr": {
+        "value": "12.851751550208",
+        "display": "12.85",
+        "precision": 2
+      },
+      "ukAprc": {
+        "value": "12.925119429657",
+        "display": "12.9",
+        "precision": 1
+      },
+      "euAprc": {
+        "value": "12.925119429657",
+        "display": "12.9",
+        "precision": 1
+      },
+      "uaRealAnnual": {
+        "value": "12.851751550208",
+        "display": "12.85",
+        "precision": 2
+      },
+      "international": {
+        "value": "12.851751550208",
+        "display": "12.85",
+        "precision": 2
+      }
+    }
+  }
+}

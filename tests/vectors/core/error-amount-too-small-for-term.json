@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "id": "error-amount-too-small-for-term",
+  "description": "Equal principal with the remainder first: 361.80 over 360 payments would need a negative first principal.",
+  "source": "SPEC-finance §5.3",
+  "kind": "loan",
+  "input": {
+    "currency": "USD",
+    "amount": "361.80",
+    "annualRatePct": "5",
+    "repayment": "equal-principal",
+    "frequency": "monthly",
+    "term": {
+      "payments": 360
+    },
+    "disbursementDate": "2026-01-15",
+    "rounding": {
+      "principalRemainder": "first"
+    }
+  },
+  "expected": {
+    "ok": false,
+    "errors": [
+      {
+        "code": "AMOUNT_TOO_SMALL_FOR_TERM",
+        "field": "amount"
+      }
+    ]
+  }
+}

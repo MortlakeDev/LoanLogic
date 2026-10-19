@@ -1,0 +1,66 @@
+{
+  "schemaVersion": 1,
+  "id": "error-field-paths",
+  "description": "Field paths of nested errors: a numeric currency, an unknown accrual mode, a fee with an unknown kind, a duplicate fee id and an unknown rate method are all reported, each on its own path.",
+  "source": "SPEC-finance §13",
+  "kind": "loan",
+  "input": {
+    "currency": 978,
+    "amount": "100.00",
+    "annualRatePct": "5",
+    "repayment": "annuity",
+    "frequency": "monthly",
+    "term": {
+      "payments": 12
+    },
+    "disbursementDate": "2026-01-15",
+    "accrual": {
+      "mode": "simple"
+    },
+    "fees": [
+      {
+        "id": "a",
+        "kind": "monthly",
+        "calc": "fixed",
+        "value": "1.00",
+        "inApr": true
+      },
+      {
+        "id": "a",
+        "kind": "upfront",
+        "calc": "fixed",
+        "value": "1.00",
+        "inApr": true
+      }
+    ],
+    "rateMethods": [
+      "nominal",
+      "apr"
+    ]
+  },
+  "expected": {
+    "ok": false,
+    "errors": [
+      {
+        "code": "INPUT_INVALID",
+        "field": "currency"
+      },
+      {
+        "code": "INPUT_INVALID",
+        "field": "accrual.mode"
+      },
+      {
+        "code": "INPUT_INVALID",
+        "field": "fees[0].kind"
+      },
+      {
+        "code": "INPUT_INVALID",
+        "field": "fees[1].id"
+      },
+      {
+        "code": "INPUT_INVALID",
+        "field": "rateMethods[1]"
+      }
+    ]
+  }
+}

@@ -1,0 +1,36 @@
+{
+  "schemaVersion": 1,
+  "id": "error-unsupported-balloon-exact-basis",
+  "description": "A balloon in day-count mode supports only the nominal payment basis.",
+  "source": "SPEC-finance §5.5",
+  "kind": "loan",
+  "input": {
+    "currency": "USD",
+    "amount": "40000.00",
+    "annualRatePct": "7.2",
+    "repayment": "balloon",
+    "balloon": {
+      "kind": "percent",
+      "value": "25"
+    },
+    "frequency": "monthly",
+    "term": {
+      "payments": 60
+    },
+    "disbursementDate": "2026-02-17",
+    "accrual": {
+      "mode": "daycount",
+      "method": "act-365f",
+      "paymentBasis": "exact"
+    }
+  },
+  "expected": {
+    "ok": false,
+    "errors": [
+      {
+        "code": "UNSUPPORTED",
+        "field": "accrual.paymentBasis"
+      }
+    ]
+  }
+}

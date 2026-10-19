@@ -1,0 +1,27 @@
+{
+  "schemaVersion": 1,
+  "id": "error-rate-range",
+  "description": "Rate above 1 000 %.",
+  "source": "SPEC-finance §13",
+  "kind": "loan",
+  "input": {
+    "currency": "USD",
+    "amount": "1000.00",
+    "annualRatePct": "1000.01",
+    "repayment": "annuity",
+    "frequency": "monthly",
+    "term": {
+      "payments": 12
+    },
+    "disbursementDate": "2026-01-15"
+  },
+  "expected": {
+    "ok": false,
+    "errors": [
+      {
+        "code": "RATE_RANGE",
+        "field": "annualRatePct"
+      }
+    ]
+  }
+}

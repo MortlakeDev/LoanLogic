@@ -1,0 +1,27 @@
+{
+  "schemaVersion": 1,
+  "id": "error-end-date-before-first-payment",
+  "description": "End date before the first payment date.",
+  "source": "SPEC-finance §2.4",
+  "kind": "loan",
+  "input": {
+    "currency": "USD",
+    "amount": "1000.00",
+    "annualRatePct": "5",
+    "repayment": "annuity",
+    "frequency": "monthly",
+    "term": {
+      "endDate": "2026-02-14"
+    },
+    "disbursementDate": "2026-01-15"
+  },
+  "expected": {
+    "ok": false,
+    "errors": [
+      {
+        "code": "TERM_TOO_SHORT",
+        "field": "term"
+      }
+    ]
+  }
+}

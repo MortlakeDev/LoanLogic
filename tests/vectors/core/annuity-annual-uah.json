@@ -1,0 +1,111 @@
+{
+  "schemaVersion": 1,
+  "id": "annuity-annual-uah",
+  "description": "Annual annuity, 1 000 000.00 UAH at 18 % for 5 years.",
+  "source": "Reference implementation (tools/reference)",
+  "kind": "loan",
+  "input": {
+    "currency": "UAH",
+    "amount": "1000000.00",
+    "annualRatePct": "18",
+    "repayment": "annuity",
+    "frequency": "annual",
+    "term": {
+      "payments": 5
+    },
+    "disbursementDate": "2026-02-28"
+  },
+  "expected": {
+    "ok": true,
+    "warnings": [],
+    "summary": {
+      "amount": "1000000.00",
+      "principalFinanced": "1000000.00",
+      "netProceeds": "1000000.00",
+      "upfrontFeesPaid": "0.00",
+      "upfrontFeesFinanced": "0.00",
+      "amountFinancedForRates": "1000000.00",
+      "regularInstalment": "319777.84",
+      "principalPerPeriod": null,
+      "firstPayment": "319777.84",
+      "lastPayment": "319777.86",
+      "maxPayment": "319777.86",
+      "paymentsCount": 5,
+      "firstPaymentDate": "2027-02-28",
+      "payoffDate": "2031-02-28",
+      "totalPayments": "1598889.22",
+      "totalPaid": "1598889.22",
+      "totalInterest": "598889.22",
+      "totalPrincipal": "1000000.00",
+      "totalFees": "0.00",
+      "totalInsurance": "0.00",
+      "totalPenalties": "0.00",
+      "costOfCredit": "598889.22",
+      "balloon": null
+    },
+    "rates": {
+      "nominal": {
+        "value": "18.000000000000",
+        "display": "18.00",
+        "precision": 2
+      },
+      "effective": {
+        "value": "18.000000000000",
+        "display": "18.00",
+        "precision": 2
+      },
+      "irrNominal": {
+        "value": "18.000000138164",
+        "display": "18.00",
+        "precision": 2
+      },
+      "irrEffective": {
+        "value": "18.000000138164",
+        "display": "18.00",
+        "precision": 2
+      },
+      "xirr": {
+        "value": "17.985418136186",
+        "display": "17.99",
+        "precision": 2
+      },
+      "usRegZApr": {
+        "value": "18.000000138164",
+        "display": "18.000",
+        "precision": 3
+      },
+      "ukAprc": {
+        "value": "18.000000138164",
+        "display": "18.0",
+        "precision": 1
+      },
+      "euAprc": {
+        "value": "18.000000138164",
+        "display": "18.0",
+        "precision": 1
+      },
+      "cnAnnualized": {
+        "value": "18.000000138164",
+        "display": "18.00",
+        "precision": 2
+      },
+      "uaRealAnnual": {
+        "value": "17.985418136186",
+        "display": "17.99",
+        "precision": 2
+      },
+      "international": {
+        "value": "17.985418136186",
+        "display": "17.99",
+        "precision": 2
+      }
+    },
+    "rows": [
+      {"index": 1, "date": "2027-02-28", "days": 365, "opening": "1000000.00", "interestAccrued": "180000.00", "interestPaid": "180000.00", "principal": "139777.84", "fees": "0.00", "insurance": "0.00", "payment": "319777.84", "closing": "860222.16", "cumulativeInterest": "180000.00", "cumulativePrincipal": "139777.84"},
+      {"index": 2, "date": "2028-02-29", "days": 366, "opening": "860222.16", "interestAccrued": "154839.99", "interestPaid": "154839.99", "principal": "164937.85", "fees": "0.00", "insurance": "0.00", "payment": "319777.84", "closing": "695284.31", "cumulativeInterest": "334839.99", "cumulativePrincipal": "304715.69"},
+      {"index": 3, "date": "2029-02-28", "days": 365, "opening": "695284.31", "interestAccrued": "125151.18", "interestPaid": "125151.18", "principal": "194626.66", "fees": "0.00", "insurance": "0.00", "payment": "319777.84", "closing": "500657.65", "cumulativeInterest": "459991.17", "cumulativePrincipal": "499342.35"},
+      {"index": 4, "date": "2030-02-28", "days": 365, "opening": "500657.65", "interestAccrued": "90118.38", "interestPaid": "90118.38", "principal": "229659.46", "fees": "0.00", "insurance": "0.00", "payment": "319777.84", "closing": "270998.19", "cumulativeInterest": "550109.55", "cumulativePrincipal": "729001.81"},
+      {"index": 5, "date": "2031-02-28", "days": 365, "opening": "270998.19", "interestAccrued": "48779.67", "interestPaid": "48779.67", "principal": "270998.19", "fees": "0.00", "insurance": "0.00", "payment": "319777.86", "closing": "0.00", "cumulativeInterest": "598889.22", "cumulativePrincipal": "1000000.00"}
+    ]
+  }
+}

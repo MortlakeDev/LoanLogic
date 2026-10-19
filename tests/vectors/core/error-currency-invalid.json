@@ -1,0 +1,27 @@
+{
+  "schemaVersion": 1,
+  "id": "error-currency-invalid",
+  "description": "Gold (XAU) has no minor unit and is not a loan currency.",
+  "source": "SPEC-finance §1.2",
+  "kind": "loan",
+  "input": {
+    "currency": "XAU",
+    "amount": "10.00",
+    "annualRatePct": "1",
+    "repayment": "annuity",
+    "frequency": "monthly",
+    "term": {
+      "payments": 12
+    },
+    "disbursementDate": "2026-01-15"
+  },
+  "expected": {
+    "ok": false,
+    "errors": [
+      {
+        "code": "CURRENCY_INVALID",
+        "field": "currency"
+      }
+    ]
+  }
+}
