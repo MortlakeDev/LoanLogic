@@ -68,6 +68,13 @@ chart tokens, identical in quality on screen and in print.
 - [ ] Keyboard and screen-reader access; table alternative; reduced motion respected.
 - [ ] Initial JS stays within budget (report the change in gzip size).
 
+## Notes
+
+- Yearly sums and every label come from exact decimal sums of the ledger; floats are
+  for geometry only.
+- If a chart needs data the engine does not expose, propose the addition in the PR
+  rather than recomputing it in the UI.
+
 ## Completion notes
 
 _(to be filled by the implementer)_

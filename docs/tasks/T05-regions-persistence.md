@@ -140,6 +140,15 @@ header next to the menu button (DESIGN §7.2). It opens a dialog (desktop) or sh
 - [ ] Reload and link restore the exact scenario; malformed data never crashes.
 - [ ] No network requests; storage access only through `storage.ts`.
 
+## Notes
+
+- Preset rates are labelled examples, never market data; nothing is looked up over the
+  network (rates, regions or locations).
+- The check of the CN method against the 2026 rules (SPEC §9.3 d) belongs to this task;
+  report its result in the PR.
+- Storage keys and the scenario model are versioned: a breaking change ships with a
+  migration and its tests.
+
 ## Completion notes
 
 _(to be filled by the implementer)_

@@ -802,7 +802,7 @@ Closing balance after the last payment before the date + interest accrued to the
 |---|---|---|
 | `INPUT_INVALID` | the field | missing required value, wrong type, unknown id, malformed decimal string, duplicate or empty fee id; cash flows: see below |
 | `CURRENCY_INVALID` | `currency` | a string that is not in the ISO 4217 table (§1.2) |
-| `AMOUNT_RANGE` | `amount`, `flows[i].amount` | `amount ≤ 0` or `> 1e15`; a flow with `|amount| > 1e15` |
+| `AMOUNT_RANGE` | `amount`, `flows[i].amount` | `amount ≤ 0` or `> 1e15`; a flow amount whose absolute value exceeds 1e15 |
 | `TOO_MANY_DECIMALS` | `amount`, `fees[i].value` (fixed), `balloon.value` (amount) | money not a whole number of minor units |
 | `RATE_RANGE` | `annualRatePct` | `< −20` or `> 1000` |
 | `TERM_RANGE` | `term.payments`, `term.years`, `term.months`, `term` | outside the limits of §2.4 |

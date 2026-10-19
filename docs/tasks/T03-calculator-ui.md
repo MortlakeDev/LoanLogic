@@ -80,8 +80,11 @@ State lives in `src/app/state` as signals; components hold no business logic.
 
 - Live recalculation: every valid change recomputes through `calculateLoan` (one
   computed signal); no "Calculate" button. Measure the input-to-paint time for a
-  1 200-period loan and report it (budget: 100 ms on a mid-range laptop; if it is
-  exceeded, propose moving the engine to a Web Worker in the PR rather than doing it).
+  1 200-period loan and report it in the PR: a Playwright test in Chromium on the CI
+  runner (`ubuntu-latest`) times a change of the amount field until the next paint of
+  the payment (`performance.now()` and `requestAnimationFrame`), median of 5 runs. The
+  100 ms target is informational, not a CI gate; if the median exceeds it, propose
+  moving the engine to a Web Worker in the PR rather than doing it.
 - **Payment hero:** label by frequency, hero number split with `formatToParts` (new
   `formatMoneyParts` helper), meta line, formula strip built from the engine's `explain`
   values so that it reproduces the instalment (DESIGN §8.6, SPEC §9.6), "How it's
@@ -152,6 +155,15 @@ comparison and other tabs (M4–M5); exports and Share (T14–T15).
 - [ ] Every engine error and warning code has a natural message in all four languages.
 - [ ] Accessibility checklist of DESIGN §11 passes; keyboard-only use works end to end.
 - [ ] Fonts switched with notices updated; single-file build still works offline.
+
+## Notes
+
+- Every number on screen comes from the engine; components never compute money or
+  rates themselves.
+- `docs/DESIGN.md` and `docs/GLOSSARY.md` are normative: report a gap or a
+  contradiction in the PR instead of inventing a style or a term.
+- Never edit the vector JSON or read `tools/reference` code; a figure that looks wrong
+  is reported against the SPEC.
 
 ## Completion notes
 
