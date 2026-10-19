@@ -435,6 +435,24 @@ class ValidationTest(unittest.TestCase):
         self.assertTrue(result["ok"])
         self.assertEqual(result["summary"]["payoffDate"], "9999-12-15")
 
+    def test_trailing_newlines_are_rejected(self) -> None:
+        # Python's "$" matches before a final newline; JavaScript's does not.
+        result = calculate_loan(usd_loan(disbursementDate="2026-01-15\n"))
+        self.assertEqual(codes(result), {("DATE_INVALID", "disbursementDate")})
+        result = calculate_loan(usd_loan(amount="100.00\n"))
+        self.assertEqual(codes(result), {("INPUT_INVALID", "amount")})
+
+    def test_act_act_isda_in_year_9999(self) -> None:
+        result = calculate_loan(
+            usd_loan(
+                disbursementDate="9999-01-15",
+                term={"payments": 11},
+                accrual={"mode": "daycount", "method": "act-act-isda"},
+            )
+        )
+        self.assertTrue(result["ok"])
+        self.assertEqual(result["summary"]["payoffDate"], "9999-12-15")
+
     def test_cash_flow_periods_must_match_dates(self) -> None:
         flows = {
             "frequency": "monthly",

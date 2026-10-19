@@ -13,7 +13,8 @@ import re
 from dataclasses import dataclass
 from datetime import date, timedelta
 
-_ISO_DATE = re.compile(r"^([0-9]{4})-([0-9]{2})-([0-9]{2})$")
+# Matched with fullmatch: Python's "$" would also accept a trailing newline.
+_ISO_DATE = re.compile(r"([0-9]{4})-([0-9]{2})-([0-9]{2})")
 
 # Every date the engine handles lies in 0001-01-01 .. 9999-12-31 (SPEC §2.1, §13).
 MAX_DATE = date(9999, 12, 31)
@@ -35,7 +36,7 @@ def parse_iso(text: object) -> date | None:
     """Parses a strict ``YYYY-MM-DD`` string; None if malformed or not a real date."""
     if not isinstance(text, str):
         return None
-    match = _ISO_DATE.match(text)
+    match = _ISO_DATE.fullmatch(text)
     if match is None:
         return None
     year, month, day = (int(part) for part in match.groups())

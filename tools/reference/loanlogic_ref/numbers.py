@@ -20,7 +20,8 @@ HIGH_PRECISION = 120
 
 ROUNDING_MODES = ("half-up", "half-even", "ceil", "floor")
 
-_DECIMAL_STRING = re.compile(r"^-?(0|[1-9][0-9]*)(\.[0-9]+)?$")
+# Matched with fullmatch: Python's "$" would also accept a trailing newline.
+_DECIMAL_STRING = re.compile(r"-?(0|[1-9][0-9]*)(\.[0-9]+)?")
 
 
 class NearTieError(Exception):
@@ -29,7 +30,7 @@ class NearTieError(Exception):
 
 def is_decimal_string(text: object) -> bool:
     """True for a plain decimal string such as "-12.50" (no exponent, no grouping)."""
-    return isinstance(text, str) and _DECIMAL_STRING.match(text) is not None
+    return isinstance(text, str) and _DECIMAL_STRING.fullmatch(text) is not None
 
 
 def parse_decimal(text: str) -> Fraction:

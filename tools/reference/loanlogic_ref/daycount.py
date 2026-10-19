@@ -62,8 +62,9 @@ def year_fraction(method: str, start: date, end: date, *, eom_schedule: bool = F
         total = Fraction(0)
         cursor = start
         while cursor < end:
-            next_year_start = date(cursor.year + 1, 1, 1)
-            segment_end = min(end, next_year_start)
+            # The next year's start is built only when the interval crosses into it, so
+            # dates in year 9999 never need 10000-01-01.
+            segment_end = end if cursor.year == end.year else date(cursor.year + 1, 1, 1)
             days = days_between(cursor, segment_end)
             total += Fraction(days, 366 if _is_leap(cursor.year) else 365)
             cursor = segment_end
