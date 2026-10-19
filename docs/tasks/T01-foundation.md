@@ -1,6 +1,6 @@
 # T01 — Foundation: scaffold, tooling, CI, app shell, i18n, themes
 
-- **Milestone:** M0 · **Status:** ready · **Depends on:** — · **Blocks:** everything
+- **Milestone:** M0 · **Status:** in review · **Depends on:** — · **Blocks:** everything
 - **Branch:** `task/T01-foundation`
 
 ## Goal
@@ -129,4 +129,97 @@ Financial engine, real inputs, charts and exports (later tasks).
 
 ## Completion notes
 
-_(to be filled by the implementer)_
+**Status:** in review, [PR #1](https://github.com/MortlakeDev/LoanLogic/pull/1) (branch
+`task/T01-foundation`).
+
+**Acceptance criteria (local evidence, 2026-10-19, re-run after the architect review):**
+
+- `npm ci && npm run check && npm run e2e` pass locally on Windows (Node 24.19), and both
+  CI jobs passed on the PR before the review fixes. `check`: lint, format, typecheck, SPDX
+  (60 files), licenses, 617 unit/component tests at 100 % coverage of `src/` (gate 90 %),
+  both builds and the size budget. `e2e`: 148 passed, 8 skipped, 0 failed across Chromium
+  and WebKit on Windows; on Linux CI 150 passed and 6 skipped.
+- Four languages switch instantly without a reload, update `<html lang>`, the title and the
+  meta description, and persist (e2e `i18n.spec.ts`).
+- System/Dark/Light works, persists and follows `prefers-color-scheme` live. No flash: the
+  inline head script applies the theme even with the app JS blocked (e2e `theme.spec.ts`).
+- axe finds no serious or critical violations in either theme, at 360 and 1280 px, in all
+  four languages (e2e `a11y.spec.ts`).
+- No horizontal scroll at 360 px in any language or theme. Two columns at ≥ 1024 px,
+  stacked below (e2e `layout.spec.ts`).
+- `dist-single/LoanLogic.html` opens from `file://` with every http(s) request blocked;
+  zero requests are attempted (e2e `single-file.spec.ts`).
+- Initial JS is **13.98 KiB gzip** (budget 60 KiB).
+- README, CONTRIBUTING, PR/issue templates, `.coderabbit.yaml`, SPDX and license checks
+  are present. The author is Mortlake everywhere.
+
+**Deviations and decisions (details in the PR):**
+
+- Toolchain: Preact 10.29 (Preact 11 is three weeks old); ESLint 10, with an npm override
+  for jsx-a11y's stale peer range; TypeScript 6.0 (typescript-eslint does not support 7).
+- Third-party notices come from a small custom Vite plugin, not `rollup-plugin-license`.
+  It covers the OFL font asset, fails on a disallowed license or a missing license file,
+  and embeds the notices verbatim in the single file.
+- Theme work covers mechanics and token structure only; every palette and font value is a
+  placeholder for `docs/DESIGN.md` (font swap point: `src/styles/fonts.ts`). Tests check
+  contrast rules, not values.
+- Plural keys carry exactly the categories `Intl.PluralRules` gives for each language;
+  base keys are identical across locales.
+- `ci.yml` runs on PRs, pushes to `main` and manual dispatch. `deploy.yml` takes the base
+  path from `configure-pages`.
+- `.gitattributes` now forces `eol=lf`. Without it, a Windows checkout gets CRLF and
+  Prettier's LF check fails `npm run check`.
+- `engines.node` is `^22.22.2 || ^24.15.0 || >=26.0.0`, because jsdom 30 and ESLint 10
+  need these minimums.
+- The language switcher applies keyboard browsing of the closed select on Enter or blur
+  (WCAG 3.2.2). Mouse and touch picks apply instantly.
+
+**Architect review (2026-10-19): accepted, with required changes, all done:**
+
+1. CI hardening committed (`d6aaec6`): `ci.yml` validates the `@playwright/test` version
+   read from the lockfile and writes the cache key with `printf`; a manual `deploy.yml`
+   run from a branch other than `main` does nothing.
+2. Deploy gating (CodeRabbit, `70834d8`): `deploy.yml` runs on `workflow_run` of `CI`
+   (`completed`, `main`) and on `workflow_dispatch`. Both jobs run only for a CI run that
+   succeeded, came from a `push` and whose head repository is this one, or for a manual run
+   on `refs/heads/main`. After CI, the build checks out `workflow_run.head_sha`, the commit
+   CI tested. GitHub reads `workflow_run` triggers from the default branch, so the gate
+   takes effect once this PR is merged.
+3. SPDX parser (CodeRabbit, `77aa13c`): `parseAtom` throws on `)` and on `AND` / `OR` /
+   `WITH` as an operand, so `"MIT OR OR"` is no longer allowed. Tests cover the
+   requested cases plus a test with the operators in the allowlist.
+4. Negative zero (`a0596a8`): `formatMoney`, `formatNumber` and `formatPercent` use
+   `signDisplay: 'negative'`. `"-0.004"` USD → `$0.00`, `"-0.005"` → `-$0.01`, `"-0"` →
+   `$0.00`, `"-0.00001"` at 2 decimals → `0.00%`, with ru-RU, uk-UA and zh-CN samples.
+   The money rounding property test now covers amounts near zero too.
+5. TSDoc (CodeRabbit docstring check, `81ab706`): every top-level function and component
+   now has a short TSDoc (149 of 149, up from 90), including all exported ones, test and
+   e2e helpers, and the language switcher's non-obvious key handlers. Comments only. Each
+   doc was checked against the code; three existing docs were corrected on the way (the
+   parameters art, `storageKey`/`createStorageSlot` errors, the notices plugin).
+6. These notes; `npm run check` and `npm run e2e` re-run (numbers above).
+
+**Owner's answers to the earlier open questions:**
+
+1. BlueOak-1.0.0, MIT-0, CC0-1.0 and CC-BY-4.0 are approved for dev-only use and must never
+   ship (the build gate enforces that). CLAUDE.md rule 11 is updated in the architect PR.
+2. CSP goes to T18: a hash-based CSP for both builds that covers the inline theme script.
+3. A value that displays as zero never shows a sign (item 4). The rule also goes into
+   `docs/DESIGN.md` (architect PR).
+4. The architect delivers `docs/GLOSSARY.md` (en / zh-CN / ru / uk) before T03, taking in
+   the translation-review suggestions from this PR.
+5. The owner sets *Settings → Pages → Source* to "GitHub Actions".
+6. The architect updates the CLAUDE.md command table.
+7. Confirmed: the two WebKit "Tab to link" keyboard tests run and pass on Linux CI.
+
+Design (accent, Onest, JetBrains Mono, Unbounded) arrives with `docs/DESIGN.md` and is
+applied in T03; T01 keeps the placeholders. T02 stays blocked until the R1 vectors land.
+
+**Open questions:**
+
+1. **Browser baseline.** `signDisplay: 'negative'` is part of Intl.NumberFormat v3
+   (Chrome/Edge 106, Firefox 116, Safari 15.4). Older engines throw a `RangeError` for it,
+   so every formatted figure would fail there, where `roundingMode` was merely ignored.
+   PLAN does not name supported browsers; should one be recorded (T18/T19)?
+2. **Task index.** The review says CSP is recorded under T18 in the task index. This PR
+   does not edit `docs/tasks/README.md`, to stay clear of the architect PR.

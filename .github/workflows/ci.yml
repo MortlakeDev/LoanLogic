@@ -1,0 +1,151 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 Mortlake
+#
+# Continuous integration: runs on every pull request and every push to main.
+# The `check` job runs the steps of `npm run check` one by one (so a failure names the
+# exact check), adds a coverage table to the job summary and
+# uploads the single-file build.
+# The `e2e` job runs the Playwright suite (Chromium + WebKit) in parallel.
+
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# A new push to a pull request supersedes its running CI; runs on main always finish.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    name: Lint, types, unit tests, builds
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Check formatting
+        run: npm run format:check
+
+      - name: Type-check
+        run: npm run typecheck
+
+      - name: Check SPDX headers
+        run: npm run check:spdx
+
+      - name: Check dependency licenses
+        run: npm run check:licenses
+
+      - name: Unit tests with coverage
+        run: npm run coverage
+
+      - name: Add coverage summary to the job summary
+        run: |
+          node --input-type=module <<'EOF' >> "$GITHUB_STEP_SUMMARY"
+          import { readFileSync } from 'node:fs';
+
+          const { total } = JSON.parse(readFileSync('coverage/coverage-summary.json', 'utf8'));
+          const rows = ['statements', 'branches', 'functions', 'lines'].map((metric) => {
+            const { covered, total: count, pct } = total[metric];
+            const label = metric.charAt(0).toUpperCase() + metric.slice(1);
+            return `| ${label} | ${pct}% | ${covered} / ${count} |`;
+          });
+          console.log(
+            ['### Unit test coverage', '', '| Metric | Coverage | Covered |', '|---|---:|---:|', ...rows, ''].join('\n'),
+          );
+          EOF
+
+      - name: Build (multi-file)
+        run: npm run build
+
+      - name: Build (single file)
+        run: npm run build:single
+
+      - name: Check bundle size
+        run: npm run check:size
+
+      - name: Upload the single-file build
+        uses: actions/upload-artifact@v7
+        with:
+          name: LoanLogic-single-file
+          path: dist-single/LoanLogic.html
+          retention-days: 30
+          if-no-files-found: error
+
+  e2e:
+    name: End-to-end tests (Playwright)
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      # Browser builds are tied to the Playwright version and to the runner's OS image, so
+      # both go into the cache key; the browser list is fixed below.
+      - name: Compute the Playwright browser cache key
+        id: playwright-cache-key
+        # The lockfile comes from the PR, so the version is validated before it reaches
+        # GITHUB_OUTPUT: a newline in it could otherwise inject extra output lines.
+        run: |
+          version="$(node -p "const v = require('./package-lock.json').packages['node_modules/@playwright/test'].version; if (!/^[0-9A-Za-z.+-]+$/.test(v)) throw new Error('unexpected @playwright/test version'); v")"
+          printf 'key=playwright-%s-%s-%s-chromium-webkit\n' "${ImageOS:-$RUNNER_OS}" "$RUNNER_ARCH" "$version" >> "$GITHUB_OUTPUT"
+
+      - name: Cache Playwright browsers
+        uses: actions/cache@v6
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ steps.playwright-cache-key.outputs.key }}
+
+      # Always runs: system libraries are not cached, and browsers already restored from
+      # the cache are detected and not downloaded again.
+      - name: Install Playwright browsers and system dependencies
+        run: npx playwright install --with-deps chromium webkit
+
+      - name: Run end-to-end tests
+        run: npm run e2e
+        env:
+          CI: true
+
+      - name: Upload Playwright report and traces
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: playwright-report
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 14
+          if-no-files-found: ignore

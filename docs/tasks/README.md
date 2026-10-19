@@ -17,7 +17,7 @@ to the task file. If anything in the brief or the SPEC is unclear, stop and ask.
 
 | ID | Title | Milestone | Status | Depends on |
 |---|---|---|---|---|
-| [T01](T01-foundation.md) | Foundation: scaffold, tooling, CI, app shell, i18n, themes | M0 | ready | — |
+| [T01](T01-foundation.md) | Foundation: scaffold, tooling, CI, app shell, i18n, themes | M0 | in review (PR #1) | — |
 | [T02](T02-engine-core.md) | Engine core: money, dates, day-count, schedules, fees, rate metrics | M1 | blocked (R1 vectors) | T01, R1 |
 | T03 | Calculator UI: inputs, results summary, schedule table, explain | M2 | planned | T02, R2 |
 | T04 | Charts (theme-aware SVG) | M2 | planned | T03 |

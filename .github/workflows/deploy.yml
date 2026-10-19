@@ -1,0 +1,106 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 Mortlake
+#
+# Deploys the multi-file build (`dist/`) to GitHub Pages after CI has passed for a push to
+# main, or on demand from main. A deployment after CI builds exactly the commit CI tested,
+# not whatever main points to by the time this workflow starts. CI runs for pull requests
+# (including a fork's branch that happens to be named "main") and manual CI runs never
+# deploy. GitHub reads the `workflow_run` trigger from this file on the default branch
+# only, so changes here take effect once they are merged.
+#
+# One-time setup: in the repository settings, under Pages, set Source = "GitHub Actions";
+# otherwise the configure step fails.
+
+name: Deploy to GitHub Pages
+
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+
+# Deployments run one at a time; an in-progress deployment is never cancelled midway.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+# Each job below gets only what it needs: the build job never holds deploy rights.
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build
+    # Publish only (a) a push to this repository's main that passed CI, or (b) a manual run
+    # started from main. `branches: [main]` above matches the head branch name alone, so
+    # the event and repository checks keep fork PRs and other CI runs out.
+    if: >-
+      (github.event_name == 'workflow_run' &&
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.event == 'push' &&
+      github.event.workflow_run.head_repository.full_name == github.repository) ||
+      (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main')
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      pages: read # actions/configure-pages reads the Pages site settings
+    steps:
+      # The default checkout would take the newest main, which may not be the commit CI
+      # tested; a manual run builds the commit it was started on.
+      - name: Check out the repository
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+          ref: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.sha }}
+
+      # Runs first so a repository without Pages enabled fails before the build.
+      - name: Configure GitHub Pages
+        id: pages
+        uses: actions/configure-pages@v6
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      # Pages reports where the site is served: "/<repository>" for a project site, "" for a
+      # custom domain or a user site, so the build's base path is always right.
+      - name: Build
+        run: npm run build
+        env:
+          BASE_PATH: ${{ steps.pages.outputs.base_path }}/
+
+      - name: Upload the Pages artifact
+        uses: actions/upload-pages-artifact@v5
+        with:
+          path: dist
+
+  deploy:
+    name: Deploy
+    needs: build
+    # Same gate as the build job, repeated so the job holding deploy rights never relies on
+    # the build job alone.
+    if: >-
+      (github.event_name == 'workflow_run' &&
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.event == 'push' &&
+      github.event.workflow_run.head_repository.full_name == github.repository) ||
+      (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main')
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      pages: write # to create the Pages deployment
+      id-token: write # to prove the deployment comes from this workflow
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v5
