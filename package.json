@@ -25,6 +25,7 @@
     "typecheck": "tsc --noEmit -p tsconfig.app.json && tsc --noEmit -p tsconfig.engine.json && tsc --noEmit -p tsconfig.node.json",
     "test": "vitest run",
     "coverage": "vitest run --coverage",
+    "bench": "vitest run --config vitest.bench.config.ts",
     "e2e": "npm run build && npm run build:single && playwright test",
     "check:spdx": "node scripts/check-spdx.mjs",
     "check:licenses": "node scripts/check-licenses.mjs",
