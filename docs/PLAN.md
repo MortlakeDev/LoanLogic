@@ -176,7 +176,9 @@ Milestone tags refer to §7. "Must" = required for v1.0.
 
 Email sending; accounts or any server; live market rates (SOFR, LPR, SONIA) — entered
 manually; tax-law calculators (stamp duty etc.); revolving credit (credit cards);
-leasing. Any of these may be reconsidered after v1.
+leasing; custom color themes (a theme editor); currencies outside ISO 4217 (custom
+symbols); a composite "credit score" (D7 shows transparent checks instead). Any of these
+may be reconsidered after v1.
 
 ## 4. Region profiles (defaults)
 
@@ -185,9 +187,9 @@ Preset rates are illustrative examples, labelled as such, and always editable.
 | Profile | Currency | Format locale | Headline rate (method) | Display | Default schedule | Affordability defaults |
 |---|---|---|---|---|---|---|
 | US | USD | en-US | APR — Reg Z Appendix J actuarial | 3 dp | monthly, periodic | DTI 28/36 (43 legacy QM); LTV 80% (PMI above) |
-| UK | GBP | en-GB | APRC — CONC App 1 / MCOB 10.3 | 1 dp | monthly, periodic | income multiple 4.5×; LTV bands 60/75/85/90/95 |
-| EU | EUR | user-selectable (de-DE, fr-FR, …) | APRC — Directive 2008/48/EC Annex I | 1 dp | monthly, periodic | configurable |
-| CN | CNY | zh-CN | 年化利率 — IRR (×12, simple annualization) + compound shown | 2 dp | monthly, 等额本息 / 等额本金 | payment ≤ 50% of income |
+| UK | GBP | en-GB | APR — CONC App 1.2 (consumer credit); APRC — MCOB 10A (mortgages) | 1 dp | monthly, periodic | income multiple 4.5×; LTV bands 60/75/85/90/95 |
+| EU | EUR | user-selectable (de-DE, fr-FR, …) | APRC — Directive 2008/48/EC Annex I; Directive (EU) 2023/2225 Annex III from 2026-11-20 | 1 dp | monthly, periodic | configurable |
+| CN | CNY | zh-CN | 年化利率（单利）— IRR × 12, with the IRR method (复利) beside it | 2 dp | monthly, 等额本息 / 等额本金 | payment ≤ 50% of income |
 | UA | UAH | uk-UA | Реальна річна процентна ставка — XIRR | 2 dp | monthly, periodic | configurable |
 | International | any | any | Effective all-in rate — XIRR | 2 dp | monthly, periodic | configurable |
 
