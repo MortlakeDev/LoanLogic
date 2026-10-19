@@ -38,6 +38,7 @@ function referenceDate(iso: string, locale: string, style: DateStyle): string {
   );
 }
 
+/** The ISO 8601 spelling (YYYY-MM-DD, four-digit year) of a calendar date. */
 function iso({ y, m, d }: CalendarDate): string {
   return `${String(y).padStart(4, '0')}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
 }
@@ -160,16 +161,18 @@ describe('formatMoney', () => {
   });
 
   it('rounds three-decimal amounts half away from zero exactly (property)', () => {
-    const mills = fc
-      .bigInt({ min: -(10n ** 13n), max: 10n ** 13n })
-      // |x| < 0.005 rounds to a signed zero, whose display the SPEC does not define yet.
-      .filter((value) => value >= 5n || value <= -5n);
+    // Biased towards the amounts around zero, where the sign rule applies.
+    const mills = fc.oneof(
+      fc.bigInt({ min: -(10n ** 13n), max: 10n ** 13n }),
+      fc.bigInt({ min: -20n, max: 20n }),
+    );
     fc.assert(
       fc.property(mills, (amount) => {
         const negative = amount < 0n;
         const magnitude = negative ? -amount : amount;
         const cents = (magnitude + 5n) / 10n;
-        const expected = `${negative ? '-' : ''}${toDecimalString(cents, 2)}`;
+        // An amount that rounds to zero shows no sign.
+        const expected = `${negative && cents !== 0n ? '-' : ''}${toDecimalString(cents, 2)}`;
         const formatted = formatMoney(toDecimalString(amount, 3), 'USD', 'en-US');
         expect(formatted.replace(/[$,]/g, '')).toBe(expected);
       }),
@@ -229,6 +232,60 @@ describe('out-of-range decimal strings', () => {
 
   it('still format a tiny exponent that rounds to zero', () => {
     expect(formatMoney('1e-400', 'USD', 'en-US')).toBe('$0.00');
+  });
+});
+
+describe('values that display as zero', () => {
+  it.each([
+    ['-0.004', '$0.00'],
+    ['-0.0049999', '$0.00'],
+    ['-0', '$0.00'],
+    ['-0.00', '$0.00'],
+    ['-1e-400', '$0.00'],
+    ['0', '$0.00'],
+    ['-0.005', '-$0.01'],
+    ['-0.01', '-$0.01'],
+  ])('show no sign in money: %s USD → %s', (value, expected) => {
+    expect(formatMoney(value, 'USD', 'en-US')).toBe(expected);
+  });
+
+  it('follow the digits actually shown (currency default or fractionDigits)', () => {
+    expect(formatMoney('-0.4', 'JPY', 'en-US')).toBe('¥0');
+    expect(formatMoney('-0.5', 'JPY', 'en-US')).toBe('-¥1');
+    expect(formatMoney('-0.0004', 'KWD', 'en-US')).toMatch(/^KWD\s0\.000$/u);
+    expect(formatMoney('-0.4', 'USD', 'en-US', { fractionDigits: 0 })).toBe('$0');
+    expect(formatMoney('-0.004', 'USD', 'en-US', { fractionDigits: 3 })).toBe('-$0.004');
+    expect(formatMoney('-0.004', 'USD', 'en-US', { currencyDisplay: 'name' })).toBe(
+      '0.00 US dollars',
+    );
+  });
+
+  it('show no sign in ru-RU, uk-UA and zh-CN either', () => {
+    expect(formatMoney('-0.004', 'RUB', 'ru-RU')).toBe(formatMoney('0', 'RUB', 'ru-RU'));
+    expect(formatMoney('-0.004', 'RUB', 'ru-RU')).toMatch(/^0,00\s₽$/u);
+    expect(formatMoney('-0.005', 'RUB', 'ru-RU')).toMatch(/^-0,01\s₽$/u);
+    expect(formatMoney('-0.004', 'UAH', 'uk-UA')).toBe(formatMoney('0', 'UAH', 'uk-UA'));
+    expect(formatMoney('-0.004', 'CNY', 'zh-CN')).toBe('¥0.00');
+    expect(formatMoney('-0.005', 'CNY', 'zh-CN')).toBe('-¥0.01');
+  });
+
+  it('show no sign in plain numbers', () => {
+    expect(formatNumber(-0, 'en-US')).toBe('0');
+    expect(formatNumber('-0', 'en-US')).toBe('0');
+    expect(formatNumber('-0.04', 'en-US', { maximumFractionDigits: 1 })).toBe('0');
+    expect(formatNumber('-0.05', 'en-US', { maximumFractionDigits: 1 })).toBe('-0.1');
+    expect(formatNumber(-0.4, 'ru-RU', { maximumFractionDigits: 0 })).toBe('0');
+    expect(formatNumber('-0.0001', 'zh-CN', { maximumFractionDigits: 2 })).toBe('0');
+  });
+
+  it('show no sign in percentages', () => {
+    expect(formatPercent('-0.00001', 2, 'en-US')).toBe('0.00%');
+    expect(formatPercent('-0.00005', 2, 'en-US')).toBe('-0.01%');
+    expect(formatPercent(-0, 0, 'en-US')).toBe('0%');
+    expect(formatPercent('-0.004', 0, 'en-US')).toBe('0%');
+    expect(formatPercent('-0.00001', 2, 'ru-RU')).toBe(formatPercent('0', 2, 'ru-RU'));
+    expect(formatPercent('-0.00001', 2, 'ru-RU')).toMatch(/^0,00\s%$/u);
+    expect(formatPercent('-0.00001', 2, 'zh-CN')).toBe('0.00%');
   });
 });
 

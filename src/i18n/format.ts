@@ -7,6 +7,9 @@
  *
  * Decimal strings are handed to `Intl.NumberFormat` as strings, so exact ledger values
  * are formatted without a detour through binary floating point.
+ *
+ * Display rule: a value that displays as zero never shows a sign. "-0.004" USD is "$0.00",
+ * not "-$0.00", while "-0.005" is "-$0.01" (`signDisplay: 'negative'`).
  */
 
 /** A decimal value: a decimal string such as "1234.56" (preferred for money), or a number. */
@@ -38,6 +41,10 @@ const DECIMAL_PATTERN = /^[+-]?(\d+(\.\d*)?|\.\d+)([eE][+-]?\d+)?$/;
 const numberFormats = new Map<string, Intl.NumberFormat>();
 const dateFormats = new Map<string, Intl.DateTimeFormat>();
 
+/**
+ * Returns a cached `Intl.NumberFormat`: constructing one is far slower than formatting, and
+ * a schedule table formats thousands of cells with a handful of option sets.
+ */
 function numberFormat(locale: string, options: Intl.NumberFormatOptions): Intl.NumberFormat {
   const cacheKey = `${locale}|${JSON.stringify(options)}`;
   let format = numberFormats.get(cacheKey);
@@ -48,7 +55,14 @@ function numberFormat(locale: string, options: Intl.NumberFormatOptions): Intl.N
   return format;
 }
 
-// Non-finite values would print as "NaN" or "∞": a bug upstream, never a figure to show.
+/**
+ * Checks a value before it reaches Intl and returns it in a form Intl formats exactly
+ * (decimal strings stay strings). Non-finite values would print as "NaN" or "∞": a bug
+ * upstream, never a figure to show.
+ *
+ * @throws RangeError for a non-finite number, a string that is not a plain decimal
+ *   ("1,000", "0x10", "Infinity"), or a decimal string whose magnitude overflows a double.
+ */
 function toIntlValue(value: DecimalInput): number | bigint | Intl.StringNumericLiteral {
   if (typeof value === 'bigint') {
     return value;
@@ -79,7 +93,7 @@ function toIntlValue(value: DecimalInput): number | bigint | Intl.StringNumericL
  * @param locale BCP 47 formatting locale, e.g. "en-US".
  * @returns The localized amount, e.g. "$1,234,567.89". Uses the currency's standard
  *   fraction digits (JPY 0, KWD 3) unless `options.fractionDigits` is given; rounds half
- *   away from zero.
+ *   away from zero; an amount that rounds to zero has no sign.
  * @throws RangeError if `value` is not a finite decimal string.
  */
 export function formatMoney(
@@ -93,6 +107,7 @@ export function formatMoney(
     currency,
     currencyDisplay: options.currencyDisplay ?? 'symbol',
     roundingMode: 'halfExpand',
+    signDisplay: 'negative',
   };
   if (options.fractionDigits !== undefined) {
     intlOptions.minimumFractionDigits = options.fractionDigits;
@@ -102,7 +117,8 @@ export function formatMoney(
 }
 
 /**
- * Formats a plain number with locale grouping and decimal separators.
+ * Formats a plain number with locale grouping and decimal separators. Keeps up to 20
+ * fraction digits unless `options` limit them; a value that rounds to zero has no sign.
  *
  * @param value Decimal string or number.
  * @param locale BCP 47 formatting locale.
@@ -115,6 +131,7 @@ export function formatNumber(
 ): string {
   return numberFormat(locale, {
     roundingMode: 'halfExpand',
+    signDisplay: 'negative',
     maximumFractionDigits: 20,
     ...options,
   }).format(toIntlValue(value));
@@ -124,7 +141,8 @@ export function formatNumber(
  * Formats a ratio as a percentage with a fixed number of decimals.
  *
  * @param value The ratio as a decimal fraction: "0.065" (or 0.065) is shown as 6.5 %.
- * @param digits Number of decimals to show (0–20), rounded half away from zero.
+ * @param digits Number of decimals to show (0–20), rounded half away from zero; a value
+ *   that rounds to zero has no sign.
  * @param locale BCP 47 formatting locale.
  * @throws RangeError if `value` is not finite or not a decimal string.
  */
@@ -134,6 +152,7 @@ export function formatPercent(value: DecimalInput, digits: number, locale: strin
     minimumFractionDigits: digits,
     maximumFractionDigits: digits,
     roundingMode: 'halfExpand',
+    signDisplay: 'negative',
   }).format(toIntlValue(value));
 }
 
