@@ -115,6 +115,11 @@ export function isLicenseAllowed(expression, allowed) {
     if (token === undefined) {
       throw new Error(`Unexpected end of SPDX expression "${expression}"`);
     }
+    // Otherwise "MIT OR OR" would read the second OR as a (disallowed) license id, and the
+    // OR would hide the malformed operand behind the allowed MIT.
+    if (token === ')' || ['AND', 'OR', 'WITH'].includes(token.toUpperCase())) {
+      throw new Error(`Unexpected "${token}" in SPDX expression "${expression}"`);
+    }
     if (token === '(') {
       const inner = parseOr();
       if (tokens[position] !== ')') {

@@ -111,6 +111,34 @@ describe('isLicenseAllowed', () => {
     },
   );
 
+  // Read as a (disallowed) license id, the stray operator in "MIT OR OR" would be hidden by
+  // the OR and the whole expression would pass. Cases that fail either way still pin down
+  // the grammar; the next test makes every position observable.
+  it.each([
+    'MIT OR OR',
+    'MIT OR AND',
+    'MIT OR WITH',
+    'MIT OR )',
+    'MIT AND )',
+    'MIT OR ()',
+    'OR OR MIT',
+    'AND MIT',
+    'WITH MIT',
+    '(OR MIT)',
+    'MIT or or',
+    ')',
+    'OR',
+  ])('rejects "%s", where an operator or ")" stands in for a license id', (expression) => {
+    expect(isLicenseAllowed(expression, ALLOWED)).toBe(false);
+  });
+
+  it('never reads an operator or a parenthesis as a license id, even an allowed one', () => {
+    expect(isLicenseAllowed('MIT AND )', ['MIT', ')'])).toBe(false);
+    expect(isLicenseAllowed('MIT AND AND', ['MIT', 'AND'])).toBe(false);
+    expect(isLicenseAllowed('OR', ['OR'])).toBe(false);
+    expect(isLicenseAllowed('with', ['WITH'])).toBe(false);
+  });
+
   it('accepts the legacy OR form produced by declaredLicense', () => {
     const declared = declaredLicense({
       licenses: [{ type: 'MIT' }, { type: 'GPL-3.0-only' }],
