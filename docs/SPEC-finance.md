@@ -1,6 +1,6 @@
 # LoanLogic — Financial Methodology Specification
 
-Status: v0.2 · Normative for the engine (`src/engine`). Keywords MUST / SHOULD / MAY are
+Status: v0.2.1 · Normative for the engine (`src/engine`). Keywords MUST / SHOULD / MAY are
 used as in RFC 2119. If the code and this document disagree, this document wins. If this
 document is ambiguous or looks wrong, the implementer stops and reports — financial
 rules are never invented in code.
@@ -135,6 +135,11 @@ document defines. Implementations MUST produce that result.
   rule above, or because the anchor is on the 31st. 30/360 US (§4) and the Regulation Z
   time measurement (§9.3 a) use this definition, which depends on the dates, not on the
   `endOfMonth` flag.
+- **Counting months back.** `k` months back from a date `D` is `addMonths(D, −k)`: the
+  same day of month, clamped to the length of the earlier month, without the
+  end-of-month rule, and computed from `D` for every `k`, never by repeated one-month
+  steps. 31 March 2026 − 1 month = 28 February; − 2 months = 31 January; 28 February −
+  1 month = 28 January. The rate metrics measure time this way (§9.3 a, b).
 - Supported dates are 0001-01-01 … 9999-12-31. A schedule whose last date would be later
   is rejected with `DATE_INVALID` on `disbursementDate` (§13).
 
@@ -497,9 +502,10 @@ without voluntary events.
   payment and `i = P / A_f − 1`:
   - term shorter than a year and a whole number `M` of months: `APR = i × 12 / M`
     ((b)(5)(vi) also allows 365 / days; LoanLogic uses 12 / M);
-  - term shorter than a year otherwise: `APR = i × 365 / days`. Months are measured
-    back from the payment date with its own day of month, so 31 January → 28 February
-    is 28 days, not a month;
+  - term shorter than a year otherwise: `APR = i × 365 / days`. Months are counted back
+    from the payment date as in §2.1: 31 January → 28 February 2026 is 28 days, not a
+    month, while 28 February → 31 March 2026 is one whole month (vectors
+    `regz-single-payment-month-end-days` and `regz-single-payment-month-end-clamp`);
   - term of a year or more: the unit-period is a year; `t` = full years counted back
     from the payment date, `f` = the remaining months ÷ 12, or the remaining days ÷ 365
     when the remainder is not a whole number of months; solve
@@ -524,12 +530,15 @@ method id `ukAprc` for both).
   `APRC = (1 + r)^m − 1`. Dates clamped or moved to month ends by §2.1 count as whole
   months; this is taken from Reg Z (b)(3)(iv), the UK and EU texts being silent on it.
 - Irregular dates (explicit cash flows without periods, §9.7): equal periods (months
-  for month-based frequencies, weeks otherwise) and then days are counted backwards from
-  each date towards the first drawdown; the days are divided by the number of days (365
+  for month-based frequencies, counted back as in §2.1; weeks otherwise) and then days
+  are counted backwards from each date towards the first drawdown; the days are divided by the number of days (365
   or 366) of the complete year counted back from the last of those days to the same day
   of the previous year (MCOB 10A.2.3 R(3); CCD2 Annex III (c)). From 2028-02-20, the
   date 2028-04-25 is 2 months + 5/365 and 2028-04-05 is 1 month + 14/366 (vector
-  `cashflows-irregular-aprc-backward-counting`). MCOB 10.3.5 also allows 365.25-day
+  `cashflows-irregular-aprc-backward-counting`). From 2026-01-31, the date 2026-03-31
+  is exactly 2 months and 2026-04-30 is 2 months + 28/365, because 30 April − 3 months
+  = 30 January falls before the drawdown (vector `cashflows-aprc-month-end-clamp`).
+  MCOB 10.3.5 also allows 365.25-day
   years; LoanLogic does not use that option.
 - Displayed with one decimal place, half-up (CONC App 1.2.6 R(3)(f); MCOB 10A.2.3 R(4)).
 
@@ -944,6 +953,12 @@ interface CashFlowInput {
 - Microsoft Support — XIRR function (example).
 
 ## 17. Change history
+
+**v0.2.1 (2026-10-19)** — clarification asked during T02; no existing vector changes:
+
+- §2.1: counting months back clamps the day to the earlier month's length, from the
+  later date for every count, without the end-of-month rule; §9.3 (a) and (b) use it.
+  Three vectors pin it.
 
 **v0.2 (2026-10-19)** — resolved while building the reference implementation (R1) and
 after three independent reviews of it:

@@ -366,6 +366,28 @@ class AprcTimeTest(unittest.TestCase):
             Fraction(1, 12) + Fraction(14, 366),
         )
 
+    def test_months_back_clamp_the_day(self) -> None:
+        # SPEC §2.1: k months back from D = addMonths(D, -k), from D for every k.
+        start = date(2026, 1, 31)
+        self.assertEqual(
+            years_counted_back(start, date(2026, 2, 28), self.monthly), Fraction(28, 365)
+        )
+        self.assertEqual(
+            years_counted_back(start, date(2026, 3, 31), self.monthly), Fraction(2, 12)
+        )
+        self.assertEqual(
+            years_counted_back(start, date(2026, 4, 30), self.monthly),
+            Fraction(2, 12) + Fraction(28, 365),
+        )
+        clamp = regz_single_payment_apr(
+            date(2026, 2, 28), date(2026, 3, 31), Fraction(1000), Fraction(-1010)
+        )
+        self.assertEqual(clamp, Decimal("0.12"))
+        days = regz_single_payment_apr(
+            date(2026, 1, 31), date(2026, 2, 28), Fraction(1000), Fraction(-1010)
+        )
+        self.assertAlmostEqual(float(days), 0.01 * 365 / 28, places=15)
+
     def test_weeks(self) -> None:
         weekly = FREQUENCIES["weekly"]
         self.assertEqual(

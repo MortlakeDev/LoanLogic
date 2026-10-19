@@ -1,0 +1,46 @@
+{
+  "schemaVersion": 1,
+  "id": "cashflows-aprc-month-end-clamp",
+  "description": "Irregular month-end dates from 2026-01-31, counted back as in SPEC §2.1: 2026-02-28 is 28/365, 2026-03-31 is exactly 2 months (31 March - 2 months = 31 January), 2026-04-30 is 2 months + 28/365 (30 April - 3 months = 30 January, before the drawdown).",
+  "source": "Directive (EU) 2023/2225 Annex III (c); MCOB 10A.2.3 R; SPEC-finance §2.1, §9.3 b",
+  "kind": "cashflows",
+  "input": {
+    "frequency": "monthly",
+    "flows": [
+      {"date": "2026-01-31", "amount": "1500.00"},
+      {"date": "2026-02-28", "amount": "-510.00"},
+      {"date": "2026-03-31", "amount": "-510.00"},
+      {"date": "2026-04-30", "amount": "-510.00"}
+    ]
+  },
+  "expected": {
+    "ok": true,
+    "rates": {
+      "xirr": {
+        "value": "13.136455130270",
+        "display": "13.14",
+        "precision": 2
+      },
+      "ukAprc": {
+        "value": "13.004996713016",
+        "display": "13.0",
+        "precision": 1
+      },
+      "euAprc": {
+        "value": "13.004996713016",
+        "display": "13.0",
+        "precision": 1
+      },
+      "uaRealAnnual": {
+        "value": "13.136455130270",
+        "display": "13.14",
+        "precision": 2
+      },
+      "international": {
+        "value": "13.136455130270",
+        "display": "13.14",
+        "precision": 2
+      }
+    }
+  }
+}

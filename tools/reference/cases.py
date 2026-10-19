@@ -150,6 +150,18 @@ CASES: list[dict[str, Any]] = [
         ]},
     },
     {
+        "id": "cashflows-aprc-month-end-clamp",
+        "kind": "cashflows",
+        "description": "Irregular month-end dates from 2026-01-31, counted back as in SPEC §2.1: 2026-02-28 is 28/365, 2026-03-31 is exactly 2 months (31 March - 2 months = 31 January), 2026-04-30 is 2 months + 28/365 (30 April - 3 months = 30 January, before the drawdown).",
+        "source": "Directive (EU) 2023/2225 Annex III (c); MCOB 10A.2.3 R; SPEC-finance §2.1, §9.3 b",
+        "input": {"frequency": "monthly", "flows": [
+            {"date": "2026-01-31", "amount": "1500.00"},
+            {"date": "2026-02-28", "amount": "-510.00"},
+            {"date": "2026-03-31", "amount": "-510.00"},
+            {"date": "2026-04-30", "amount": "-510.00"},
+        ]},
+    },
+    {
         "id": "cn-pboc-annex-lump-sum-2y",
         "kind": "cashflows",
         "description": "PBOC annex example 1: borrow 100 000 for 2 years, repay 110 000 at maturity: annualized rate (IRR method) about 4.88 %. As a single payment longer than a year, the US APR uses a one-year unit-period (also 4.881 %).",
@@ -377,6 +389,20 @@ CASES: list[dict[str, Any]] = [
         "input": loan(currency="USD", amount="300.00", annualRatePct="0", repayment="bullet",
                       frequency="biweekly", term={"payments": 1}, disbursementDate="2026-03-02",
                       fees=[fee("finance-charge", "upfront", "fixed", "45.00", financing="financed")]),
+    },
+    {
+        "id": "regz-single-payment-month-end-clamp",
+        "description": "Single payment from 2026-02-28 to 2026-03-31 (end-of-month rule): 31 March - 1 month = 28 February (the day is clamped, SPEC §2.1), so the term is one whole month and APR = 1 % x 12 = 12.000 %.",
+        "source": "Regulation Z, Appendix J (b)(3)(iv), (b)(5)(vi); SPEC-finance §2.1, §9.3 a",
+        "input": loan(currency="USD", amount="1000.00", annualRatePct="12", repayment="annuity",
+                      frequency="monthly", term={"payments": 1}, disbursementDate="2026-02-28"),
+    },
+    {
+        "id": "regz-single-payment-month-end-days",
+        "description": "Single payment from 2026-01-31 to 2026-02-28: 28 February - 1 month = 28 January, before the advance, so the term is 28 days and APR = 1 % x 365/28 = 13.036 %.",
+        "source": "Regulation Z, Appendix J (b)(5)(vii); SPEC-finance §2.1, §9.3 a",
+        "input": loan(currency="USD", amount="1000.00", annualRatePct="12", repayment="annuity",
+                      frequency="monthly", term={"payments": 1}, disbursementDate="2026-01-31"),
     },
     {
         "id": "balloon-percent-auto-loan",

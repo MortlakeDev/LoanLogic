@@ -1,12 +1,12 @@
 # T02 — Engine core: money, dates, day-count, schedules, fees, rate metrics
 
-- **Milestone:** M1 · **Status:** ready (R1 delivered: reference implementation + 89 core vectors)
+- **Milestone:** M1 · **Status:** ready (R1 delivered: reference implementation + core vectors)
 - **Depends on:** T01, R1 · **Blocks:** T03 and all later engine work
 - **Branch:** `task/T02-engine-core`
 
 ## Goal
 
-Implement `docs/SPEC-finance.md` **v0.2** §0–§6, §8, §9 (generic metrics, regional
+Implement `docs/SPEC-finance.md` **v0.2.1** §0–§6, §8, §9 (generic metrics, regional
 methods a–f, result shape, explicit cash flows), §10, §13 and the input contract of §15
 as a pure, fully tested TypeScript library in `src/engine`. It must reproduce every
 golden vector in `tests/vectors/core` within the rules of §14.
@@ -90,6 +90,9 @@ function computeRateMetrics(input: unknown):   // validated as CashFlowInput (§
 - Single-payment loans use the Reg Z term unit-period (`payday-biweekly-single-payment`:
   391.071 %, not 390.000 %); the APRC of irregular dates counts back from each date
   (`cashflows-irregular-aprc-backward-counting`).
+- Months counted back from a date follow §2.1: clamp the day, start from the later date
+  for every count, no end-of-month rule (`regz-single-payment-month-end-*`,
+  `cashflows-aprc-month-end-clamp`).
 - Values are compared within `max(1e−7, 1e−9 × |v|)` pp (§14); IEEE doubles suffice.
 
 ## Tests
@@ -97,7 +100,7 @@ function computeRateMetrics(input: unknown):   // validated as CashFlowInput (§
 - **Golden vectors:** a harness (e.g. `src/engine/vectors.test.ts`) loads every
   `tests/vectors/core/*.json`, runs `calculateLoan` (`kind: "loan"`) or
   `computeRateMetrics` (`kind: "cashflows"`) and compares per SPEC §14 — one test per
-  vector, named by its id. All 89 must pass.
+  vector, named by its id. All of them must pass.
 - **Unit tests** for every module, including: rate 0; negative rate; N = 1; amount 1e15;
   JPY (0 decimals), KWD (3) and CLF (4); every ISO 4217 code of §1.2's required list;
   leap years; end-of-month anchors (Jan 31 → Feb 29 → Mar 31 → Apr 30, Feb 28 with and
@@ -123,7 +126,7 @@ function computeRateMetrics(input: unknown):   // validated as CashFlowInput (§
 
 ## Acceptance criteria
 
-- [ ] All 89 core vectors pass; all tests pass; coverage ≥ 95 % lines and branches in
+- [ ] All core vectors pass; all tests pass; coverage ≥ 95 % lines and branches in
       `src/engine`.
 - [ ] The engine imports nothing but decimal.js; no `number` money in the ledger; no
       `Date` arithmetic; no `Intl`.
