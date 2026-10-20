@@ -18,6 +18,7 @@ import {
 } from '../state/loan';
 import type * as UiModule from '../state/ui';
 import { explainTarget, focusField } from '../state/ui';
+import { rateText } from './figures';
 import { fixListShown } from './FixFields';
 import { MobileSummary } from './MobileSummary';
 import { ResultsPanel } from './ResultsPanel';
@@ -360,8 +361,35 @@ describe('ResultsPanel: invalid input', () => {
     });
     expect(screen.queryByText('Fix the highlighted fields')).toBeNull();
     expect(el(panel, '.hero-amount .visually-hidden').textContent).toBe('$2,299.25');
-    expect(liveText(panel)).toBe('Monthly payment: $2,299.25. APR: 6.974%.');
     expect(fixListShown.value).toBe(false);
+    // The figures are back at once; the summary is spoken after the pause.
+    expect(liveText(panel)).toBe('');
+    await act(() => {
+      vi.advanceTimersByTime(300);
+    });
+    expect(liveText(panel)).toBe('Monthly payment: $2,299.25. APR: 6.974%.');
+  });
+
+  it('speaks the summary once typing pauses, not at every keystroke', async () => {
+    vi.useFakeTimers();
+    const panel = renderPanel();
+    // The opening summary is already there: nothing is announced on load.
+    expect(liveText(panel)).toBe('Monthly payment: $2,299.25. APR: 6.974%.');
+    for (const amount of ['1', '12', '123', '1234']) {
+      await act(() => {
+        updateForm({ amount: `${amount}00.00` });
+        vi.advanceTimersByTime(150);
+      });
+      // The figures follow every keystroke; the spoken text waits.
+      expect(liveText(panel)).toBe('Monthly payment: $2,299.25. APR: 6.974%.');
+    }
+    const payment = el(panel, '.hero-amount .visually-hidden').textContent;
+    expect(payment).not.toBe('$2,299.25');
+    await act(() => {
+      vi.advanceTimersByTime(300);
+    });
+    const apr = rateText(okResult.value?.rates.usRegZApr) ?? '';
+    expect(liveText(panel)).toBe(`Monthly payment: ${payment}. APR: ${apr}.`);
   });
 
   it('keeps the list shown and announced while the errors change, until the input is valid', async () => {

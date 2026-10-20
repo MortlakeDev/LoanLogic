@@ -10,6 +10,7 @@ import {
   menuButton,
   message,
   openMenuSheet,
+  openThemeMenu,
   panels,
   seedStorage,
   themeButton,
@@ -252,8 +253,8 @@ test.describe('desktop header (1024 × 768)', () => {
         }
 
         // The open theme menu stays inside the viewport too.
-        await themeButton(page, language).click();
-        await expectInsideViewport(page, 'theme menu', themeGroup(page, language));
+        const menu = await openThemeMenu(page, language);
+        await expectInsideViewport(page, 'theme menu', menu);
         expect(await overflowingElements(page, 'header'), 'overflow with the menu open').toEqual(
           [],
         );
