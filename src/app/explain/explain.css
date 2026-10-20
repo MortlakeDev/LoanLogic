@@ -1,0 +1,136 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later */
+/* Copyright (C) 2026 Mortlake */
+
+/* The formula strip of the payment hero (DESIGN §8.6) and the Explain sheet (§8.12). */
+
+/* Superscripts and subscripts must not stretch the line box of the formula text. */
+.formula-strip__formula sup,
+.formula-strip__formula sub,
+.explain sup,
+.explain sub {
+  font-size: 0.75em;
+  line-height: 0;
+}
+
+/* ---------- Formula strip ---------- */
+
+.formula-strip {
+  display: grid;
+  justify-items: start;
+  gap: var(--space-1);
+  min-width: 0;
+  padding: var(--space-3) var(--space-4) var(--space-1);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-2);
+}
+
+.formula-strip__formula {
+  max-width: 100%;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-xs);
+  line-height: var(--line-height-normal);
+  /* Long values and day-count names wrap instead of widening the page at 360 px. */
+  overflow-wrap: anywhere;
+}
+
+@media (min-width: 64rem) {
+  .formula-strip__formula {
+    font-size: var(--font-size-sm);
+  }
+}
+
+/* ---------- Explain sheet ---------- */
+
+.explain__title {
+  margin: 0;
+  color: var(--color-text-primary);
+  font-size: var(--font-size-xl);
+  font-weight: var(--font-weight-semibold);
+  line-height: var(--line-height-snug);
+}
+
+.explain__id {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+  overflow-wrap: anywhere;
+}
+
+.explain__id code {
+  color: var(--color-text-secondary);
+}
+
+.explain__section {
+  display: grid;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.explain__heading {
+  margin: 0;
+}
+
+.explain__formula {
+  display: grid;
+  gap: var(--space-1);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-2);
+  color: var(--color-text-primary);
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-normal);
+  overflow-wrap: anywhere;
+}
+
+.explain__formula p {
+  margin: 0;
+}
+
+.explain__values {
+  display: grid;
+  margin: 0;
+}
+
+.explain__value {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: var(--space-1) var(--space-4);
+  padding-block: var(--space-2);
+  border-bottom: 1px solid var(--color-border);
+  font-size: var(--font-size-sm);
+}
+
+.explain__value dt {
+  color: var(--color-text-secondary);
+}
+
+.explain__value dd {
+  min-width: 0;
+  margin-block: 0;
+  margin-inline: auto 0;
+  color: var(--color-text-primary);
+  text-align: end;
+  overflow-wrap: anywhere;
+}
+
+.explain__symbol {
+  color: var(--color-text-muted);
+}
+
+.explain__result {
+  margin: 0;
+  color: var(--color-text-primary);
+  font-size: var(--font-size-2xl);
+  font-weight: var(--font-weight-medium);
+  letter-spacing: -0.02em;
+}
+
+.explain__text {
+  margin: 0;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-normal);
+}

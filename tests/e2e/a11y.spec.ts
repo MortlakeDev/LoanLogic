@@ -3,7 +3,16 @@
 
 import { AxeBuilder } from '@axe-core/playwright';
 import { expect, test, type Page } from '@playwright/test';
-import { expectTheme, gotoApp, LANGUAGES, message, seedStorage, THEMES } from './helpers.ts';
+import {
+  expectTheme,
+  gotoApp,
+  LANGUAGES,
+  message,
+  openMenuSheet,
+  openThemeMenu,
+  seedStorage,
+  THEMES,
+} from './helpers.ts';
 
 type AxeResults = Awaited<ReturnType<AxeBuilder['analyze']>>;
 type AxeViolation = AxeResults['violations'][number];
@@ -118,6 +127,30 @@ for (const language of LANGUAGES) {
       });
     }
   }
+}
+
+for (const theme of THEMES) {
+  test.describe(`${theme} theme with the header theme menu open, 1280px`, () => {
+    test.use({ locale: 'en-US', colorScheme: theme, viewport: { width: 1280, height: 800 } });
+
+    test('has no serious or critical axe violations', async ({ page }) => {
+      await gotoApp(page);
+      await expectTheme(page, theme);
+      await openThemeMenu(page);
+      await expectNoBlockingViolations(page);
+    });
+  });
+
+  test.describe(`${theme} theme with the menu sheet open, 360px`, () => {
+    test.use({ locale: 'en-US', colorScheme: theme, viewport: { width: 360, height: 740 } });
+
+    test('has no serious or critical axe violations', async ({ page }) => {
+      await gotoApp(page);
+      await expectTheme(page, theme);
+      await openMenuSheet(page);
+      await expectNoBlockingViolations(page);
+    });
+  });
 }
 
 for (const theme of THEMES) {

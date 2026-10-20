@@ -7,13 +7,14 @@ import {
   hasReloadMarker,
   LANGUAGES,
   languageSelect,
+  menuSheet,
   message,
+  openMenuSheet,
   panels,
   readStorage,
   setReloadMarker,
   STORAGE_KEYS,
-  THEME_PREFERENCES,
-  themeRadio,
+  themeButton,
   type Language,
 } from './helpers.ts';
 
@@ -27,20 +28,22 @@ async function expectLanguage(page: Page, language: Language): Promise<void> {
     'content',
     message(language, 'meta.description'),
   );
-  await expect(page.getByRole('main').getByRole('heading', { level: 2 })).toHaveText([
-    message(language, 'panels.parameters.title'),
-    message(language, 'panels.results.title'),
-  ]);
   const { parameters, results } = panels(page, language);
-  await expect(parameters).toContainText(message(language, 'panels.parameters.emptyTitle'));
-  await expect(results).toContainText(message(language, 'panels.results.emptyTitle'));
+  await expect(parameters).toBeVisible();
+  await expect(results).toBeVisible();
   await expect(page.getByRole('banner')).toContainText(message(language, 'header.byline'));
   await expect(
     page.getByRole('group', { name: message(language, 'header.settings'), exact: true }),
-  ).toBeAttached();
-  for (const preference of THEME_PREFERENCES) {
-    await expect(themeRadio(page, preference, language)).toHaveCount(1);
-  }
+  ).toBeVisible();
+  await expect(themeButton(page, language)).toBeVisible();
+  // The mobile menu button is hidden on desktop but named in the same language.
+  await expect(
+    page.getByRole('banner').getByRole('button', {
+      name: message(language, 'header.menu'),
+      exact: true,
+      includeHidden: true,
+    }),
+  ).toHaveCount(1);
   await expect(
     page.getByRole('link', { name: message(language, 'a11y.skipToContent'), exact: true }),
   ).toBeAttached();
@@ -134,6 +137,23 @@ test.describe('language switcher', () => {
       await expectLanguage(page, language);
     });
   }
+});
+
+test.describe('language switcher in the mobile menu sheet', () => {
+  test.use({ viewport: { width: 360, height: 740 } });
+
+  test('switches the language at once and keeps the sheet open', async ({ page }) => {
+    await gotoApp(page);
+    await setReloadMarker(page);
+    await openMenuSheet(page, 'en');
+    await languageSelect(page, 'en').selectOption('uk');
+    await expect(page.locator('html')).toHaveAttribute('lang', 'uk');
+    await expect(menuSheet(page, 'uk')).toBeVisible();
+    await expect(languageSelect(page, 'uk')).toHaveValue('uk');
+    await expect(panels(page, 'uk').parameters).toBeAttached();
+    expect(await readStorage(page, STORAGE_KEYS.language)).toBe(JSON.stringify('uk'));
+    expect(await hasReloadMarker(page), 'switching language must not reload').toBe(true);
+  });
 });
 
 test.describe('language detection', () => {

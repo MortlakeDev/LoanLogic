@@ -7,12 +7,13 @@ import {
   gotoApp,
   LANGUAGES,
   languageSelect,
+  menuButton,
   message,
+  openMenuSheet,
   panels,
   seedStorage,
-  THEME_PREFERENCES,
+  themeButton,
   themeGroup,
-  themeRadio,
   THEMES,
   type Language,
 } from './helpers.ts';
@@ -42,26 +43,32 @@ async function viewportWidth(page: Page): Promise<number> {
   return page.evaluate(() => document.documentElement.clientWidth);
 }
 
-/** Visible elements that stick out of the viewport horizontally, described for a message. */
-async function overflowingElements(page: Page): Promise<string[]> {
-  return page.evaluate((epsilon) => {
-    const limit = document.documentElement.clientWidth;
-    const offenders: string[] = [];
-    for (const element of document.body.querySelectorAll('*')) {
-      const rect = element.getBoundingClientRect();
-      if (rect.width === 0 || rect.height === 0) {
-        continue;
+/**
+ * Visible elements inside `root` (a CSS selector, the whole body by default) that stick out
+ * of the viewport horizontally, described for a message.
+ */
+async function overflowingElements(page: Page, root = 'body'): Promise<string[]> {
+  return page.evaluate(
+    ({ epsilon, selector }) => {
+      const limit = document.documentElement.clientWidth;
+      const offenders: string[] = [];
+      for (const element of document.querySelector(selector)?.querySelectorAll('*') ?? []) {
+        const rect = element.getBoundingClientRect();
+        if (rect.width === 0 || rect.height === 0) {
+          continue;
+        }
+        if (rect.left < -epsilon || rect.right > limit + epsilon) {
+          const classes = element.getAttribute('class') ?? '';
+          const name = `${element.tagName.toLowerCase()}${classes === '' ? '' : `.${classes.trim().split(/\s+/).join('.')}`}`;
+          offenders.push(
+            `${name} [${String(Math.round(rect.left))}, ${String(Math.round(rect.right))}]`,
+          );
+        }
       }
-      if (rect.left < -epsilon || rect.right > limit + epsilon) {
-        const classes = element.getAttribute('class') ?? '';
-        const name = `${element.tagName.toLowerCase()}${classes === '' ? '' : `.${classes.trim().split(/\s+/).join('.')}`}`;
-        offenders.push(
-          `${name} [${String(Math.round(rect.left))}, ${String(Math.round(rect.right))}]`,
-        );
-      }
-    }
-    return offenders;
-  }, EPSILON);
+      return offenders;
+    },
+    { epsilon: EPSILON, selector: root },
+  );
 }
 
 /**
@@ -92,20 +99,15 @@ async function expectStacked(page: Page, language: Language): Promise<void> {
 }
 
 /**
- * The header, its settings controls, both panels and the footer as [description, locator]
- * pairs, for per-part layout checks; `language` is the UI language the accessible names are
- * in.
+ * The parts of the phone layout as [description, locator] pairs, for per-part layout
+ * checks: the header and its menu button, both panels and the footer; `language` is the UI
+ * language the accessible names are in.
  */
 function shellParts(page: Page, language: Language): [string, Locator][] {
   const { parameters, results } = panels(page, language);
   return [
     ['header', page.getByRole('banner')],
-    [
-      'header settings',
-      page.getByRole('group', { name: message(language, 'header.settings'), exact: true }),
-    ],
-    ['language select', languageSelect(page, language)],
-    ['theme switcher', themeGroup(page, language)],
+    ['menu button', menuButton(page, language)],
     ['parameters panel', parameters],
     ['results panel', results],
     ['footer', page.getByRole('contentinfo')],
@@ -153,15 +155,71 @@ test.describe('narrow screens (360 × 740)', () => {
           }
           expect(await overflowingElements(page), 'elements wider than the viewport').toEqual([]);
 
-          // Icon-only segments must keep their text as the accessible name.
-          for (const preference of THEME_PREFERENCES) {
-            await expect(themeRadio(page, preference, language)).toHaveCount(1);
-          }
+          // The phone header shows the menu button instead of the desktop settings.
+          await expect(themeButton(page, language)).toBeHidden();
+          await expect(
+            page.getByRole('banner').getByText(message(language, 'header.byline')),
+          ).toBeHidden();
 
           await expectStacked(page, language);
+
+          // The menu sheet and its controls fit as well.
+          const sheet = await openMenuSheet(page, language);
+          for (const [name, locator] of [
+            ['menu sheet', sheet],
+            ['language select', languageSelect(page, language)],
+            ['theme radios', themeGroup(page, language)],
+          ] as const) {
+            await expectInsideViewport(page, name, locator);
+          }
+          expect(
+            await overflowingElements(page),
+            'elements wider than the viewport with the menu open',
+          ).toEqual([]);
         });
       });
     }
+  }
+});
+
+test.describe('desktop header (1024 × 768)', () => {
+  test.use({ viewport: { width: 1024, height: 768 }, colorScheme: 'dark' });
+
+  for (const language of LANGUAGES) {
+    test.describe(language, () => {
+      test.use({ locale: 'en-US' });
+
+      test('fits the wordmark, byline, language pill and theme button', async ({ page }) => {
+        await seedStorage(page, { language });
+        await gotoApp(page);
+        await expect(menuButton(page, language)).toBeHidden();
+        const settings = page.getByRole('group', {
+          name: message(language, 'header.settings'),
+          exact: true,
+        });
+        for (const [name, locator] of [
+          ['header settings', settings],
+          ['language select', languageSelect(page, language)],
+          ['theme button', themeButton(page, language)],
+        ] as const) {
+          await expect(locator).toBeVisible();
+          await expectInsideViewport(page, name, locator);
+        }
+        // Only the header: a wide schedule table scrolls inside its own card at 1024 px.
+        expect(await overflowingElements(page, 'header'), 'header overflow').toEqual([]);
+        // Pills and icon buttons are 44 px targets (DESIGN §8.1, §11).
+        for (const locator of [languageSelect(page, language), themeButton(page, language)]) {
+          expect((await boxOf(locator)).height).toBeGreaterThanOrEqual(44 - EPSILON);
+        }
+
+        // The open theme menu stays inside the viewport too.
+        await themeButton(page, language).click();
+        await expectInsideViewport(page, 'theme menu', themeGroup(page, language));
+        expect(await overflowingElements(page, 'header'), 'overflow with the menu open').toEqual(
+          [],
+        );
+      });
+    });
   }
 });
 

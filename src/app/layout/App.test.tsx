@@ -86,33 +86,23 @@ describe('App shell structure', () => {
     expect(screen.getByRole('contentinfo')).toBeTruthy();
   });
 
-  it('shows the wordmark as the only h1 and the author byline', async () => {
+  it('shows the wordmark as the only h1, named after the app, and the author byline', async () => {
     await renderShell();
     const headings = screen.getAllByRole('heading', { level: 1 });
     expect(headings).toHaveLength(1);
-    expect(headings[0]?.textContent).toBe(APP_NAME);
+    expect(screen.getByRole('heading', { level: 1, name: APP_NAME })).toBe(headings[0]);
     const banner = screen.getByRole('banner');
+    expect(banner.contains(headings[0] ?? null)).toBe(true);
     expect(within(banner).getByText(en['header.byline'].replace('{author}', AUTHOR))).toBeTruthy();
   });
 
-  it('has two panel headings that name their regions', async () => {
+  it('has the loan parameters and results regions, each named by its h2', async () => {
     await renderShell();
     const main = screen.getByRole('main');
-    const titles = within(main)
-      .getAllByRole('heading', { level: 2 })
-      .map((heading) => heading.textContent);
-    expect(titles).toEqual([en['panels.parameters.title'], en['panels.results.title']]);
-
     for (const title of [en['panels.parameters.title'], en['panels.results.title']]) {
       const region = within(main).getByRole('region', { name: title });
       expect(within(region).getByRole('heading', { level: 2, name: title })).toBeTruthy();
     }
-  });
-
-  it('shows the empty states of both panels', async () => {
-    await renderShell();
-    expect(screen.getByText(en['panels.parameters.emptyTitle'])).toBeTruthy();
-    expect(screen.getByText(en['panels.results.emptyTitle'])).toBeTruthy();
   });
 
   it('starts with a skip link that targets the focusable main element', async () => {
@@ -126,17 +116,20 @@ describe('App shell structure', () => {
     expect(main.tabIndex).toBe(-1);
   });
 
-  it('gives every form control an accessible name', async () => {
-    const { container } = await renderShell();
-    const controls = [...container.querySelectorAll('input, select, textarea, button')];
+  it('gives every control in the header and the footer an accessible name', async () => {
+    await renderShell();
+    const frame = [screen.getByRole('banner'), screen.getByRole('contentinfo')];
+    const controls = frame.flatMap((part) => [
+      ...part.querySelectorAll<HTMLElement>('a, input, select, textarea, button'),
+    ]);
     expect(controls.length).toBeGreaterThan(0);
 
-    const roles = ['radio', 'checkbox', 'combobox', 'listbox', 'textbox', 'spinbutton', 'button'];
+    const roles = ['link', 'radio', 'combobox', 'button'];
     const named = new Set<HTMLElement>(
-      roles.flatMap((role) => screen.queryAllByRole(role, { name: /\S/ })),
+      roles.flatMap((role) => screen.queryAllByRole(role, { name: /\S/, hidden: true })),
     );
     for (const control of controls) {
-      expect(named.has(control as HTMLElement), control.outerHTML).toBe(true);
+      expect(named.has(control), control.outerHTML).toBe(true);
     }
   });
 });
@@ -171,20 +164,20 @@ describe('language switcher', () => {
       expect(localStorage.getItem(LANGUAGE_KEY)).toBe(JSON.stringify(code));
       expect(document.documentElement.lang).toBe(code);
 
-      const titles = screen
-        .getAllByRole('heading', { level: 2 })
-        .map((heading) => heading.textContent);
-      expect(titles).toEqual([locale['panels.parameters.title'], locale['panels.results.title']]);
-      expect(screen.getByRole('region', { name: locale['panels.results.title'] })).toBeTruthy();
+      for (const title of [locale['panels.parameters.title'], locale['panels.results.title']]) {
+        expect(screen.getByRole('region', { name: title })).toBeTruthy();
+      }
       expect(screen.getByRole('link', { name: locale['a11y.skipToContent'] })).toBeTruthy();
+      expect(screen.getByRole('group', { name: locale['header.settings'] })).toBeTruthy();
       expect(screen.getByRole('combobox', { name: locale['language.label'] })).toBe(select);
       expect(select.value).toBe(code);
-      expect(screen.getByRole('radio', { name: locale['theme.light'] })).toBeTruthy();
+      expect(screen.getByRole('button', { name: locale['theme.label'] })).toBeTruthy();
+      expect(screen.getByRole('button', { name: locale['header.menu'] })).toBeTruthy();
       expect(
         screen.getByRole('link', { name: newTabName(locale['footer.sourceCode'], code) }),
       ).toBeTruthy();
       // The wordmark is a proper noun and stays untranslated.
-      expect(screen.getByRole('heading', { level: 1 }).textContent).toBe(APP_NAME);
+      expect(screen.getByRole('heading', { level: 1, name: APP_NAME })).toBeTruthy();
     },
   );
 
@@ -213,60 +206,50 @@ describe('language switcher', () => {
   });
 });
 
-describe('theme switcher', () => {
-  it('is a labelled group of named radios', async () => {
-    await renderShell();
-    const group = screen.getByRole('group', { name: en['theme.label'] });
-    const radios = within(group).getAllByRole<HTMLInputElement>('radio');
-    expect(radios.map((radio) => radio.value)).toEqual(['system', 'dark', 'light']);
-    for (const name of [en['theme.system'], en['theme.dark'], en['theme.light']]) {
-      expect(within(group).getByRole('radio', { name })).toBeTruthy();
-    }
-    expect(new Set(radios.map((radio) => radio.name)).size).toBe(1);
-  });
+describe('theme menu', () => {
+  /** Opens the header theme menu and returns its radio group. */
+  function openThemeMenu(): HTMLElement {
+    const button = screen.getByRole('button', { name: en['theme.label'] });
+    fireEvent.click(button);
+    expect(button.getAttribute('aria-expanded')).toBe('true');
+    return screen.getByRole('group', { name: en['theme.label'] });
+  }
 
-  it('checks the radio of the current preference', async () => {
-    const { theme } = await renderShell();
-    /** Values of all checked radios: a list, so the test also proves only one is checked. */
-    const checked = (): string[] =>
-      screen
-        .getAllByRole<HTMLInputElement>('radio')
-        .filter((radio) => radio.checked)
-        .map((radio) => radio.value);
-    expect(theme.themePreference.value).toBe('system');
-    expect(checked()).toEqual(['system']);
-
-    await act(() => {
-      theme.setThemePreference('dark');
-    });
-    expect(checked()).toEqual(['dark']);
-  });
+  /** Values of all checked radios in the group: a list, so it also proves only one is checked. */
+  function checkedValues(group: HTMLElement): string[] {
+    return within(group)
+      .getAllByRole<HTMLInputElement>('radio')
+      .filter((radio) => radio.checked)
+      .map((radio) => radio.value);
+  }
 
   it('restores the stored preference on load', async () => {
     localStorage.setItem(THEME_KEY, '"dark"');
     await renderShell();
-    expect(screen.getByRole<HTMLInputElement>('radio', { name: en['theme.dark'] }).checked).toBe(
-      true,
-    );
-    expect(screen.getByRole<HTMLInputElement>('radio', { name: en['theme.system'] }).checked).toBe(
-      false,
-    );
+    expect(checkedValues(openThemeMenu())).toEqual(['dark']);
   });
 
   it('applies and persists Light when it is clicked', async () => {
     const { theme } = await renderShell({ syncDocument: true });
     expect(document.documentElement.dataset.theme).toBe('dark');
 
-    const light = screen.getByRole<HTMLInputElement>('radio', { name: en['theme.light'] });
-    fireEvent.click(light);
+    const group = openThemeMenu();
+    fireEvent.click(within(group).getByRole('radio', { name: en['theme.light'] }));
 
     expect(theme.themePreference.value).toBe('light');
     expect(localStorage.getItem(THEME_KEY)).toBe('"light"');
     expect(document.documentElement.dataset.theme).toBe('light');
-    expect(light.checked).toBe(true);
-    expect(screen.getByRole<HTMLInputElement>('radio', { name: en['theme.system'] }).checked).toBe(
-      false,
-    );
+    expect(checkedValues(group)).toEqual(['light']);
+  });
+
+  it('checks the radio of a preference changed elsewhere', async () => {
+    const { theme } = await renderShell();
+    const group = openThemeMenu();
+    expect(checkedValues(group)).toEqual(['system']);
+    await act(() => {
+      theme.setThemePreference('dark');
+    });
+    expect(checkedValues(group)).toEqual(['dark']);
   });
 });
 

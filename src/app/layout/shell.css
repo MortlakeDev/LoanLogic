@@ -1,6 +1,23 @@
 /* SPDX-License-Identifier: AGPL-3.0-or-later */
 /* Copyright (C) 2026 Mortlake */
 
+/*
+ * The app frame (DESIGN §7): header, workspace columns, footer, and the header's own
+ * controls (language pill, theme menu, mobile menu sheet).
+ */
+
+:root {
+  /* Height of the mobile compact summary bar that sticks to the top (results area). */
+  --compact-bar-height: 3.5rem;
+}
+
+/* A focused control is never hidden behind the sticky compact bar (WCAG 2.2 SC 2.4.11). */
+@media (max-width: 63.99rem) {
+  html {
+    scroll-padding-top: calc(var(--compact-bar-height) + var(--space-2));
+  }
+}
+
 /* ---------- Page frame ---------- */
 
 .app {
@@ -14,7 +31,7 @@
   max-width: calc(100% - 2 * var(--space-2));
   inset-inline-start: var(--space-2);
   top: var(--space-2);
-  z-index: 10;
+  z-index: 60;
   padding: var(--space-2) var(--space-4);
   border-radius: var(--radius-md);
   background: var(--color-accent);
@@ -29,302 +46,276 @@
   transform: none;
 }
 
-/* ---------- Header ---------- */
+/* ---------- Header (DESIGN §7.1, §7.2) ---------- */
 
-.app-header {
+/* The header and the footer share the workspace's width and gutters. */
+.app-header__inner,
+.app-footer__inner {
+  width: 100%;
+  max-width: var(--layout-max-width);
+  margin-inline: auto;
+  padding-inline: var(--layout-gutter);
+}
+
+.app-header__inner {
   display: flex;
-  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: var(--space-3) var(--space-6);
-  padding: var(--space-3) var(--layout-gutter);
-  border-bottom: 1px solid var(--color-border);
-  background: var(--color-surface-1);
+  gap: var(--space-4);
+  padding-block: var(--space-6);
 }
 
 .brand {
   display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: var(--space-1) var(--space-3);
+  align-items: flex-end;
+  gap: var(--space-3);
   min-width: 0;
 }
 
-.brand__wordmark {
-  font-size: var(--font-size-xl);
-  font-weight: var(--font-weight-bold);
-  letter-spacing: -0.02em;
+.brand__title {
+  flex: none;
 }
 
+.brand .wordmark {
+  height: 1.375rem;
+}
+
+/* Sits on the wordmark's baseline (the wordmark box ends at the descender of "g"). */
 .brand__byline {
+  margin-bottom: 0.125rem;
   color: var(--color-text-muted);
-  font-size: var(--font-size-sm);
+  font-size: var(--font-size-xs);
+  line-height: 1;
+  white-space: nowrap;
 }
 
 .app-header__controls {
   display: flex;
-  flex-wrap: wrap;
   align-items: center;
-  gap: var(--space-2) var(--space-3);
+  gap: var(--space-2);
   min-width: 0;
 }
 
-/* ---------- Form controls ---------- */
-
-.field--inline {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-}
-
-.field__icon {
-  width: 1.125rem;
-  height: 1.125rem;
+.mobile-menu__button {
   flex: none;
-  fill: none;
-  stroke: var(--color-text-secondary);
-  stroke-width: 1.75;
-  stroke-linecap: round;
-  stroke-linejoin: round;
 }
 
-.select {
-  appearance: none;
-  min-height: 2.25rem;
-  padding: var(--space-1) var(--space-8) var(--space-1) var(--space-3);
-  border: 1px solid var(--color-border-strong);
-  border-radius: var(--radius-md);
-  background-color: var(--color-surface-2);
-  /* Chevron drawn with currentColor so it follows the theme. */
-  background-image:
-    linear-gradient(45deg, transparent 50%, currentColor 50%),
-    linear-gradient(135deg, currentColor 50%, transparent 50%);
-  background-position:
-    right 1rem center,
-    right calc(1rem - 5px) center;
-  background-size: 5px 5px;
-  background-repeat: no-repeat;
-  color: var(--color-text-primary);
-  font-size: var(--font-size-control);
-  cursor: pointer;
-}
-
-.select:hover {
-  border-color: var(--color-text-secondary);
-}
-
-/* Forced colors drop background images, which would remove the drawn chevron. */
-@media (forced-colors: active) {
-  .select {
-    appearance: auto;
+@media (min-width: 64rem) {
+  .mobile-menu__button {
+    display: none;
   }
 }
 
-/* Segmented control on native radio buttons (keyboard: Tab in, arrow keys to move). */
-.segmented {
-  display: inline-flex;
-  min-inline-size: 0;
-  margin: 0;
-  padding: 2px;
-  border: 1px solid var(--color-border-strong);
-  border-radius: var(--radius-md);
-  background: var(--color-surface-2);
+@media (max-width: 63.99rem) {
+  .app-header__inner {
+    padding-block: var(--space-3);
+  }
+
+  .brand .wordmark {
+    height: 1.125rem;
+  }
+
+  .brand__byline,
+  .app-header__controls {
+    display: none;
+  }
 }
 
-.segmented__option {
+/* Language pill: the globe icon sits inside the select's padding. */
+.language-pill {
   position: relative;
   display: flex;
-}
-
-.segmented__input {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  margin: 0;
-  opacity: 0;
-  cursor: pointer;
-}
-
-.segmented__face {
-  display: inline-flex;
   align-items: center;
-  gap: var(--space-2);
-  min-height: 2rem;
-  padding: var(--space-1) var(--space-3);
-  border-radius: calc(var(--radius-md) - 2px);
+  min-width: 0;
+}
+
+.language-pill__icon {
+  position: absolute;
+  inset-inline-start: var(--space-4);
   color: var(--color-text-secondary);
+  pointer-events: none;
+}
+
+.language-pill__select {
+  max-width: 16rem;
+  padding-inline-start: calc(var(--space-4) + 1rem + var(--space-2));
+}
+
+/* Theme menu: a panel under the icon button, aligned to its end edge. */
+.theme-menu {
+  position: relative;
+  flex: none;
+}
+
+.theme-menu__panel {
+  position: absolute;
+  top: calc(100% + var(--space-2));
+  inset-inline-end: 0;
+  z-index: 40;
+  min-width: 12rem;
+  padding: var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface-1);
+  box-shadow: var(--shadow-2);
+}
+
+.theme-menu__panel[hidden] {
+  display: none;
+}
+
+/* The theme radios (header panel and menu sheet). */
+.theme-options {
+  display: grid;
+  gap: var(--space-2);
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.theme-options__list {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.theme-option {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: var(--size-target);
+  padding: 0 var(--space-3);
+  border-radius: var(--radius-md);
+  color: var(--color-text-primary);
   font-size: var(--font-size-sm);
   white-space: nowrap;
-  transition:
-    background-color var(--duration-fast) var(--easing-standard),
-    color var(--duration-fast) var(--easing-standard);
+  cursor: pointer;
+  transition: background-color var(--duration-fast) var(--easing-standard);
 }
 
-.segmented__icon {
-  width: 1rem;
-  height: 1rem;
-  flex: none;
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 1.75;
-  stroke-linecap: round;
-  stroke-linejoin: round;
+.theme-option:hover {
+  background: var(--color-surface-3);
 }
 
-.segmented__input:hover + .segmented__face {
-  color: var(--color-text-primary);
-}
-
-.segmented__input:checked + .segmented__face {
-  background: var(--color-accent-subtle);
-  box-shadow: inset 0 0 0 1px var(--color-accent);
-  color: var(--color-text-primary);
+/* Progressive enhancement: the native radio already shows the checked state. */
+.theme-option:has(.theme-option__input:checked) {
+  background: var(--color-surface-2);
   font-weight: var(--font-weight-semibold);
 }
 
-/* Forced colors remove box-shadows and author backgrounds, so the selected segment would
-   look like the others (and below 30rem nothing else tells them apart). */
-@media (forced-colors: active) {
-  .segmented__input:checked + .segmented__face {
-    forced-color-adjust: none;
-    background: Highlight;
-    color: HighlightText;
-  }
+.theme-option__input {
+  flex: none;
+  width: 1rem;
+  height: 1rem;
+  margin: 0;
+  accent-color: var(--color-accent);
 }
 
-/* `:focus` as well as `:focus-visible`: WebKit does not match :focus-visible when arrow keys
-   move focus between radios, which would leave keyboard users without a focus ring. */
-.segmented__input:focus-visible + .segmented__face,
-.segmented__input:focus + .segmented__face {
+/* The ring goes around the whole row, which is the visible target. `:focus-within` rather
+   than `:focus-visible`: WebKit does not match :focus-visible when arrow keys move focus
+   between radios. */
+.theme-option__input:focus-visible {
+  outline: none;
+}
+
+.theme-option:focus-within {
   outline: var(--focus-ring-width) solid var(--color-focus-ring);
   outline-offset: var(--focus-ring-offset);
 }
 
-/* On narrow screens the segments show icons only; the text stays as the accessible name. */
-@media (max-width: 29.99rem) {
-  .segmented__text {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    overflow: hidden;
-    clip-path: inset(50%);
-    white-space: nowrap;
-  }
+.theme-option__icon {
+  color: var(--color-text-secondary);
+}
 
-  .segmented__face {
-    padding-inline: var(--space-3);
+/* Mobile menu sheet: the title and the close button share the first row. */
+.mobile-menu {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-5) var(--space-3);
+}
+
+.mobile-menu > * {
+  grid-column: 1 / -1;
+}
+
+.mobile-menu > .sheet__close {
+  grid-row: 1;
+  grid-column: 2;
+}
+
+.mobile-menu > .mobile-menu__title {
+  grid-row: 1;
+  grid-column: 1;
+  font-size: var(--font-size-lg);
+}
+
+@media (forced-colors: active) {
+  .theme-menu__panel {
+    border-color: CanvasText;
   }
 }
 
-/* ---------- Workspace ---------- */
+/* ---------- Workspace (DESIGN §5, §7) ---------- */
 
 .workspace {
   flex: 1;
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   align-items: start;
-  gap: var(--space-4);
+  gap: var(--space-3);
   width: 100%;
   max-width: var(--layout-max-width);
   margin-inline: auto;
-  padding: var(--space-4) var(--layout-gutter) var(--space-8);
+  padding: 0 var(--layout-gutter) var(--space-8);
 }
 
 .workspace:focus {
   outline: none;
 }
 
+.workspace > * {
+  min-width: 0;
+}
+
 @media (min-width: 64rem) {
   .workspace {
-    grid-template-columns: minmax(20rem, var(--layout-sidebar-width)) minmax(0, 1fr);
-    gap: var(--space-6);
-    padding-top: var(--space-6);
+    grid-template-columns: minmax(0, var(--layout-sidebar-width)) minmax(0, 1fr);
+    gap: var(--space-5);
   }
 
-  .panel--parameters {
+  /* Both columns are placed explicitly, so anything else in the workspace (the mobile
+     summary, should it render) falls into later rows instead of shifting them. */
+  .workspace > .inputs {
     position: sticky;
     top: var(--space-6);
+    grid-row: 1;
+    grid-column: 1;
+    max-height: calc(100dvh - 3rem);
+    overflow-y: auto;
+  }
+
+  .workspace > .results {
+    grid-row: 1;
+    grid-column: 2;
+  }
+
+  .workspace > .mobile-summary {
+    display: none;
   }
 }
 
-.panel {
-  min-width: 0;
-  padding: var(--space-5);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
-  background: var(--color-surface-1);
-  box-shadow: var(--shadow-1);
-}
-
-.panel__title {
-  margin-bottom: var(--space-4);
-  font-size: var(--font-size-lg);
-}
-
-/* ---------- Empty state ---------- */
-
-.empty-state {
-  display: grid;
-  justify-items: center;
-  gap: var(--space-2);
-  padding: var(--space-10) var(--space-4);
-  border: 1px dashed var(--color-border);
-  border-radius: var(--radius-md);
-  background: var(--color-surface-2);
-  text-align: center;
-}
-
-.empty-state__art {
-  width: min(10rem, 60%);
-  margin-bottom: var(--space-3);
-}
-
-.empty-state__art svg {
-  width: 100%;
-  height: auto;
-}
-
-.empty-state__title {
-  font-weight: var(--font-weight-semibold);
-}
-
-.empty-state__text {
-  max-width: 42ch;
-  color: var(--color-text-secondary);
-  font-size: var(--font-size-sm);
-}
-
-.art-line {
-  fill: var(--color-surface-3);
-}
-
-.art-line .art-outline {
-  fill: none;
-  stroke: var(--color-border-strong);
-  stroke-width: 1.5;
-}
-
-.art-accent {
-  fill: var(--color-accent);
-}
-
-.art-accent-stroke {
-  stroke: var(--color-accent);
-  stroke-width: 3;
-  stroke-linecap: round;
-}
-
-/* ---------- Footer ---------- */
+/* ---------- Footer (DESIGN §7.1) ---------- */
 
 .app-footer {
-  display: grid;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+}
+
+.app-footer__inner {
+  display: flex;
+  flex-direction: column;
   gap: var(--space-2);
-  padding: var(--space-5) var(--layout-gutter) var(--space-6);
-  border-top: 1px solid var(--color-border);
-  background: var(--color-surface-1);
-  color: var(--color-text-secondary);
-  font-size: var(--font-size-sm);
+  padding-block: var(--space-2) var(--space-8);
 }
 
 .app-footer__legal {
@@ -333,11 +324,25 @@
   gap: var(--space-1) var(--space-2);
 }
 
-.app-footer__separator {
-  color: var(--color-text-muted);
+.app-footer__notes {
+  display: grid;
+  gap: var(--space-1);
 }
 
-.app-footer__note {
-  max-width: 72ch;
-  color: var(--color-text-muted);
+@media (min-width: 64rem) {
+  .app-footer__inner {
+    flex-direction: row;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: var(--space-8);
+  }
+
+  .app-footer__legal {
+    flex: none;
+  }
+
+  .app-footer__notes {
+    max-width: 72ch;
+    text-align: end;
+  }
 }

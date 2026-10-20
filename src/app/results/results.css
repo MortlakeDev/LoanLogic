@@ -1,0 +1,574 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later */
+/* Copyright (C) 2026 Mortlake */
+
+/*
+ * The results (docs/DESIGN.md §7, §8.6–§8.9, §8.13): the desktop overview (payment hero
+ * with the rate card, warnings, KPI tiles, cost structure), the mobile summary card and
+ * its compact bar, and the "Fix the highlighted fields" list.
+ */
+
+/* ---------- Results column ---------- */
+
+.results {
+  display: grid;
+  gap: var(--space-5);
+  min-width: 0;
+  align-content: start;
+}
+
+.results__overview {
+  display: grid;
+  gap: var(--space-5);
+  min-width: 0;
+}
+
+/* Blank while the fix list waits for its pause. */
+.results__overview:empty {
+  display: none;
+}
+
+@media (max-width: 63.99rem) {
+  .results {
+    gap: var(--space-3);
+  }
+
+  /* The mobile summary card carries the overview (DESIGN §7.2). */
+  .results__overview {
+    display: none;
+  }
+}
+
+/* ---------- Changed figures (DESIGN §6) ---------- */
+
+.figure-changed {
+  display: inline-block;
+  animation: figure-rise 160ms var(--easing-standard);
+}
+
+@keyframes figure-rise {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .figure-changed {
+    animation: none;
+  }
+}
+
+/* ---------- Payment hero (DESIGN §8.6) ---------- */
+
+.hero-card {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-6);
+}
+
+.hero {
+  display: grid;
+  flex: 1 1 22rem;
+  gap: var(--space-3);
+  align-content: start;
+  min-width: 0;
+}
+
+.hero__label {
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-regular);
+  line-height: var(--line-height-snug);
+}
+
+/* The dotted grid behind the hero number; also the container the number is sized to. */
+.hero__figure {
+  display: grid;
+  gap: var(--space-2);
+  padding-block: var(--space-2);
+  container-type: inline-size;
+  background-image: radial-gradient(circle, var(--color-chart-grid) 1px, transparent 1.5px);
+  background-position: 0 0;
+  background-size: 16px 16px;
+}
+
+.hero-amount {
+  min-width: 0;
+  color: var(--color-text-primary);
+  font-family: var(--font-mono);
+  /* Shrinks to fit the card: a mono character is about 0.555em wide at this tracking. */
+  font-size: min(var(--font-size-hero), calc(175cqi / var(--hero-chars, 9)));
+  font-variant-numeric: tabular-nums;
+  font-weight: var(--font-weight-medium);
+  letter-spacing: -0.045em;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.hero-amount__currency {
+  margin-inline: 0.06em;
+  color: var(--color-text-muted);
+  font-size: 0.5em;
+  letter-spacing: 0;
+  vertical-align: 0.72em;
+}
+
+.hero-amount__minor {
+  color: var(--color-text-muted);
+}
+
+.hero__range {
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+}
+
+.hero-meta {
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+}
+
+.hero-meta__amount {
+  color: var(--color-text-primary);
+}
+
+.hero-meta__separator {
+  color: var(--color-text-muted);
+}
+
+/* ---------- Badges (DESIGN §8.7) ---------- */
+
+.badge {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  padding: 0.125rem var(--space-2);
+  border: 1px solid var(--color-accent-line);
+  border-radius: var(--radius-full);
+  color: var(--color-accent);
+  font-size: var(--font-size-xs);
+  line-height: var(--line-height-snug);
+  white-space: nowrap;
+}
+
+/* ---------- Rates (DESIGN §8.7) ---------- */
+
+.rate-line {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0 var(--space-1);
+  min-width: 0;
+}
+
+.rate-line--na {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.rate-line__reason {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+  line-height: var(--line-height-snug);
+}
+
+.rate-na {
+  color: var(--color-text-muted);
+}
+
+/* An accent icon button of the "explain" kind (DESIGN §8.1 accent text, 44 px target). */
+.explain-trigger {
+  flex: none;
+  width: var(--size-target);
+  border-radius: var(--radius-full);
+}
+
+.explain-trigger:hover {
+  background: var(--color-surface-3);
+}
+
+.explain-trigger .icon {
+  width: 1.125rem;
+  height: 1.125rem;
+}
+
+.rate-card {
+  display: grid;
+  flex: 1 1 16rem;
+  gap: var(--space-2);
+  align-content: start;
+  min-width: 0;
+  padding: var(--space-5);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+}
+
+.rate-card__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.rate-card__title {
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+}
+
+.rate-card__rate {
+  font-size: var(--font-size-rate);
+  font-weight: var(--font-weight-medium);
+  letter-spacing: -0.035em;
+  line-height: 1.1;
+}
+
+.rate-card__rate:not(.rate-na) {
+  color: var(--color-accent);
+}
+
+.rate-card__includes {
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+}
+
+.rate-card__more {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 7.5rem), 1fr));
+  gap: var(--space-3) var(--space-4);
+  margin: var(--space-2) 0 0;
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--color-border);
+}
+
+.rate-card__item {
+  display: grid;
+  gap: var(--space-1);
+  align-content: start;
+  min-width: 0;
+}
+
+.rate-card__label {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+}
+
+.rate-card__value {
+  margin: 0;
+}
+
+.rate-card__minor {
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-medium);
+}
+
+/* ---------- Warnings (DESIGN §8.13) ---------- */
+
+.results-warnings {
+  display: grid;
+  gap: var(--space-2);
+}
+
+/* ---------- KPI tiles (DESIGN §8.8) ---------- */
+
+.kpis {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 13.75rem), 1fr));
+  gap: var(--space-5);
+  margin: 0;
+}
+
+.kpi {
+  display: grid;
+  gap: var(--space-2);
+  align-content: start;
+  min-width: 0;
+  padding: var(--space-5);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface-1);
+}
+
+.kpi__label {
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+}
+
+.kpi__value {
+  margin: 0;
+  font-size: var(--font-size-2xl);
+  font-weight: var(--font-weight-medium);
+  letter-spacing: -0.02em;
+  line-height: var(--line-height-tight);
+  overflow-wrap: anywhere;
+}
+
+.kpi__value--accent {
+  color: var(--color-accent);
+}
+
+.kpi__caption {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+}
+
+/* ---------- Cost structure (DESIGN §8.9) ---------- */
+
+.cost {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.cost__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-2) var(--space-4);
+}
+
+.cost__heading {
+  font-size: var(--font-size-md);
+}
+
+.cost__heading .accent {
+  color: var(--color-accent);
+}
+
+.cost__total {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+}
+
+.cost-bar {
+  width: 100%;
+  height: 14px;
+}
+
+.cost-bar__principal {
+  fill: var(--color-chart-principal);
+}
+
+.cost-bar__interest {
+  fill: var(--color-chart-interest);
+}
+
+.cost-bar__fees {
+  fill: var(--color-chart-fees);
+}
+
+/* A subtle diagonal hatch on interest, so it differs from principal by more than color. */
+.cost-bar__hatch {
+  stroke: var(--color-surface-1);
+  stroke-opacity: 0.35;
+  stroke-width: 2;
+}
+
+.cost__legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-6);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+}
+
+.cost__item {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1) var(--space-2);
+  min-width: 0;
+}
+
+.cost__swatch {
+  width: 0.625rem;
+  height: 0.625rem;
+  flex: none;
+}
+
+.cost__amount {
+  color: var(--color-text-primary);
+}
+
+.cost__share {
+  color: var(--color-text-muted);
+}
+
+@media (forced-colors: active) {
+  .cost-bar,
+  .cost__swatch {
+    forced-color-adjust: none;
+  }
+
+  .cost-bar__principal {
+    fill: CanvasText;
+  }
+
+  .cost-bar__interest {
+    fill: Highlight;
+  }
+
+  .cost-bar__fees {
+    fill: GrayText;
+  }
+
+  .cost-bar__hatch {
+    stroke: Canvas;
+    stroke-opacity: 1;
+  }
+}
+
+/* ---------- Fix the highlighted fields (DESIGN §8.13) ---------- */
+
+.fix-fields {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.fix-fields__title {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--font-size-md);
+}
+
+.fix-fields__icon {
+  color: var(--color-danger);
+}
+
+.fix-fields__list {
+  display: grid;
+  gap: var(--space-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.fix-fields__item {
+  display: grid;
+  justify-items: start;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+}
+
+.fix-fields__link {
+  justify-content: flex-start;
+  text-align: start;
+}
+
+/* ---------- Mobile summary (DESIGN §7.2) ---------- */
+
+.mobile-summary {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.mobile-summary__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.mobile-summary__explain {
+  justify-self: start;
+}
+
+.mobile-summary__grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-3) var(--space-4);
+  margin: 0;
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--color-border);
+}
+
+.mobile-summary__item {
+  display: grid;
+  gap: var(--space-1);
+  align-content: start;
+  min-width: 0;
+}
+
+.mobile-summary__label {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+}
+
+.mobile-summary__value {
+  margin: 0;
+  min-width: 0;
+}
+
+.mobile-summary__rate {
+  font-size: var(--font-size-xl);
+  font-weight: var(--font-weight-medium);
+}
+
+.mobile-summary__rate--headline:not(.rate-na) {
+  color: var(--color-accent);
+}
+
+.mobile-summary__amount {
+  font-size: var(--font-size-md);
+  overflow-wrap: anywhere;
+}
+
+/* The compact bar: fixed to the top once the summary card has scrolled away. */
+.compact-bar {
+  position: fixed;
+  inset: 0 0 auto;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  height: var(--compact-bar-height, 3.5rem);
+  padding: 0 var(--layout-gutter);
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-surface-1);
+}
+
+.compact-bar__item {
+  display: grid;
+  min-width: 0;
+}
+
+.compact-bar__item--end {
+  text-align: end;
+}
+
+.compact-bar__label {
+  overflow: hidden;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.compact-bar__value {
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-medium);
+  white-space: nowrap;
+}
+
+.compact-bar__rate {
+  color: var(--color-accent);
+}
+
+@media (min-width: 64rem) {
+  .mobile-summary,
+  .compact-bar {
+    display: none;
+  }
+}

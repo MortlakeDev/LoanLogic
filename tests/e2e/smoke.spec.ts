@@ -3,7 +3,7 @@
 
 import { expect, test } from '@playwright/test';
 import { APP_NAME, LICENSE_ID, LICENSE_URL, SOURCE_CODE_URL } from '../../src/config.ts';
-import { collectPageErrors, gotoApp, message, panels } from './helpers.ts';
+import { collectPageErrors, gotoApp, menuButton, message, panels, themeButton } from './helpers.ts';
 
 // Language and theme are detected from the browser; pin both so the run is deterministic.
 test.use({ locale: 'en-US', colorScheme: 'dark' });
@@ -35,31 +35,37 @@ test.describe('app shell', () => {
   test('shows the header: wordmark, byline and settings', async ({ page }) => {
     await gotoApp(page);
     const header = page.getByRole('banner');
-    await expect(header.getByRole('heading', { level: 1 })).toHaveText(APP_NAME);
+    const heading = header.getByRole('heading', { level: 1 });
+    await expect(heading).toHaveAccessibleName(APP_NAME);
+    await expect(heading.locator('svg.wordmark')).toBeVisible();
     await expect(header).toContainText(message('en', 'header.byline'));
     await expect(header).toContainText('by Mortlake');
+    const settings = header.getByRole('group', {
+      name: message('en', 'header.settings'),
+      exact: true,
+    });
     await expect(
-      header.getByRole('combobox', { name: message('en', 'language.label'), exact: true }),
+      settings.getByRole('combobox', { name: message('en', 'language.label'), exact: true }),
     ).toBeVisible();
-    await expect(
-      header.getByRole('group', { name: message('en', 'theme.label'), exact: true }),
-    ).toBeVisible();
+    await expect(themeButton(page)).toBeVisible();
+    // The region pill and Share arrive in T05/T15: no placeholders until then.
+    await expect(settings.getByRole('button')).toHaveCount(1);
+    await expect(menuButton(page)).toBeHidden();
   });
 
-  test('shows both workspace panels with their headings and empty states', async ({ page }) => {
+  test('shows the workspace regions with their headings', async ({ page }) => {
     await gotoApp(page);
-    const main = page.getByRole('main');
-    await expect(main.getByRole('heading', { level: 2 })).toHaveText([
-      message('en', 'panels.parameters.title'),
-      message('en', 'panels.results.title'),
-    ]);
     const { parameters, results } = panels(page);
     await expect(parameters).toBeVisible();
     await expect(results).toBeVisible();
-    await expect(parameters).toContainText(message('en', 'panels.parameters.emptyTitle'));
-    await expect(parameters).toContainText(message('en', 'panels.parameters.emptyText'));
-    await expect(results).toContainText(message('en', 'panels.results.emptyTitle'));
-    await expect(results).toContainText(message('en', 'panels.results.emptyText'));
+    for (const [region, key] of [
+      [parameters, 'panels.parameters.title'],
+      [results, 'panels.results.title'],
+    ] as const) {
+      await expect(
+        region.getByRole('heading', { level: 2, name: message('en', key), exact: true }),
+      ).toBeAttached();
+    }
   });
 
   test('shows the footer: copyright, license, source code and disclaimer', async ({ page }) => {
@@ -104,6 +110,9 @@ test.describe('app shell', () => {
     const icon = page.locator('link[rel="icon"]');
     await expect(icon).toHaveCount(1);
     await expect(icon).toHaveAttribute('type', 'image/svg+xml');
-    await expect(icon).toHaveAttribute('href', /^data:image\/svg\+xml[,;]|\.svg(?:[?#]|$)/);
+    // Inlined as a data: URI, so it costs no request (docs/design/favicon.svg: lime on black).
+    await expect(icon).toHaveAttribute('href', /^data:image\/svg\+xml,/);
+    const href = (await icon.getAttribute('href')) ?? '';
+    expect(decodeURIComponent(href)).toContain("fill='#C3F74C'");
   });
 });
