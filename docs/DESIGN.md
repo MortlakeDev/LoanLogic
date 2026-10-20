@@ -385,7 +385,9 @@ open with `--duration-normal`.
 - Formula strip: surface-2 box, mono xs–sm, built from the engine's `explain` values
   (SPEC §9.6) so that it reproduces the result: `i` is shown as `j ÷ m` when interest
   compounds with the payment frequency (`c = m`); otherwise the payload's `i` is shown as
-  a value (`I₁ = P × i`); irrational values with 10 significant digits, e.g.
+  a value (`I₁ = P × i`). Irrational operands are displayed with 10 significant digits;
+  the strip's result is the engine's own value (`A`, `first`), never recomputed in the
+  UI, so it always equals the hero, e.g.
   `A = P·i ÷ (1 − (1+i)^−N), i = 0.06875 ÷ 12, N = 360 → 2,299.25`; and the accent
   action "How it's calculated →" that opens the Explain sheet (§8.12).
 
