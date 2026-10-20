@@ -1,6 +1,6 @@
 # T03 — Calculator UI: design tokens, inputs, results summary, schedule table, explain
 
-- **Milestone:** M2 · **Status:** brief ready; starts after T02 is merged
+- **Milestone:** M2 · **Status:** ready (T02 is merged, PR #4)
 - **Depends on:** T02 (engine), R2 (`docs/DESIGN.md`, `docs/GLOSSARY.md`) · **Blocks:** T04, T05, T07
 - **Branch:** `task/T03-calculator-ui`
 
@@ -105,6 +105,21 @@ State lives in `src/app/state` as signals; components hold no business logic.
   invalid input blanks the results at once and shows "Fix the highlighted fields" after
   300 ms (DESIGN §8.13); engine warnings as a notice under the hero; "n/a" for failed
   rates.
+- **Engine results to handle (SPEC v0.2.2):**
+  - every formula id of SPEC §9.6, including `instalment.annuity-exact-basis`: the exact
+    day-count payment basis has no single periodic rate, so its strip shows the rate per
+    period, `r_k = j × YF_k`, with the day-count method instead of `i`;
+  - negative amounts: with a negative rate a payment can be negative (§3.4), and with
+    the exact payment basis a row's principal can be negative (§5.1). They are shown with
+    a minus sign, and no component assumes an amount is positive;
+  - `params` of errors and warnings are strings — numbers as decimal strings, `methods`
+    comma-separated (§13); parse them before formatting them with the i18n helpers;
+  - `TOO_MANY_DECIMALS` means the currency's minor units on a money field and at most 10
+    decimals on a percentage field; `FEE_RANGE` on `fees` (the upfront fees paid at
+    closing take the whole amount) belongs to the fees section, not to one fee;
+    `NEG_AMORTIZATION` names the first period (`params.period`) and suggests the exact
+    payment basis or the periodic interest model;
+  - a failed rate (`IRR_NO_CONVERGENCE`) reads "n/a": no rate within −99 % … 10⁹ %.
 - Mobile: summary card first, compact sticky bar when it scrolls away, scroll padding
   for the sticky bars (DESIGN §7.2). Desktop: the sticky inputs panel scrolls on its own
   (DESIGN §7.1).

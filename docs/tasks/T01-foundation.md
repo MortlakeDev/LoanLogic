@@ -1,6 +1,6 @@
 # T01 — Foundation: scaffold, tooling, CI, app shell, i18n, themes
 
-- **Milestone:** M0 · **Status:** in review · **Depends on:** — · **Blocks:** everything
+- **Milestone:** M0 · **Status:** done (PR #1) · **Depends on:** — · **Blocks:** everything
 - **Branch:** `task/T01-foundation`
 
 ## Goal
