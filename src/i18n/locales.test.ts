@@ -174,6 +174,21 @@ function englishSource(key: string): string | undefined {
   return en[key] ?? en[`${splitKey(key).base}_other`];
 }
 
+/**
+ * Messages that are codes written the same in every language (GLOSSARY §6: "XIRR"; the
+ * APR, APRC and IRR abbreviations where a sentence names the rate). They need neither a
+ * different text nor the language's script.
+ */
+const SAME_IN_EVERY_LANGUAGE: ReadonlySet<string> = new Set([
+  'rateMethod.xirr',
+  'rateShort.usRegZApr',
+  'rateShort.ukAprc',
+  'rateShort.euAprc',
+  'rateShort.xirr',
+  'rateShort.irrNominal',
+  'rateShort.irrEffective',
+]);
+
 const TRANSLATED: readonly Exclude<Language, 'en'>[] = LANGUAGES.filter(
   (language): language is Exclude<Language, 'en'> => language !== 'en',
 );
@@ -263,11 +278,21 @@ describe('locale files', () => {
     },
   );
 
+  it('lists only existing keys as written the same in every language', () => {
+    const en = localeCatalog('en');
+    expect([...SAME_IN_EVERY_LANGUAGE].filter((key) => en[key] === undefined)).toEqual([]);
+  });
+
   it.each(TRANSLATED)('%s translates every message that has words', (language) => {
     const untranslated = Object.entries(localeCatalog(language))
       .filter(([key, value]) => {
         const source = englishSource(key);
-        return source !== undefined && hasLettersOutsidePlaceholders(source) && value === source;
+        return (
+          source !== undefined &&
+          !SAME_IN_EVERY_LANGUAGE.has(key) &&
+          hasLettersOutsidePlaceholders(source) &&
+          value === source
+        );
       })
       .map(([key]) => key);
     expect(untranslated).toEqual([]);
@@ -281,7 +306,11 @@ describe('locale files', () => {
     const wrong = Object.entries(localeCatalog(language))
       .filter(([key, value]) => {
         const source = englishSource(key);
-        if (source === undefined || !hasLettersOutsidePlaceholders(source)) {
+        if (
+          source === undefined ||
+          SAME_IN_EVERY_LANGUAGE.has(key) ||
+          !hasLettersOutsidePlaceholders(source)
+        ) {
           return false;
         }
         return !script.test(value) || (foreign?.test(value) ?? false);
