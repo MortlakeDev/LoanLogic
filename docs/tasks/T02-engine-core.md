@@ -175,33 +175,53 @@ fail on the engine of PR #4 before these changes: `cashflows-regz-single-payment
 ## Completion notes
 
 **Status:** in review, [PR #4](https://github.com/MortlakeDev/LoanLogic/pull/4) (branch
-`task/T02-engine-core`). Implemented against SPEC v0.2.1 (the months-back
-clarification of PR #3).
+`task/T02-engine-core`). Implements SPEC v0.2.2: `main` (with #3 and the action pins of
+#5) is merged in, and the v0.2.2 changes of the architect review are done.
 
 **Acceptance criteria (local evidence, 2026-10-20, Windows, Node 24.19):**
 
-- All 89 core vectors pass through the public API (`src/engine/vectors.test.ts`, one test
-  per vector, SPEC §14 rules, plus I1–I9 on every loan). The three vectors PR #3 adds
-  (`regz-single-payment-month-end-clamp`, `regz-single-payment-month-end-days`,
-  `cashflows-aprc-month-end-clamp`) pass in a local run; `main` is merged into this
-  branch once PR #3 is merged.
-- `npm run check` passes: 1 922 tests (1 299 in the engine). Coverage of `src/engine`
-  is 99.9 % statements, 99.9 % branches and 100 % functions; `vite.config.ts` enforces
+- All 106 core vectors pass through the public API (`src/engine/vectors.test.ts`, one
+  test per vector, SPEC §14 rules, plus I1–I9 on every loan).
+- `npm run check` passes: 2 010 tests (1 387 in the engine). Coverage of `src/engine` is
+  99.9 % statements, 99.9 % branches and 100 % functions; `vite.config.ts` enforces
   ≥ 95 %. `npm run e2e`: 148 passed, 8 skipped (the known WebKit-on-Windows cases).
 - The engine imports only decimal.js; ledger money is `bigint` minor units and exact
   rationals; there is no JS `Date` and no `Intl` (ESLint bans both in `src/engine`).
 - TSDoc with units on the public API and on every input field.
-- CI sets up Python 3.12 and runs `generate.py --check` and the reference self-tests;
-  `scripts/lib/spdx.mjs` requires the `#` header in `.py` files.
+- CI sets up Python 3.12 and runs `generate.py --check` (106 vectors) and the reference
+  self-tests; `scripts/lib/spdx.mjs` requires the `#` header in `.py` files. Every
+  action is pinned to a commit SHA (#5).
 - Benchmark: a 1 200-period annuity with all eleven rate metrics takes a median of
-  14–16 ms in Node (budget 50 ms), via `npm run bench`.
-- Every SPEC ambiguity is listed below and in the PR, with a proposed resolution.
+  about 15 ms in Node (budget 50 ms), via `npm run bench`.
+- Every SPEC question of the PR is answered in v0.2.2.
+
+**SPEC v0.2.2 changes in this round:**
+
+1. **Single payment** (§9.3 a, §9.7): `metrics/us-regz.ts` sums the rate flows per date
+   and drops zero sums. The rule applies when exactly two dates remain: a same-date fee,
+   zero interim flows, or an early close at the first payment. The two sums must have
+   opposite signs, and the unit-period rate must lie in `[−0.99, 1e7]`.
+2. **Result range** (§10): `x × m`, `(1 + x)^m − 1` and the single-payment APR fail with
+   `IRR_NO_CONVERGENCE` outside ±10⁹ % (`withinResultRange` in `metrics/display.ts`).
+3. **Validation** (§13): percentages (the rate, percentage fees, a percentage balloon)
+   that are not multiples of 10⁻¹⁰ give `TOO_MANY_DECIMALS`. A fixed fee above 1e15 and
+   a percentage fee above 100 give `FEE_RANGE`, checked against the `calc` as given.
+   Upfront fees paid at closing of at least the amount give `FEE_RANGE` on `fees`
+   (phase 2).
+4. **Exact payment basis** (§5.1, §9.6): no `NEG_AMORTIZATION`; such rows have a negative
+   principal. The explanation is `instalment.annuity-exact-basis` with `P`, `N`, `j`,
+   `dayCount`, `Astar`, `A`.
+5. Tests follow the new rules, each with a case that fails under the old behaviour:
+   - the 40-digit check now uses the smallest valid rate, 10⁻¹⁰ %;
+   - the edge tests use the new fee maximums;
+   - the IRR_MULTIPLE pass-through of `calculateLoan` is tested with a wrapped metrics
+     module, because a valid loan now always has a positive inflow at `D0`.
 
 **Deviations and decisions:**
 
 - The performance budget runs as `npm run bench` (`vitest.bench.config.ts`) and as its
   own CI step, not inside `npm run coverage`. Under coverage instrumentation and dozens of
-  parallel test files the timing was not meaningful (50.6 ms there against 14–16 ms on
+  parallel test files the timing was not meaningful (50.6 ms there against about 15 ms on
   its own).
 - Module layout follows the brief. Additions: `money.ts` (DecimalString and minor units),
   `types.ts` (shared types), `metrics/solve.ts` and `metrics/display.ts` (shared metric
@@ -209,44 +229,19 @@ clarification of PR #3).
   `validate.ts`).
 - Irrational values use a decimal.js clone isolated from the global configuration
   (`defaults: true`). It works at 50 + 10 digits, plus one digit per leading zero of
-  `j/m`, plus the digits of `P` in minor units. Without this widening a tiny rate or a
-  huge financed fee lost digits.
+  `j/m`, plus the digits of `P` in minor units, so every irrational value keeps at least
+  40 relative digits (§1.6).
 - The rate solvers scale every amount by one exact power of two before the conversion to
-  doubles, so values beyond the double range (fees have no upper bound) can neither throw
-  nor underflow into a false root. In the normal range results are bit-identical.
-- A second, independent multi-agent review found six confirmed defects, all fixed with
-  tests that fail without the fix: a crash on a huge fee, underflow and overflow in the
-  solvers, lost digits for tiny rates and for huge principals, untested warning and
-  explanation paths, the benchmark time missing from CI logs, and missing TSDoc units.
-  Among the checks, one reviewer compared the engine with its own SPEC-only reference on
-  7 567 random loans and found no mismatch.
+  doubles. Since v0.2.2 bounds the fees this is a safeguard; in the normal range results
+  are bit-identical.
+- An independent multi-agent review found six defects in the first round, all fixed with
+  tests that fail without the fix. The architect's differential test against the
+  reference (6 000 inputs) found no difference beyond the rules that v0.2.2 changed.
 - Independence: nothing under `tools/reference` was read except the ISO 4217 data lines
   of `currency.py` (extracted as code/digit pairs); its scripts were run.
+- Local note: on a cold Vitest cache, `npm run check` occasionally fails to start a worker
+  for an app test file ("Timeout waiting for worker to respond"). A second run passes, and
+  CI has not shown it.
 
-**Open questions for the architect (details and proposals in PR #4):**
-
-1. Reg Z single-payment rule: are "exactly two flows" counted before or after summing
-   same-date flows, and does a loan with N ≥ 2 that closes early after one payment use it?
-   Today: the flows are counted as given, and the actual payments count for loans.
-2. Should the single-payment closed form be held to the §10 range `[−0.99, 1e7]`?
-3. Input bounds: a maximum for fee values and for the number of decimals of rates and
-   percentages. Long percentage strings slow the exact evaluation.
-4. Upfront fees larger than the amount are accepted. Should that be a validation error?
-5. Is a negative balloon instalment acceptable with a negative rate? §3.4 names only equal
-   principal and bullet.
-6. Equal principal, remainder first, `q = 0`: early close at k = 1. Keep?
-7. APRC (solved in X) and irrEffective (from r) can differ in availability at the range
-   edges, and irrEffective can overflow (reported as `IRR_NO_CONVERGENCE`).
-8. The exact payment basis gives `NEG_AMORTIZATION` on very long terms. Intended?
-9. What `i` should `instalment.annuity` show for the day-count exact basis? Omitted today.
-10. Interpretations to confirm:
-    - ledger `annualRate` as entered;
-    - warning params;
-    - validation details (non-object input, term forms, `rateMethods: []`, options
-      irrelevant to the type, cash-flow date order and period rules);
-    - the §10 scaling wording;
-    - backward counting mapping several dates to one time;
-    - 40 digits read as relative precision;
-    - cross-engine `Math.exp`, within the §9.4 tolerance;
-    - 20-digit explanation strings;
-    - generic metrics fixed at 2 decimals.
+**Open questions:** none. The 17 questions of the first round are answered in SPEC
+v0.2.2 (§17), and points 10–17 confirm the engine's interpretations.
