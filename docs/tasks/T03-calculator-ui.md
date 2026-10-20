@@ -116,9 +116,10 @@ State lives in `src/app/state` as signals; components hold no business logic.
     numbers are decimal strings (`paymentsCount: "242"`) and `methods` is a
     comma-separated list of method ids; parse each value before formatting it with the
     i18n helpers;
-  - `TOO_MANY_DECIMALS` on a money field means more decimals than the currency's minor
-    units; on a percentage field it means a value that is not a multiple of 10⁻¹⁰
-    (trailing zeros such as "6.50000000000" are fine);
+  - `TOO_MANY_DECIMALS` on a money field means an amount that is not a whole number of
+    the currency's minor units ("100.100" USD is fine, "100.005" USD is not, SPEC §1.2);
+    on a percentage field it means a value that is not a multiple of 10⁻¹⁰ (trailing
+    zeros such as "6.50000000000" are fine);
   - `FEE_RANGE` on `fees` means the upfront fees paid at closing add up to at least the
     requested amount (financed fees do not count): it belongs to the fees section, not
     to one fee;
