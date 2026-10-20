@@ -13,7 +13,7 @@
 
 import { computeCashFlowRates } from './cashflows';
 import type { EngineWarning, CashFlowResult, LoanResult } from './types';
-import { ledgerRows, loanCashFlows, loanSummary } from './ledger';
+import { feeAmounts, ledgerRows, loanCashFlows, loanSummary } from './ledger';
 import { computeRates } from './metrics/index';
 import { buildSchedule } from './schedule/build';
 import { validateCashFlowInput, validateLoanInput } from './validate';
@@ -29,6 +29,7 @@ export type {
   EngineWarning,
   ErrorCode,
   Explain,
+  FeeAmount,
   FeeInput,
   FrequencyId,
   LedgerRow,
@@ -50,6 +51,7 @@ export { RATE_METHOD_IDS } from './types';
 export { CURRENCY_CODES, minorUnits } from './currency';
 export { FREQUENCY_IDS } from './frequency';
 export { DAY_COUNT_IDS } from './daycount';
+export { type LocalDate, isLastDayOfMonth, parseIsoDate } from './date';
 export { type InvariantViolation, checkInvariants } from './ledger';
 
 /**
@@ -58,8 +60,8 @@ export { type InvariantViolation, checkInvariants } from './ledger';
  *
  * @param input A `LoanInput` (SPEC §15), checked at run time; any value is accepted.
  * @returns On success the warnings, the summary and rows (money as decimal strings at the
- *   currency's minor units), the rates by method id (`value` in percent) and the
- *   instalment's explanation; otherwise every error of the first failing validation phase,
+ *   currency's minor units), the rates by method id (`value` in percent), the
+ *   instalment's explanation and the amounts of every fee item; otherwise every error of the first failing validation phase,
  *   each with its field path. `NEG_AMORTIZATION` (phase 3) is reported alone.
  */
 export function calculateLoan(input: unknown): LoanResult {
@@ -101,6 +103,7 @@ export function calculateLoan(input: unknown): LoanResult {
     rows,
     rates: outcome.rates,
     explain: schedule.explain,
+    fees: feeAmounts(terms, schedule),
   };
 }
 

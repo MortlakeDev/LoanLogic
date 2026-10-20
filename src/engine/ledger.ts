@@ -13,7 +13,14 @@ import { formatMinor } from './money';
 import { rational } from './rational';
 import { pow10 } from './rounding';
 import type { Schedule } from './schedule/build';
-import type { CashFlow, LedgerRow, LoanSummary, LoanTerms, RepaymentType } from './types';
+import type {
+  CashFlow,
+  FeeAmount,
+  LedgerRow,
+  LoanSummary,
+  LoanTerms,
+  RepaymentType,
+} from './types';
 
 /**
  * The ledger rows of a schedule (SPEC §8.1): money as decimal strings at the currency's
@@ -143,6 +150,29 @@ export function loanSummary(terms: LoanTerms, schedule: Schedule): LoanSummary {
  * @param terms The validated terms the schedule was built from.
  * @param schedule The schedule of `terms`.
  */
+/**
+ * The amounts of every fee and insurance item, in input order (SPEC §8.1): an upfront
+ * item's amount, or a periodic item's first-period amount and its total over the
+ * schedule actually paid (after an early close).
+ */
+export function feeAmounts(terms: LoanTerms, schedule: Schedule): FeeAmount[] {
+  const money = (value: bigint): string => formatMinor(value, terms.minorUnits);
+  return terms.fees.map((fee, index) => {
+    if (fee.kind === 'upfront') {
+      const item = schedule.upfront.items.find((upfront) => upfront.fee === fee);
+      const amount = money(item?.amount ?? 0n);
+      return { id: fee.id, kind: fee.kind, amount, total: amount };
+    }
+    const amounts = schedule.rows.map((row) => row.itemAmounts[index] ?? 0n);
+    return {
+      id: fee.id,
+      kind: fee.kind,
+      amount: money(amounts[0] ?? 0n),
+      total: money(amounts.reduce((total, amount) => total + amount, 0n)),
+    };
+  });
+}
+
 export function loanCashFlows(terms: LoanTerms, schedule: Schedule): CashFlow[] {
   const scale = pow10(terms.minorUnits);
   const counted = terms.fees.map((fee) => fee.kind !== 'upfront' && fee.inApr);
