@@ -63,6 +63,17 @@ describe('Sheet', () => {
     expect(screen.getByRole('dialog').className).toBe('sheet');
   });
 
+  it('keeps Tab and Shift+Tab inside when the panel itself has focus', () => {
+    render(<ExplainSheet open onClose={() => undefined} />);
+    const dialog = screen.getByRole('dialog');
+    dialog.focus();
+    expect(fireEvent.keyDown(dialog, { key: 'Tab', shiftKey: true })).toBe(false);
+    expect(document.activeElement).toBe(screen.getByRole('link', { name: 'Formula' }));
+    dialog.focus();
+    expect(fireEvent.keyDown(dialog, { key: 'Tab' })).toBe(false);
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Close' }));
+  });
+
   it('treats a radio group as one tab stop when it is last or first', () => {
     render(
       <Sheet open onClose={() => undefined} labelledBy="radio-title" closeLabel="Close">

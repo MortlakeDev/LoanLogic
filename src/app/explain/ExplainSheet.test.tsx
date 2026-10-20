@@ -142,8 +142,63 @@ describe('ExplainSheet', () => {
 
   it('names the time basis of an annual rate', () => {
     const dialog = renderRate('euAprc');
-    expect(valueOf(dialog, 'Time measured in')).toBe('whole payment periods');
+    const term = Array.from(dialog.querySelectorAll('dt')).find((dt) =>
+      dt.textContent.startsWith('Time basis'),
+    );
+    // The label, then the symbol t_k.
+    expect(term?.textContent).toBe('Time basis tk');
+    expect(term?.querySelector('sub')?.textContent).toBe('k');
+    expect(valueOf(dialog, 'Time basis')).toBe('whole payment periods');
     expect(within(dialog).getByText('7.2%')).toBeTruthy();
+  });
+
+  it('counts the payments as the rate does, without a periodic fee left out of it', () => {
+    updateForm({
+      amount: '100000.00',
+      annualRatePct: '5',
+      termMode: 'payments',
+      termPayments: '12',
+      fees: [
+        {
+          uid: 'service',
+          name: '',
+          kind: 'periodic',
+          calc: 'fixed',
+          value: '10.00',
+          financing: 'paid',
+          inApr: false,
+        },
+      ],
+    });
+    // The payments carry the fee; the APR was solved without it (SPEC §9.1).
+    expect(current().summary.totalPayments).toBe('102848.98');
+    const dialog = renderRate('usRegZApr');
+    expect(within(dialog).getByText('12 payments totalling $102,728.98')).toBeTruthy();
+    expect(within(dialog).queryByText(/Fees in the rate/)).toBeNull();
+    expect(within(dialog).getByText('5.000%')).toBeTruthy();
+  });
+
+  it('counts a periodic fee included in the rate with the payments', () => {
+    updateForm({
+      amount: '100000.00',
+      annualRatePct: '5',
+      termMode: 'payments',
+      termPayments: '12',
+      fees: [
+        {
+          uid: 'service',
+          name: '',
+          kind: 'periodic',
+          calc: 'fixed',
+          value: '10.00',
+          financing: 'paid',
+          inApr: true,
+        },
+      ],
+    });
+    const dialog = renderRate('usRegZApr');
+    expect(within(dialog).getByText('12 payments totalling $102,848.98')).toBeTruthy();
+    expect(within(dialog).getByText('Fees in the rate: $120.00')).toBeTruthy();
   });
 
   it('explains the CN annualized rate (simple) of the CN scenario', () => {

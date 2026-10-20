@@ -253,6 +253,95 @@ test.describe('keyboard navigation', () => {
   });
 });
 
+test.describe('the calculator from the keyboard (1280 px)', () => {
+  test.use({ viewport: { width: 1280, height: 800 } });
+
+  test('enter an amount, open and close the explanation, Advanced and the frequency', async ({
+    page,
+  }) => {
+    const linkKey = await linkTabKey(page);
+    const tab = linkKey ?? 'Tab';
+    await gotoApp(page);
+    const results = page.locator('section.results');
+    const hero = results.locator('.hero-amount .visually-hidden');
+    const label = results.locator('.hero__label');
+    await expect(label).toHaveText(message('en', 'payment.monthly'));
+    const before = await hero.textContent();
+    expect(before, 'the opening payment').toMatch(/^\$[\d,]+\.\d{2}$/);
+
+    // Skip link, then into main: the amount field is the first stop there.
+    if (linkKey === undefined) {
+      // No key reaches links in this browser build (NO_LINK_TAB_REASON): start from main.
+      await page.getByRole('main').focus();
+    } else {
+      await page.keyboard.press(linkKey);
+      await expect(skipLink(page)).toBeFocused();
+      await page.keyboard.press('Enter');
+    }
+    await expect(page.getByRole('main')).toBeFocused();
+    await page.keyboard.press(tab);
+    const amount = page.locator('#field-amount');
+    await expect(amount).toBeFocused();
+    // A text field draws its keyboard ring on its box (the input, its affix and border).
+    await expect
+      .poll(() => focusRingProblems(page.locator('.control:has(> #field-amount)')), {
+        message: 'the amount field box should show a focus ring',
+      })
+      .toEqual([]);
+    await page.keyboard.press('ControlOrMeta+A');
+    await page.keyboard.type('400000');
+    await expect(amount).toHaveValue('400000');
+    await expect(hero).not.toHaveText(before ?? '');
+    await expect(hero).toHaveText(/^\$[\d,]+\.\d{2}$/);
+
+    // "How it's calculated" opens the Explain sheet; Esc closes it and focus returns.
+    const howCalculated = results.getByRole('button', {
+      name: message('en', 'hero.howCalculated'),
+      exact: true,
+    });
+    await howCalculated.focus();
+    await page.keyboard.press('Enter');
+    const sheet = page.getByRole('dialog', {
+      name: message('en', 'explain.instalmentTitle'),
+      exact: true,
+    });
+    await expect(sheet).toBeVisible();
+    await expect
+      .poll(() => sheet.evaluate((element) => element.contains(document.activeElement)), {
+        message: 'focus should move into the sheet',
+      })
+      .toBe(true);
+    await page.keyboard.press('Escape');
+    await expect(sheet).toBeHidden();
+    await expectVisibleFocus(howCalculated, '"How it\'s calculated" after Escape');
+
+    // The Advanced disclosure toggles with Enter.
+    const advanced = page.locator('#advanced-button');
+    await advanced.focus();
+    await expect(advanced).toHaveAttribute('aria-expanded', 'false');
+    await page.keyboard.press('Enter');
+    await expect(advanced).toHaveAttribute('aria-expanded', 'true');
+    await expect(page.locator('#advanced-content')).toBeVisible();
+    await page.keyboard.press('Enter');
+    await expect(advanced).toHaveAttribute('aria-expanded', 'false');
+
+    // Arrow keys move the payment frequency; the hero label follows. (Weekly would give
+    // more than 1 200 payments over 30 years, so the moves stay within the valid ones.)
+    const monthly = page.locator('input[name="frequency"][value="monthly"]');
+    await monthly.focus();
+    await expect(monthly).toBeChecked();
+    await page.keyboard.press('ArrowRight');
+    await expect(page.locator('input[name="frequency"][value="quarterly"]')).toBeChecked();
+    await expect(label).toHaveText(message('en', 'payment.quarterly'));
+    await page.keyboard.press('ArrowLeft');
+    await page.keyboard.press('ArrowLeft');
+    const biweekly = page.locator('input[name="frequency"][value="biweekly"]');
+    await expect(biweekly).toBeChecked();
+    await expect(biweekly).toBeFocused();
+    await expect(label).toHaveText(message('en', 'payment.biweekly'));
+  });
+});
+
 test.describe('keyboard navigation on a phone-sized screen', () => {
   test.use({ viewport: { width: 360, height: 740 } });
 

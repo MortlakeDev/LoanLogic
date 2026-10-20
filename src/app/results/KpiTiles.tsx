@@ -3,6 +3,7 @@
 
 import type { JSX } from 'preact';
 import type { FrequencyId } from '../../engine';
+import type { MessageKey } from '../../i18n';
 import { costStructure, durationOf, toMinor } from '../state/derived';
 import { currencyDigits, money } from '../state/display';
 import { t } from '../state/i18n';
@@ -28,6 +29,14 @@ export function overText(paymentsCount: number, frequency: FrequencyId): string 
   return t('kpi.over', { duration: text });
 }
 
+/** What the total of payments covers, by the per-payment items the loan charges. */
+function paymentsCaption(periodic: boolean, insurance: boolean): MessageKey {
+  if (periodic) {
+    return insurance ? 'kpi.paymentsCaptionFeesInsurance' : 'kpi.paymentsCaptionFees';
+  }
+  return insurance ? 'kpi.paymentsCaptionInsurance' : 'kpi.paymentsCaption';
+}
+
 interface Tile {
   readonly key: string;
   readonly label: string;
@@ -49,9 +58,8 @@ export function KpiTiles(props: {
   const feesPart = costStructure(summary, digits).parts.find((part) => part.key === 'fees');
   const hasFees = feesPart !== undefined && toMinor(feesPart.amount, digits) !== 0n;
   // Periodic fees and insurance are part of each payment; upfront fees are not.
-  const hasPeriodic = fees.some(
-    (fee) => fee.kind !== 'upfront' && toMinor(fee.total, digits) !== 0n,
-  );
+  const charged = (kind: 'periodic' | 'insurance'): boolean =>
+    fees.some((fee) => fee.kind === kind && toMinor(fee.total, digits) !== 0n);
   const tiles: readonly Tile[] = [
     {
       key: 'interest',
@@ -71,7 +79,7 @@ export function KpiTiles(props: {
       key: 'payments',
       label: t('kpi.totalPayments'),
       value: money(summary.totalPayments),
-      caption: t(hasPeriodic ? 'kpi.paymentsCaptionFees' : 'kpi.paymentsCaption'),
+      caption: t(paymentsCaption(charged('periodic'), charged('insurance'))),
       accent: false,
     },
   ];

@@ -8,8 +8,9 @@
  *
  * The models are built from the payload alone, so a formula shown from them reproduces
  * the engine's result: `i` is shown as `j ÷ m` (never as a rounded quotient), exact values
- * keep all their digits and irrational ones show 10 significant digits. Words (a day-count
- * method, a time basis) stay message keys or ids, which the components translate.
+ * keep all their digits and irrational ones show 10 significant digits (`computedNumber`).
+ * Words (a day-count method, a time basis) stay message keys or ids, which the components
+ * translate.
  */
 
 import {
@@ -132,11 +133,18 @@ function parse(markup: string): FormulaPart[] {
 
 /**
  * How a payload value is shown: money at the currency's minor units, a count, an exact
- * rate with all its digits, an irrational value with 10 significant digits (DESIGN §8.6),
- * or a word.
+ * rate with all its digits, a computed value (`computedNumber`), the exact instalment `A*`
+ * (computed, and never coarser than the minor units), or a word.
  */
 type ValueFormat =
-  'money' | 'count' | 'exact' | 'significant' | 'dayCount' | 'timeBasis' | 'compounding';
+  | 'money'
+  | 'count'
+  | 'exact'
+  | 'computed'
+  | 'instalment'
+  | 'dayCount'
+  | 'timeBasis'
+  | 'compounding';
 
 interface ValueSpec {
   readonly symbol: string;
@@ -150,24 +158,24 @@ const VALUE_SPECS: ReadonlyMap<string, ValueSpec> = new Map<string, ValueSpec>([
   ['N', { symbol: 'N', label: 'explain.symN', format: 'count' }],
   ['j', { symbol: 'j', label: 'explain.symJ', format: 'exact' }],
   ['m', { symbol: 'm', label: 'explain.symM', format: 'count' }],
-  ['i', { symbol: 'i', label: 'explain.symI', format: 'significant' }],
-  ['Astar', { symbol: 'A^{*}', label: 'explain.symAstar', format: 'significant' }],
+  ['i', { symbol: 'i', label: 'explain.symI', format: 'computed' }],
+  ['Astar', { symbol: 'A^{*}', label: 'explain.symAstar', format: 'instalment' }],
   ['A', { symbol: 'A', label: 'explain.symA', format: 'money' }],
   ['Bal', { symbol: 'Bal', label: 'explain.symBal', format: 'money' }],
   ['q', { symbol: 'q', label: 'explain.symQ', format: 'money' }],
   ['I1', { symbol: 'I_{1}', label: 'explain.symI1', format: 'money' }],
   ['dayCount', { symbol: 'YF_{k}', label: 'explain.symDayCount', format: 'dayCount' }],
   ['c', { symbol: 'c', label: 'explain.symC', format: 'compounding' }],
-  ['k', { symbol: 'k', label: 'explain.symK', format: 'significant' }],
-  ['r', { symbol: 'r', label: 'explain.symR', format: 'significant' }],
-  ['X', { symbol: 'X', label: 'explain.symX', format: 'significant' }],
+  ['k', { symbol: 'k', label: 'explain.symK', format: 'computed' }],
+  ['r', { symbol: 'r', label: 'explain.symR', format: 'computed' }],
+  ['X', { symbol: 'X', label: 'explain.symX', format: 'computed' }],
   ['timeBasis', { symbol: 't_{k}', label: 'explain.symTimeBasis', format: 'timeBasis' }],
   ['Af', { symbol: 'A_{f}', label: 'explain.symAf', format: 'money' }],
   ['days', { symbol: 'D', label: 'explain.symDays', format: 'count' }],
   ['months', { symbol: 'M', label: 'explain.symMonths', format: 'count' }],
-  ['unitPeriodsPerYear', { symbol: 'U', label: 'explain.symUnitPeriods', format: 'significant' }],
+  ['unitPeriodsPerYear', { symbol: 'U', label: 'explain.symUnitPeriods', format: 'computed' }],
   ['t', { symbol: 't', label: 'explain.symT', format: 'count' }],
-  ['f', { symbol: 'f', label: 'explain.symF', format: 'significant' }],
+  ['f', { symbol: 'f', label: 'explain.symF', format: 'computed' }],
 ]);
 
 const TIME_BASIS_KEYS: ReadonlyMap<string, MessageKey> = new Map<string, MessageKey>([
@@ -175,6 +183,46 @@ const TIME_BASIS_KEYS: ReadonlyMap<string, MessageKey> = new Map<string, Message
   ['counted-back', 'explain.timeBasisCountedBack'],
   ['days-365', 'explain.timeBasisDays365'],
 ]);
+
+/**
+ * The most significant digits a payload value of a computed quantity has when it is
+ * exact: SPEC §9.6 gives a value that does not terminate with at least 12, so a shorter
+ * one is the exact value (or one whose further digits are zeros).
+ */
+const EXACT_DIGITS = 11;
+
+/** Significant digits of a plain decimal string ("0.015378162651" → 11, "1200" → 2). */
+function significantDigits(value: string): number {
+  const [whole = '', fraction = ''] = value.replace(/^[+-]/, '').split('.');
+  return (whole + fraction).replace(/^0+/, '').replace(/0+$/, '').length;
+}
+
+/**
+ * Formats a computed payload value (DESIGN §8.6): all its digits when it is exact, else
+ * 10 significant digits. An exact value with more than 11 digits looks like an irrational
+ * one and is rounded too; the payload does not say which it is.
+ */
+function computedNumber(value: string, locale: string): string {
+  return significantDigits(value) <= EXACT_DIGITS
+    ? formatNumber(value, locale)
+    : formatNumber(value, locale, { maximumSignificantDigits: 10 });
+}
+
+/**
+ * Formats the exact instalment `A*` like `computedNumber`, but never with fewer decimals
+ * than the currency's minor units: 10 significant digits of 124074072957.4017 would show
+ * 124,074,073,000, coarser than the instalment it rounds to (124,074,072,957.40).
+ */
+function instalmentNumber(value: string, locale: string, minorUnits: number): string {
+  return significantDigits(value) <= EXACT_DIGITS
+    ? formatNumber(value, locale, { minimumFractionDigits: minorUnits })
+    : formatNumber(value, locale, {
+        maximumSignificantDigits: 10,
+        minimumFractionDigits: minorUnits,
+        maximumFractionDigits: minorUnits,
+        roundingPriority: 'morePrecision',
+      });
+}
 
 /** Formats payload values for one locale and currency. */
 class Payload {
@@ -210,8 +258,10 @@ class Payload {
           minimumFractionDigits: this.minorUnits,
           maximumFractionDigits: this.minorUnits,
         });
-      case 'significant':
-        return formatNumber(value, this.locale, { maximumSignificantDigits: 10 });
+      case 'computed':
+        return computedNumber(value, this.locale);
+      case 'instalment':
+        return instalmentNumber(value, this.locale, this.minorUnits);
       default:
         return formatNumber(value, this.locale);
     }

@@ -43,10 +43,22 @@ function trimLeadingZeros(digits: string): string {
   return trimmed === '' ? '0' : trimmed;
 }
 
-/** Builds the engine's decimal string from validated digit runs. */
-function toDecimalString(negative: boolean, integer: string, fraction: string): string {
+/**
+ * Digits allowed on each side of the decimal separator: far beyond any valid input, and
+ * within what the formatters can show again (Intl prints at most 100 decimals).
+ */
+const MAX_DIGITS = 100;
+
+/** Builds the engine's decimal string from validated digit runs, or fails if too long. */
+function toDecimal(negative: boolean, integer: string, fraction: string): DecimalInputResult {
   const whole = trimLeadingZeros(integer);
-  return `${negative ? '-' : ''}${whole}${fraction === '' ? '' : `.${fraction}`}`;
+  if (whole.length > MAX_DIGITS || fraction.length > MAX_DIGITS) {
+    return FAIL;
+  }
+  return {
+    ok: true,
+    value: `${negative ? '-' : ''}${whole}${fraction === '' ? '' : `.${fraction}`}`,
+  };
 }
 
 /** Integer digits with optional grouping, valid only between groups of three digits. */
@@ -108,7 +120,7 @@ export function parseDecimalInput(
     return FAIL;
   }
   if (kind === 'integer') {
-    return !negative && /^\d+$/.test(body) ? { ok: true, value: trimLeadingZeros(body) } : FAIL;
+    return !negative && /^\d+$/.test(body) ? toDecimal(false, body, '') : FAIL;
   }
   if (kind === 'percent') {
     const match = /^(\d*)(?:[.,](\d*))?$/.exec(body);
@@ -117,7 +129,7 @@ export function parseDecimalInput(
     if (match === null || (integer === '' && fraction === '')) {
       return FAIL;
     }
-    return { ok: true, value: toDecimalString(negative, integer, fraction) };
+    return toDecimal(negative, integer, fraction);
   }
 
   const { group, decimal } = separatorsOf(locale);
@@ -145,14 +157,12 @@ export function parseDecimalInput(
     return FAIL;
   }
   if (integerText === '') {
-    return fraction === '' ? FAIL : { ok: true, value: toDecimalString(negative, '0', fraction) };
+    return fraction === '' ? FAIL : toDecimal(negative, '0', fraction);
   }
   // "6.875" where "." groups: a decimal point from another region's keypad, or grouping?
   if (group === '.' && at === undefined && /^\d{1,3}\.\d{3}$/.test(integerText)) {
     return FAIL;
   }
   const integer = parseGroupedInteger(integerText, isGroup);
-  return integer === null
-    ? FAIL
-    : { ok: true, value: toDecimalString(negative, integer, fraction) };
+  return integer === null ? FAIL : toDecimal(negative, integer, fraction);
 }

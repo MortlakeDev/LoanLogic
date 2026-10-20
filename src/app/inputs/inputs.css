@@ -267,7 +267,7 @@
 
 /* ---------- Advanced ---------- */
 
-.advanced > .disclosure__content {
+.advanced > .disclosure__content > .disclosure__inner > .disclosure__body {
   gap: var(--inputs-gap);
 }
 
@@ -277,7 +277,7 @@
 
 /* ---------- Fees and Advanced: a disclosure on a phone, open on a desktop ---------- */
 
-.inputs__more > .disclosure__content {
+.inputs__more > .disclosure__content > .disclosure__inner > .disclosure__body {
   gap: var(--inputs-gap);
 }
 
@@ -294,9 +294,17 @@
     display: none;
   }
 
-  /* Overrides `.disclosure:not(.disclosure--open) > .disclosure__content` (hidden). */
+  /* Overrides `.disclosure:not(.disclosure--open) > .disclosure__content` (closed). */
   .inputs .inputs__more.disclosure > .disclosure__content {
-    display: grid;
+    grid-template-rows: 1fr;
+    visibility: visible;
+  }
+
+  .inputs__more > .disclosure__content > .disclosure__inner {
+    overflow: visible;
+  }
+
+  .inputs__more > .disclosure__content > .disclosure__inner > .disclosure__body {
     gap: var(--space-6);
     padding: 0;
   }

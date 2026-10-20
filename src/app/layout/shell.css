@@ -11,10 +11,12 @@
   --compact-bar-height: 3.5rem;
 }
 
-/* A focused control is never hidden behind the sticky compact bar (WCAG 2.2 SC 2.4.11). */
+/* A focused control is never hidden behind the sticky compact bar (WCAG 2.2 SC 2.4.11).
+   The extra room covers WebKit, which aligns an input's text line rather than its box with
+   the padding, and leaves the focus ring and the label above it visible. */
 @media (max-width: 63.99rem) {
   html {
-    scroll-padding-top: calc(var(--compact-bar-height) + var(--space-2));
+    scroll-padding-top: calc(var(--compact-bar-height) + var(--space-8));
   }
 }
 
@@ -129,16 +131,9 @@
   min-width: 0;
 }
 
-.language-pill__icon {
-  position: absolute;
-  inset-inline-start: var(--space-4);
-  color: var(--color-text-secondary);
-  pointer-events: none;
-}
-
+/* The globe belongs to the region pill (DESIGN §7.1, T05); this pill shows the endonym. */
 .language-pill__select {
   max-width: 16rem;
-  padding-inline-start: calc(var(--space-4) + 1rem + var(--space-2));
 }
 
 /* Theme menu: a panel under the icon button, aligned to its end edge. */

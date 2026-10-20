@@ -137,20 +137,6 @@ export function loanSummary(terms: LoanTerms, schedule: Schedule): LoanSummary {
 }
 
 /**
- * The borrower's cash flows that the rate metrics use (SPEC §9.1), in date order:
- *
- * - at `D0` (period 0) the inflow `amount + financed items not in the APR − paid items in
- *   the APR` (Regulation Z's amount financed);
- * - at each payment date (period k) the outflow `−(interest + principal + Σ periodic fee
- *   and insurance items with inApr)`.
- *
- * Amounts are exact rationals in major units (+ received, − paid). Voluntary events and
- * penalties do not exist in M1.
- *
- * @param terms The validated terms the schedule was built from.
- * @param schedule The schedule of `terms`.
- */
-/**
  * The amounts of every fee and insurance item, in input order (SPEC §8.1): an upfront
  * item's amount, or a periodic item's first-period amount and its total over the
  * schedule actually paid (after an early close).
@@ -173,6 +159,20 @@ export function feeAmounts(terms: LoanTerms, schedule: Schedule): FeeAmount[] {
   });
 }
 
+/**
+ * The borrower's cash flows that the rate metrics use (SPEC §9.1), in date order:
+ *
+ * - at `D0` (period 0) the inflow `amount + financed items not in the APR − paid items in
+ *   the APR` (Regulation Z's amount financed);
+ * - at each payment date (period k) the outflow `−(interest + principal + Σ periodic fee
+ *   and insurance items with inApr)`.
+ *
+ * Amounts are exact rationals in major units (+ received, − paid). Voluntary events and
+ * penalties do not exist in M1.
+ *
+ * @param terms The validated terms the schedule was built from.
+ * @param schedule The schedule of `terms`.
+ */
 export function loanCashFlows(terms: LoanTerms, schedule: Schedule): CashFlow[] {
   const scale = pow10(terms.minorUnits);
   const counted = terms.fees.map((fee) => fee.kind !== 'upfront' && fee.inApr);

@@ -244,14 +244,18 @@
   font-size: var(--font-size-control);
 }
 
-/* The box shows focus (border and ring); the outline stays for keyboard users. */
-.control__input:focus {
-  outline: none;
-}
+/* The box shows focus (border and ring) and, for keyboard users, the outline moves from
+   the input to the box. Without :has() (Firefox before 121) the input keeps its own
+   outline, so only browsers that can draw the box's outline drop the input's. */
+@supports selector(:has(*)) {
+  .control__input:focus {
+    outline: none;
+  }
 
-.control:has(.control__input:focus-visible) {
-  outline: var(--focus-ring-width) solid var(--color-focus-ring);
-  outline-offset: var(--focus-ring-offset);
+  .control:has(.control__input:focus-visible) {
+    outline: var(--focus-ring-width) solid var(--color-focus-ring);
+    outline-offset: var(--focus-ring-offset);
+  }
 }
 
 .control__affix {
@@ -260,7 +264,7 @@
   font-size: var(--font-size-sm);
 }
 
-/* A native select styled as a control. */
+/* A native select styled as a control; the chevron icon is drawn by `.select-wrap`. */
 .select {
   appearance: none;
   min-width: 0;
@@ -269,26 +273,40 @@
   border: 1px solid var(--color-border-strong);
   border-radius: var(--radius-md);
   background-color: var(--color-surface-2);
-  /* Chevron drawn with currentColor so it follows the theme. */
-  background-image:
-    linear-gradient(45deg, transparent 50%, currentColor 50%),
-    linear-gradient(135deg, currentColor 50%, transparent 50%);
-  background-position:
-    right 1.125rem center,
-    right calc(1.125rem - 5px) center;
-  background-size: 5px 5px;
-  background-repeat: no-repeat;
   color: var(--color-text-primary);
   font-size: var(--font-size-control);
   text-overflow: ellipsis;
   cursor: pointer;
 }
 
+/* Wraps a select so the project's chevron-down icon (DESIGN §10) sits at its end. */
+.select-wrap {
+  position: relative;
+  display: grid;
+  min-width: 0;
+}
+
+.select-wrap__chevron {
+  position: absolute;
+  inset-inline-end: var(--space-4);
+  top: 50%;
+  color: var(--color-text-secondary);
+  transform: translateY(-50%);
+  pointer-events: none;
+}
+
 .select:hover {
   border-color: var(--color-text-secondary);
 }
 
-.select[aria-invalid='true'] {
+/* The focus look of inputs (DESIGN §8.2); the keyboard outline comes from :focus-visible. */
+.select:focus {
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 3px var(--color-accent-subtle);
+}
+
+.select[aria-invalid='true'],
+.select[aria-invalid='true']:focus {
   border-color: var(--color-danger);
 }
 
@@ -318,12 +336,18 @@
   accent-color: var(--color-accent);
 }
 
+/* Forced colors keep the native select arrow (system colors, T01 rule) instead of the icon. */
 @media (forced-colors: active) {
   .select {
     appearance: auto;
   }
 
-  .control:focus-within {
+  .select-wrap__chevron {
+    display: none;
+  }
+
+  .control:focus-within,
+  .select:focus {
     border-color: Highlight;
   }
 }
@@ -371,7 +395,7 @@
   align-items: center;
   justify-content: center;
   min-width: 0;
-  min-height: calc(var(--size-target) - 8px);
+  min-height: var(--size-target);
   padding: var(--space-1) var(--space-2);
   border-radius: var(--radius-sm);
   color: var(--color-text-secondary);
@@ -532,14 +556,31 @@
   transform: rotate(180deg);
 }
 
+/* The content slides open with --duration-normal (0 under reduced motion). While closed it
+   is `visibility: hidden`, which also keeps its controls out of the tab order and the
+   accessibility tree. */
 .disclosure__content {
   display: grid;
-  gap: var(--space-5);
-  padding: 0 var(--space-4) var(--space-4);
+  grid-template-rows: 1fr;
+  transition:
+    grid-template-rows var(--duration-normal) var(--easing-standard),
+    visibility var(--duration-normal);
 }
 
 .disclosure:not(.disclosure--open) > .disclosure__content {
-  display: none;
+  grid-template-rows: 0fr;
+  visibility: hidden;
+}
+
+.disclosure__inner {
+  min-height: 0;
+  overflow: hidden;
+}
+
+.disclosure__body {
+  display: grid;
+  gap: var(--space-5);
+  padding: 0 var(--space-4) var(--space-4);
 }
 
 /* ---------- Sheet (DESIGN §8.12) ---------- */

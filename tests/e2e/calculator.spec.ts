@@ -25,14 +25,22 @@ function text(language: Language, key: string, params: Readonly<Record<string, s
   );
 }
 
-/** Escapes regular-expression metacharacters so `value` matches literally. */
-function escapeRegExp(value: string): string {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-}
-
 /** Replaces a field's text as a user would (select all, type). */
 async function type(page: Page, id: string, value: string): Promise<void> {
   await page.locator(`#${id}`).fill(value);
+}
+
+/**
+ * Asserts the hero number of the results column: the full amount that assistive
+ * technology reads and the styled parts that are drawn (aria-hidden) both read `amount`.
+ */
+async function expectHero(column: Locator, amount: string): Promise<void> {
+  const hero = column.locator('.hero-amount');
+  await expect(hero).toHaveCount(1);
+  await expect(hero.locator('.visually-hidden'), 'hero amount (read aloud)').toHaveText(amount);
+  await expect(hero.locator('[aria-hidden="true"]'), 'hero amount (drawn parts)').toHaveText(
+    amount,
+  );
 }
 
 test.describe('design scenario (vector us-mortgage-30y-origination-fee)', () => {
@@ -42,17 +50,35 @@ test.describe('design scenario (vector us-mortgage-30y-origination-fee)', () => 
     await type(page, 'field-disbursementDate', '2026-11-01');
 
     const column = results(page);
-    await expect(column).toContainText('$2,299.25');
-    await expect(column).toContainText('$2,300.28');
-    await expect(column).toContainText('6.974%');
-    await expect(column).toContainText('$477,731.03');
+    await expectHero(column, '$2,299.25');
+    await expect(column.locator('.hero-meta')).toContainText(
+      text('en', 'hero.finalPayment', { amount: '$2,300.28' }),
+    );
 
-    const yearOne = column
-      .getByRole('row')
-      .filter({ hasText: text('en', 'schedule.year', { year: '1' }) })
-      .first();
-    await expect(yearOne).toContainText('3,641.84');
-    await expect(yearOne).toContainText('23,949.16');
+    const card = column.locator('.rate-card');
+    await expect(card.locator('.rate-card__title')).toHaveText(
+      message('en', 'rateMethod.usRegZApr'),
+    );
+    await expect(card.locator('.rate-card__rate')).toHaveText('6.974%');
+
+    await expect(column.locator('.kpi__value--accent')).toHaveText('$477,731.03');
+
+    // Without fees or insurance in the payments the table has six columns; the group row
+    // spans the first three (#, date, payment) with its toggle, then principal, interest
+    // and the closing balance.
+    const table = column.locator('.schedule-table table');
+    const headers = table.locator('thead th');
+    await expect(headers).toHaveCount(6);
+    await expect(headers.nth(3)).toHaveText(message('en', 'schedule.colPrincipal'));
+    await expect(headers.nth(4)).toHaveText(message('en', 'schedule.colInterest'));
+    const yearOne = table.locator('tr.schedule-table__group').filter({
+      has: page.getByText(text('en', 'schedule.year', { year: '1' }), { exact: true }),
+    });
+    await expect(yearOne).toHaveCount(1);
+    const subtotals = yearOne.locator('td');
+    await expect(subtotals).toHaveCount(3);
+    await expect(subtotals.nth(0), 'year 1 principal').toHaveText('3,641.84');
+    await expect(subtotals.nth(1), 'year 1 interest').toHaveText('23,949.16');
   });
 });
 
@@ -72,14 +98,20 @@ test.describe('CN scenario in zh-CN (vector cn-mortgage-30y-equal-instalments)',
     await page.getByRole('button', { name: removeFee }).click();
 
     const column = results(page);
-    await expect(column).toContainText('¥4,270.16');
-    const simple = message('zh-CN', 'rateMethod.cnAnnualized');
-    const irr = message('zh-CN', 'rateMethod.irrEffective');
-    await expect(column).toContainText(simple);
-    await expect(column).toContainText(irr);
-    // Each rate's value follows its name (DESIGN §8.7: title then value; dl term then value).
-    await expect(column).toContainText(new RegExp(`${escapeRegExp(simple)}[\\s\\S]*3\\.10%`));
-    await expect(column).toContainText(new RegExp(`${escapeRegExp(irr)}[\\s\\S]*3\\.14%`));
+    await expectHero(column, '¥4,270.16');
+
+    // The headline is the simple annualized rate (title, then value); the IRR rate is the
+    // secondary rate in the card's list (term, then value).
+    const card = column.locator('.rate-card');
+    await expect(card.locator('.rate-card__title')).toHaveText(
+      message('zh-CN', 'rateMethod.cnAnnualized'),
+    );
+    await expect(card.locator('.rate-card__rate')).toHaveText('3.10%');
+    const irr = card.locator('.rate-card__item').filter({
+      has: page.getByText(message('zh-CN', 'rateMethod.irrEffective'), { exact: true }),
+    });
+    await expect(irr).toHaveCount(1);
+    await expect(irr.locator('.rate-card__minor')).toHaveText('3.14%');
   });
 });
 
@@ -91,15 +123,27 @@ test.describe('invalid input', () => {
     await expect(column).toContainText('$2,299.25');
 
     await type(page, 'field-term-years', '101');
-    await expect(page.getByText(text('en', 'errors.termRangeYears', { max: '100' }))).toBeVisible();
+    // The fix list (after 300 ms) repeats the message after the field name, so the error
+    // under the field is found by its own element.
+    const error = page
+      .locator('.field__error')
+      .filter({ hasText: text('en', 'errors.termRangeYears', { max: '100' }) });
+    await expect(error).toHaveCount(1);
+    await expect(error).toBeVisible();
     await expect(page.locator('#field-term-years')).toHaveAttribute('aria-invalid', 'true');
-    await expect(column).toHaveAttribute('aria-busy', 'true');
+    // Blanked, not stale: no payment, rate, totals or schedule are left on the page.
     await expect(page.locator('main')).not.toContainText('$2,299.25');
-    await expect(column).toContainText(message('en', 'results.fixFields'));
+    for (const selector of ['.hero-amount', '.rate-card', '.kpi__value', '.schedule-table']) {
+      await expect(page.locator(selector), `${selector} while the input is invalid`).toHaveCount(0);
+    }
+    await expect(
+      column.getByRole('heading', { name: message('en', 'results.fixFields'), exact: true }),
+    ).toBeVisible();
 
     await type(page, 'field-term-years', '30');
     await expect(column).toContainText('$2,299.25');
     await expect(page.locator('#field-term-years')).not.toHaveAttribute('aria-invalid', 'true');
+    await expect(error).toHaveCount(0);
   });
 
   test('text that does not parse blanks the results at once', async ({ page }) => {
@@ -143,10 +187,14 @@ test.describe('performance', () => {
             let start = 0;
             const observer = new MutationObserver(() => {
               observer.disconnect();
-              // The frame that paints the new payment starts with this callback.
+              // The animation frame callback runs before that frame's style, layout and
+              // paint; a task posted from it runs only after the frame has been rendered,
+              // so the clock stops once the new payment is painted.
               requestAnimationFrame(() => {
-                clearTimeout(timeout);
-                resolve(performance.now() - start);
+                setTimeout(() => {
+                  clearTimeout(timeout);
+                  resolve(performance.now() - start);
+                }, 0);
               });
             });
             observer.observe(target, { subtree: true, childList: true, characterData: true });

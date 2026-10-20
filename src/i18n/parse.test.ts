@@ -195,3 +195,21 @@ describe('formatNumber with significant digits', () => {
     );
   });
 });
+
+describe('parseDecimalInput — length', () => {
+  it('accepts up to 100 digits on each side of the separator and rejects more', () => {
+    const fraction = '1'.repeat(100);
+    expect(parseDecimalInput(`0.${fraction}`, 'en-US', 'percent')).toEqual({
+      ok: true,
+      value: `0.${fraction}`,
+    });
+    expect(parseDecimalInput(`0.${fraction}1`, 'en-US', 'percent')).toEqual({ ok: false });
+    expect(parseDecimalInput('9'.repeat(101), 'en-US', 'integer')).toEqual({ ok: false });
+    expect(parseDecimalInput(`${'9'.repeat(101)}.5`, 'en-US', 'money')).toEqual({ ok: false });
+    // Leading zeros do not count.
+    expect(parseDecimalInput(`${'0'.repeat(150)}7`, 'en-US', 'integer')).toEqual({
+      ok: true,
+      value: '7',
+    });
+  });
+});

@@ -40,8 +40,12 @@ export function Disclosure(props: {
         </span>
         <Icon name="chevron-down" class="disclosure__chevron" />
       </button>
+      {/* Three layers so the height can slide (DESIGN §8.5): a grid row from 0fr to 1fr,
+          a clipping box that may shrink to nothing, and the padded content. */}
       <div id={contentId} class="disclosure__content">
-        {props.children}
+        <div class="disclosure__inner">
+          <div class="disclosure__body">{props.children}</div>
+        </div>
       </div>
     </div>
   );

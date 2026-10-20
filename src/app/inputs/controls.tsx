@@ -42,25 +42,30 @@ export function SelectField<T extends string>(props: {
       {...optional('hintId', hintId)}
       fields={field === undefined ? [] : [field]}
     >
-      <select
-        id={props.id}
-        class="select"
-        value={props.value}
-        aria-invalid={field === undefined ? undefined : hasError(field)}
-        aria-describedby={field === undefined ? hintId : describedBy(field, hintId)}
-        onChange={(event) => {
-          const chosen = props.options.find((option) => option.value === event.currentTarget.value);
-          if (chosen !== undefined) {
-            props.onChange(chosen.value);
-          }
-        }}
-      >
-        {props.options.map((option) => (
-          <option key={option.value} value={option.value}>
-            {option.label}
-          </option>
-        ))}
-      </select>
+      <div class="select-wrap">
+        <select
+          id={props.id}
+          class="select"
+          value={props.value}
+          aria-invalid={field === undefined ? undefined : hasError(field)}
+          aria-describedby={field === undefined ? hintId : describedBy(field, hintId)}
+          onChange={(event) => {
+            const chosen = props.options.find(
+              (option) => option.value === event.currentTarget.value,
+            );
+            if (chosen !== undefined) {
+              props.onChange(chosen.value);
+            }
+          }}
+        >
+          {props.options.map((option) => (
+            <option key={option.value} value={option.value}>
+              {option.label}
+            </option>
+          ))}
+        </select>
+        <Icon name="chevron-down" class="select-wrap__chevron" />
+      </div>
     </Field>
   );
 }

@@ -11,6 +11,7 @@ import type * as UiModule from '../state/ui';
 import { explainTarget, focusField } from '../state/ui';
 import { CompactBar } from './CompactBar';
 import type { OkLoanResult } from './figures';
+import { FixListDelay, fixListShown } from './FixFields';
 import { MobileSummary } from './MobileSummary';
 
 vi.mock('../state/ui', async (importOriginal) => ({
@@ -52,8 +53,14 @@ class FakeObserver {
   }
 }
 
+/** The card, with the fix list's delay that the results panel drives in the app. */
 function renderSummary(): HTMLElement {
-  const { container } = render(<MobileSummary />);
+  const { container } = render(
+    <>
+      <MobileSummary />
+      <FixListDelay />
+    </>,
+  );
   return el(container, 'section.mobile-summary') as HTMLElement;
 }
 
@@ -61,6 +68,7 @@ beforeEach(() => {
   setLanguage('en');
   resetForm();
   updateForm({ disbursementDate: '2026-11-01' });
+  fixListShown.value = false;
 });
 
 afterEach(() => {
@@ -103,6 +111,32 @@ describe('MobileSummary', () => {
     expect(explainTarget.value).toEqual({ kind: 'instalment' });
   });
 
+  it('shows the instalment with the payment as paid when payments carry a periodic fee', () => {
+    updateForm({
+      amount: '100000.00',
+      annualRatePct: '5',
+      termMode: 'payments',
+      termPayments: '12',
+      fees: [
+        {
+          uid: 'service',
+          name: '',
+          kind: 'periodic',
+          calc: 'fixed',
+          value: '10.00',
+          financing: 'paid',
+          inApr: false,
+        },
+      ],
+    });
+    const card = renderSummary();
+    expect(el(card, '.hero-amount .visually-hidden').textContent).toBe('$8,560.75');
+    expect(el(card, '.hero-meta').textContent).toBe(
+      '12 payments · $8,570.75 with fees and insurance · final payment $8,560.73 · ' +
+        'paid off Nov 1, 2027',
+    );
+  });
+
   it('does not repeat a headline rate that is also the secondary one', () => {
     updateForm({ headlineMethod: 'effective' });
     const card = renderSummary();
@@ -118,14 +152,19 @@ describe('MobileSummary', () => {
   it('blanks at once and shows the same fix list after 300 ms', async () => {
     vi.useFakeTimers();
     const card = renderSummary();
+    const body = el(card, '.mobile-summary__body');
+    expect(body.getAttribute('aria-busy')).toBeNull();
     await act(() => {
       setInputInvalid('annualRatePct', true);
     });
-    expect(card.getAttribute('aria-busy')).toBe('true');
+    // Only the figures are busy, not the card with its heading.
+    expect(body.getAttribute('aria-busy')).toBe('true');
+    expect(card.getAttribute('aria-busy')).toBeNull();
     expect(card.textContent).toBe('Summary');
     await act(() => {
       vi.advanceTimersByTime(300);
     });
+    expect(body.getAttribute('aria-busy')).toBeNull();
     expect(within(card).getByRole('heading', { name: 'Fix the highlighted fields' })).toBeTruthy();
     fireEvent.click(
       within(card).getByRole('button', { name: 'Interest rate: Enter a number such as 6.875.' }),
@@ -170,6 +209,34 @@ describe('CompactBar', () => {
       setInputInvalid('amount', true);
     });
     expect(screen.queryByRole('region', { name: 'Payment summary' })).toBeNull();
+  });
+
+  it('shows the same instalment as the hero when payments carry a periodic fee', () => {
+    const computed = calculateLoan(
+      toLoanInput({
+        ...defaultForm('2026-11-01'),
+        amount: '100000.00',
+        annualRatePct: '5',
+        termMode: 'payments',
+        termPayments: '12',
+        fees: [
+          {
+            uid: 'service',
+            name: '',
+            kind: 'periodic',
+            calc: 'fixed',
+            value: '10.00',
+            financing: 'paid',
+            inApr: false,
+          },
+        ],
+      }),
+    );
+    if (!computed.ok) {
+      throw new Error('The fee scenario must compute');
+    }
+    render(<CompactBar result={computed} frequency="monthly" headline="usRegZApr" />);
+    expect(el(document, '.compact-bar__value').textContent).toBe('$8,560.75');
   });
 
   it('shows n/a for a rate that failed', () => {

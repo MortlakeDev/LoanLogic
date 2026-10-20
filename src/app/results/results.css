@@ -248,6 +248,8 @@
 
 .rate-card__item {
   display: grid;
+  /* A wrapped label takes the extra height, so the values of a row line up. */
+  grid-template-rows: 1fr auto;
   gap: var(--space-1);
   align-content: start;
   min-width: 0;
@@ -467,9 +469,15 @@
 
 /* ---------- Mobile summary (DESIGN §7.2) ---------- */
 
-.mobile-summary {
+.mobile-summary,
+.mobile-summary__body {
   display: grid;
   gap: var(--space-3);
+}
+
+/* The figures' wrapper (it carries `aria-busy`) shrinks with the card, like its content. */
+.mobile-summary__body {
+  min-width: 0;
 }
 
 .mobile-summary__head {
@@ -495,6 +503,8 @@
 
 .mobile-summary__item {
   display: grid;
+  /* A wrapped label takes the extra height, so the values of a row line up. */
+  grid-template-rows: 1fr auto;
   gap: var(--space-1);
   align-content: start;
   min-width: 0;

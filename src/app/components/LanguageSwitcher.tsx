@@ -42,8 +42,9 @@ function movesSelection(event: KeyboardEvent): boolean {
  *
  * @param props.id The select's `id`, unique on the page: the header and the mobile menu
  *   sheet each render a picker.
- * @param props.variant `pill` (header, DESIGN §7.1): a pill with the globe icon and a
- *   visually hidden label; `field` (menu sheet): a full-width select under a visible label.
+ * @param props.variant `pill` (header, DESIGN §7.1): a pill showing the endonym with a
+ *   visually hidden label (the globe icon belongs to the region pill of T05); `field` (menu
+ *   sheet): a full-width select under a visible label.
  */
 export function LanguageSwitcher(props: {
   readonly id: string;
@@ -103,24 +104,26 @@ export function LanguageSwitcher(props: {
   const pill = props.variant === 'pill';
   return (
     <div class={pill ? 'language-pill' : 'field'}>
-      {pill && <Icon name="globe" class="language-pill__icon" />}
       <label class={pill ? 'visually-hidden' : 'field__label'} htmlFor={props.id}>
         {t('language.label')}
       </label>
-      <select
-        id={props.id}
-        class={pill ? 'select select--pill language-pill__select' : 'select'}
-        value={pending.value ?? language.value}
-        onKeyDown={onKeyDown}
-        onChange={onChange}
-        onBlur={commit}
-      >
-        {LANGUAGES.map((code) => (
-          <option key={code} value={code} lang={code}>
-            {LANGUAGE_ENDONYMS[code]}
-          </option>
-        ))}
-      </select>
+      <div class="select-wrap">
+        <select
+          id={props.id}
+          class={pill ? 'select select--pill language-pill__select' : 'select'}
+          value={pending.value ?? language.value}
+          onKeyDown={onKeyDown}
+          onChange={onChange}
+          onBlur={commit}
+        >
+          {LANGUAGES.map((code) => (
+            <option key={code} value={code} lang={code}>
+              {LANGUAGE_ENDONYMS[code]}
+            </option>
+          ))}
+        </select>
+        <Icon name="chevron-down" class="select-wrap__chevron" />
+      </div>
     </div>
   );
 }

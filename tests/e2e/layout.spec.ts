@@ -72,6 +72,35 @@ async function overflowingElements(page: Page, root = 'body'): Promise<string[]>
 }
 
 /**
+ * Asserts that the document is no wider than the layout viewport and cannot be scrolled
+ * sideways; `state` names what is open, for the failure messages.
+ */
+async function expectNoHorizontalScroll(page: Page, state: string): Promise<void> {
+  const scroll = await page.evaluate(() => ({
+    scrollWidth: document.documentElement.scrollWidth,
+    clientWidth: document.documentElement.clientWidth,
+    bodyScrollWidth: document.body.scrollWidth,
+  }));
+  expect(scroll.clientWidth, `layout viewport width (${state})`).toBeGreaterThan(0);
+  expect(scroll.scrollWidth, `document scroll width (${state})`).toBeLessThanOrEqual(
+    scroll.clientWidth,
+  );
+  expect(scroll.bodyScrollWidth, `body scroll width (${state})`).toBeLessThanOrEqual(
+    scroll.clientWidth,
+  );
+
+  // The page cannot actually be scrolled sideways; the vertical position is kept.
+  const scrolledX = await page.evaluate(() => {
+    const top = window.scrollY;
+    window.scrollTo({ left: 200, top, behavior: 'instant' });
+    const x = window.scrollX;
+    window.scrollTo({ left: 0, top, behavior: 'instant' });
+    return x;
+  });
+  expect(scrolledX, `horizontal scroll offset after scrolling right (${state})`).toBe(0);
+}
+
+/**
  * Asserts that the element's left and right edges lie within the layout viewport, within
  * `EPSILON`; only the horizontal axis is checked. `name` labels the failure messages.
  */
@@ -128,27 +157,7 @@ test.describe('narrow screens (360 × 740)', () => {
           await expect(page.locator('html')).toHaveAttribute('lang', language);
           await expectTheme(page, theme);
 
-          const scroll = await page.evaluate(() => ({
-            scrollWidth: document.documentElement.scrollWidth,
-            clientWidth: document.documentElement.clientWidth,
-            bodyScrollWidth: document.body.scrollWidth,
-          }));
-          expect(scroll.clientWidth, 'layout viewport width').toBeGreaterThan(0);
-          expect(scroll.scrollWidth, 'document scroll width').toBeLessThanOrEqual(
-            scroll.clientWidth,
-          );
-          expect(scroll.bodyScrollWidth, 'body scroll width').toBeLessThanOrEqual(
-            scroll.clientWidth,
-          );
-
-          // The page cannot actually be scrolled sideways.
-          const scrolledX = await page.evaluate(() => {
-            window.scrollTo({ left: 200, top: 0, behavior: 'instant' });
-            const x = window.scrollX;
-            window.scrollTo({ left: 0, top: 0, behavior: 'instant' });
-            return x;
-          });
-          expect(scrolledX, 'horizontal scroll offset after scrolling right').toBe(0);
+          await expectNoHorizontalScroll(page, 'closed');
 
           for (const [name, locator] of shellParts(page, language)) {
             await expectInsideViewport(page, name, locator);
@@ -175,6 +184,36 @@ test.describe('narrow screens (360 × 740)', () => {
           expect(
             await overflowingElements(page),
             'elements wider than the viewport with the menu open',
+          ).toEqual([]);
+          await page.keyboard.press('Escape');
+          await expect(sheet).toBeHidden();
+
+          // The fee editor and Advanced, behind "Fees and advanced settings" on a phone.
+          for (const id of ['more-button', 'advanced-button']) {
+            const button = page.locator(`#${id}`);
+            await button.click();
+            await expect(button).toHaveAttribute('aria-expanded', 'true');
+          }
+          await expect(page.locator('#advanced-content')).toBeVisible();
+          await expectNoHorizontalScroll(page, 'with Advanced open');
+          expect(
+            await overflowingElements(page),
+            'elements wider than the viewport with Advanced open',
+          ).toEqual([]);
+
+          // A periodic fee shows the most controls (calculation of three, per-period hint).
+          await page
+            .getByRole('button', { name: message(language, 'fees.addLabel'), exact: true })
+            .click();
+          const fee = page.locator('.fees__list > li').last();
+          await fee.locator('select[id$="-kind"]').selectOption('periodic');
+          await fee.locator('select[id$="-calc"]').selectOption('pct-balance');
+          await fee.locator('input[id$="-value"]').fill('1');
+          await expect(fee.locator('.fee__summary')).toBeVisible();
+          await expectNoHorizontalScroll(page, 'with a periodic fee');
+          expect(
+            await overflowingElements(page),
+            'elements wider than the viewport with a periodic fee',
           ).toEqual([]);
         });
       });
@@ -288,5 +327,53 @@ test.describe('workspace columns', () => {
       await page.setViewportSize({ width: 1024, height: 800 });
       await expect.poll(sideBySide, { message: 'panels sit side by side at 1024 px' }).toBe(true);
     });
+  });
+});
+
+test.describe('sticky inputs panel (1280 × 800)', () => {
+  test.use({ locale: 'en-US', colorScheme: 'dark', viewport: { width: 1280, height: 800 } });
+
+  test('sticks to the top and scrolls on its own', async ({ page }) => {
+    await gotoApp(page);
+    const style = await page.locator('.inputs').evaluate((element) => {
+      const computed = getComputedStyle(element);
+      return { position: computed.position, overflowY: computed.overflowY };
+    });
+    expect(style).toEqual({ position: 'sticky', overflowY: 'auto' });
+  });
+});
+
+test.describe('compact bar on a phone (360 × 740)', () => {
+  test.use({ locale: 'en-US', colorScheme: 'dark', viewport: { width: 360, height: 740 } });
+
+  test('appears once the summary card scrolls away and never covers a focused field', async ({
+    page,
+  }) => {
+    await gotoApp(page);
+    const bar = page.getByRole('region', {
+      name: message('en', 'results.compactBar'),
+      exact: true,
+    });
+    await expect(page.locator('.mobile-summary')).toBeInViewport();
+    await expect(bar).toBeHidden();
+
+    // Far down the page (the schedule), the summary card and the inputs are above it.
+    await page.evaluate(() => {
+      window.scrollTo({ top: document.documentElement.scrollHeight, behavior: 'instant' });
+    });
+    await expect(bar).toBeVisible();
+    const barBox = await boxOf(bar);
+    expect(barBox.y, 'the bar is at the top of the viewport').toBeLessThanOrEqual(EPSILON);
+    const amount = page.locator('#field-amount');
+    await expect(amount).not.toBeInViewport();
+
+    // Focusing scrolls the field back into view below the bar (scroll padding).
+    await amount.focus();
+    await expect(amount).toBeFocused();
+    await expect(amount).toBeInViewport();
+    const fieldTop = (await boxOf(amount)).y;
+    expect(fieldTop, 'focused field top vs. compact bar bottom').toBeGreaterThanOrEqual(
+      barBox.y + barBox.height - EPSILON,
+    );
   });
 });

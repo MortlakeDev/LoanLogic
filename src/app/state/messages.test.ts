@@ -57,7 +57,7 @@ function english(key: CatalogKey, params?: Readonly<Record<string, string>>): st
 }
 
 /** A Russian message by key, filled in (compared with the catalog, not a literal). */
-function russian(key: CatalogKey, params?: Readonly<Record<string, string>>): string {
+function russian(key: keyof typeof ru, params?: Readonly<Record<string, string>>): string {
   return fill(ru[key], params);
 }
 
@@ -188,6 +188,15 @@ describe('fieldErrorMessage: INPUT_INVALID', () => {
     ['term.endDate', 'Enter a date.'],
   ])('on %s', (field, message) => {
     expect(fieldErrorMessage(field, error('INPUT_INVALID', field), BASE)).toBe(message);
+  });
+
+  it('gives a money example that is valid in the currency', () => {
+    expect(fieldErrorMessage('amount', error('INPUT_INVALID'), { ...BASE, currency: 'JPY' })).toBe(
+      english('errors.inputInvalidMoney', { example: '350,000' }),
+    );
+    expect(fieldErrorMessage('amount', error('INPUT_INVALID'), { ...BASE, currency: 'KWD' })).toBe(
+      english('errors.inputInvalidMoney', { example: '350,000.500' }),
+    );
   });
 
   it('uses the example of the UI language', () => {
@@ -389,13 +398,22 @@ describe('negativeAmortizationFix', () => {
     ).toEqual({ field: 'accrual.mode', message: en['errors.negAmortizationFixPeriodic'] });
   });
 
-  it('suggests a finer payment rounding in the periodic model', () => {
+  it('suggests rounding the payment up when it is already rounded to the minor unit', () => {
     expect(negativeAmortizationFix()).toEqual({
       field: 'rounding.payment',
-      message: en['errors.negAmortizationFixRounding'],
+      message: en['errors.negAmortizationFixRoundUp'],
     });
     setLanguage('ru');
-    expect(negativeAmortizationFix(BASE).message).toBe(ru['errors.negAmortizationFixRounding']);
+    expect(negativeAmortizationFix(BASE).message).toBe(ru['errors.negAmortizationFixRoundUp']);
+  });
+
+  it('suggests a finer payment rounding for a coarser policy', () => {
+    for (const roundingPayment of ['unit-half-up', 'unit-ceil', 'minor-ceil'] as const) {
+      expect(negativeAmortizationFix({ ...BASE, roundingPayment })).toEqual({
+        field: 'rounding.payment',
+        message: en['errors.negAmortizationFixRounding'],
+      });
+    }
   });
 });
 
@@ -408,22 +426,22 @@ describe('warningMessage', () => {
 
   it('RATE_HIGH keeps the decimals as entered', () => {
     expect(warningMessage({ code: 'RATE_HIGH', params: { annualRatePct: '150.250' } })).toBe(
-      english('warnings.rateHigh', { rate: '150.250%' }),
+      english('warnings.rateHigh', { limit: '100%', rate: '150.250%' }),
     );
     expect(warningMessage({ code: 'RATE_HIGH', params: { annualRatePct: '1000' } })).toBe(
-      english('warnings.rateHigh', { rate: '1,000%' }),
+      english('warnings.rateHigh', { limit: '100%', rate: '1,000%' }),
     );
     expect(warningMessage({ code: 'RATE_HIGH' })).toBe(
-      english('warnings.rateHigh', { rate: '0%' }),
+      english('warnings.rateHigh', { limit: '100%', rate: '0%' }),
     );
   });
 
   it('EARLY_CLOSE formats both counts', () => {
     expect(
       warningMessage({ code: 'EARLY_CLOSE', params: { paymentsCount: '1199', scheduled: '1200' } }),
-    ).toBe(english('warnings.earlyClose', { paymentsCount: '1,199', scheduled: '1,200' }));
+    ).toBe(english('warnings.earlyClose_other', { paymentsCount: '1,199', scheduled: '1,200' }));
     expect(warningMessage({ code: 'EARLY_CLOSE' })).toBe(
-      english('warnings.earlyClose', { paymentsCount: '0', scheduled: '0' }),
+      english('warnings.earlyClose_other', { paymentsCount: '0', scheduled: '0' }),
     );
   });
 
@@ -459,9 +477,19 @@ describe('warningMessage', () => {
     expect(
       warningMessage({ code: 'EARLY_CLOSE', params: { paymentsCount: '1199', scheduled: '1200' } }),
     ).toBe(
-      russian('warnings.earlyClose', {
+      russian('warnings.earlyClose_many', {
         paymentsCount: formatNumber('1199', 'ru-RU'),
         scheduled: formatNumber('1200', 'ru-RU'),
+      }),
+    );
+    // The noun agrees with the number it follows: "из 361 платежа", not "платежей".
+    expect(
+      warningMessage({ code: 'EARLY_CLOSE', params: { paymentsCount: '242', scheduled: '361' } }),
+    ).toBe(russian('warnings.earlyClose_one', { paymentsCount: '242', scheduled: '361' }));
+    expect(warningMessage({ code: 'RATE_HIGH', params: { annualRatePct: '150' } })).toBe(
+      russian('warnings.rateHigh', {
+        limit: formatPercent('1', 0, 'ru-RU'),
+        rate: formatPercent('1.5', 0, 'ru-RU'),
       }),
     );
   });

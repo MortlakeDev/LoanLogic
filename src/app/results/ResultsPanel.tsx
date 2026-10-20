@@ -7,11 +7,18 @@ import type { FrequencyId, RateMethodId } from '../../engine';
 import { ScheduleCard } from '../schedule/ScheduleCard';
 import { money } from '../state/display';
 import { t } from '../state/i18n';
-import { form, headlineMethod, okResult, secondaryMethod } from '../state/loan';
+import {
+  engineErrors,
+  form,
+  headlineMethod,
+  inputErrors,
+  okResult,
+  secondaryMethod,
+} from '../state/loan';
 import { methodName } from '../state/messages';
 import { CostStructure } from './CostStructure';
 import { type OkLoanResult, rateText } from './figures';
-import { FixFields } from './FixFields';
+import { FixFields, FixListDelay, fixListShown, fixListText } from './FixFields';
 import { KpiTiles } from './KpiTiles';
 import { heroLabel, heroPayment, PaymentHero } from './PaymentHero';
 import { RateCard } from './RateCard';
@@ -25,7 +32,7 @@ export function summaryText(
 ): string {
   return t('results.summary', {
     label: heroLabel(result.summary, frequency),
-    payment: money(heroPayment(result.summary)),
+    payment: money(heroPayment(result)),
     rateName: methodName(headline),
     rate: rateText(result.rates[headline]) ?? t('rates.na'),
   });
@@ -34,26 +41,34 @@ export function summaryText(
 /**
  * The results column (DESIGN §7.1): the payment hero with the rate card, warnings, KPI
  * tiles, the cost structure, then the schedule. Invalid input blanks every figure at once
- * (`aria-busy`) and lists what to fix after a pause (§8.13). Below 64rem the overview is
- * hidden: the mobile summary card carries it (§7.2).
+ * (`aria-busy` on the figures) and lists what to fix after a pause (§8.13). Below 64rem the
+ * overview is hidden: the mobile summary card carries it (§7.2).
+ *
+ * The live region announces the results, or the fix list once it shows, at every width.
+ * It stays outside the `aria-busy` element: assistive technology may hold back what
+ * changes inside a busy region.
  */
 export function ResultsPanel(): JSX.Element {
   const result = okResult.value;
+  const shown = fixListShown.value;
   const { frequency, fees } = form.value;
   const headline = headlineMethod.value;
+  const announcement =
+    result !== null
+      ? summaryText(result, frequency, headline)
+      : shown
+        ? fixListText(inputErrors.value, engineErrors.value)
+        : '';
   return (
-    <section
-      class="results"
-      aria-labelledby="results-title"
-      aria-busy={result === null ? 'true' : undefined}
-    >
+    <section class="results" aria-labelledby="results-title">
+      <FixListDelay />
       <h2 id="results-title" class="visually-hidden">
         {t('panels.results.title')}
       </h2>
       <p class="visually-hidden" aria-live="polite">
-        {result === null ? '' : summaryText(result, frequency, headline)}
+        {announcement}
       </p>
-      <div class="results__overview">
+      <div class="results__overview" aria-busy={result === null && !shown ? 'true' : undefined}>
         {result === null ? (
           <FixFields class="card" />
         ) : (

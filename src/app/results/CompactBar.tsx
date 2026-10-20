@@ -50,7 +50,7 @@ export function CompactBar(props: {
     <section class="compact-bar" aria-label={t('results.compactBar')}>
       <p class="compact-bar__item">
         <span class="compact-bar__label">{heroLabel(summary, props.frequency)}</span>
-        <span class="compact-bar__value num">{money(heroPayment(summary))}</span>
+        <span class="compact-bar__value num">{money(heroPayment(props.result))}</span>
       </p>
       <p class="compact-bar__item compact-bar__item--end">
         <span class="compact-bar__label">{methodName(props.headline)}</span>

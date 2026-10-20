@@ -166,6 +166,8 @@ const LIMITS = {
   payments: 1200,
   percentDecimals: 10,
   feePercent: '100',
+  /** Above this annual rate the engine warns `RATE_HIGH` (SPEC §3.4). */
+  highRate: '100',
 } as const;
 
 /** What a field holds, for messages that depend on it (`INPUT_INVALID`, `TOO_MANY_DECIMALS`). */
@@ -194,10 +196,16 @@ function inputInvalidMessage(field: FieldPath, value: LoanForm): string {
   }
   const locale = formatLocale.value;
   switch (fieldKind(field, value)) {
-    case 'money':
+    case 'money': {
+      // The example must itself be valid in the currency (no cents for JPY, three digits
+      // for KWD), or following it would give TOO_MANY_DECIMALS.
+      const digits = minorUnits(value.currency) ?? 2;
       return t('errors.inputInvalidMoney', {
-        example: formatNumber('350000.50', locale, { minimumFractionDigits: 2 }),
+        example: formatNumber(digits === 0 ? '350000' : '350000.5', locale, {
+          minimumFractionDigits: digits,
+        }),
       });
+    }
     case 'percent':
       return t('errors.inputInvalidPercent', { example: formatNumber('6.875', locale) });
     case 'integer':
@@ -306,7 +314,8 @@ export function negativeAmortizationMessage(error: EngineError): string {
 /**
  * A fix for `NEG_AMORTIZATION` that fits the loan (T03 brief §4): the exact payment basis
  * for a day-count annuity; the periodic interest model for a day-count balloon (the exact
- * basis is `UNSUPPORTED` there); a finer payment rounding in the periodic model.
+ * basis is `UNSUPPORTED` there); in the periodic model a finer payment rounding, or
+ * rounding the payment up when it is already rounded half up to the minor unit.
  */
 export function negativeAmortizationFix(value: LoanForm = form.value): FixSuggestion {
   if (value.accrualMode === 'daycount' && value.repayment === 'annuity') {
@@ -315,7 +324,11 @@ export function negativeAmortizationFix(value: LoanForm = form.value): FixSugges
   if (value.accrualMode === 'daycount') {
     return { field: 'accrual.mode', message: t('errors.negAmortizationFixPeriodic') };
   }
-  return { field: 'rounding.payment', message: t('errors.negAmortizationFixRounding') };
+  // Half up to the minor unit is already the finest rounding; what is left is rounding the
+  // payment up, so that it is never below the exact instalment.
+  return value.roundingPayment === 'minor-half-up'
+    ? { field: 'rounding.payment', message: t('errors.negAmortizationFixRoundUp') }
+    : { field: 'rounding.payment', message: t('errors.negAmortizationFixRounding') };
 }
 
 // ---------------------------------------------------------------------------------------
@@ -339,9 +352,14 @@ export function warningMessage(warning: EngineWarning): string {
     case 'RATE_NEGATIVE':
       return t('warnings.rateNegative', { rate: rateAsEntered(params.annualRatePct) });
     case 'RATE_HIGH':
-      return t('warnings.rateHigh', { rate: rateAsEntered(params.annualRatePct) });
+      return t('warnings.rateHigh', {
+        limit: ratePercent(LIMITS.highRate, 0),
+        rate: rateAsEntered(params.annualRatePct),
+      });
     case 'EARLY_CLOSE':
+      // `count` picks the plural form of the noun after {scheduled} ("из 361 платежа").
       return t('warnings.earlyClose', {
+        count: Number(params.scheduled ?? '0'),
         paymentsCount: formatNumber(params.paymentsCount ?? '0', locale),
         scheduled: formatNumber(params.scheduled ?? '0', locale),
       });

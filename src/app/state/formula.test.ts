@@ -105,6 +105,50 @@ describe('instalmentFormula', () => {
     expect(values(model).i).toBe('0.005696653187');
   });
 
+  it('shows an exact payload i with all its digits', () => {
+    // Quarterly payments, monthly compounding: i = 1.0051³ − 1 = 0.015378162651 exactly.
+    const result = loan({ annualRatePct: '6.12', frequency: 'quarterly', compounding: 'monthly' });
+    expect(result.explain.values.i).toBe('0.015378162651');
+    const model = instalmentFormula(result.explain, 'en-US', 2);
+    expect(strip(model)).toBe(`${ANNUITY}, P = 350,000.00, i = 0.015378162651, N = 120 → 6,409.09`);
+    expect(values(model)).toMatchObject({ i: '0.015378162651', Astar: '6,409.091529' });
+  });
+
+  it('rounds an irrational exact instalment to 10 significant digits', () => {
+    const result = loan({
+      amount: '100000.00',
+      annualRatePct: '5',
+      termMode: 'payments',
+      termPayments: '12',
+      fees: [],
+    });
+    expect(result.explain.values.Astar).toBe('8560.7481788467114547');
+    expect(values(instalmentFormula(result.explain, 'en-US', 2)).Astar).toBe('8,560.748179');
+  });
+
+  it('never shows the exact instalment coarser than the minor units', () => {
+    const result = loan({
+      amount: '123456789012.34',
+      annualRatePct: '6',
+      termMode: 'payments',
+      termPayments: '1',
+      fees: [],
+    });
+    expect(result.explain.values.Astar).toBe('124074072957.4017');
+    const model = instalmentFormula(result.explain, 'en-US', 2);
+    expect(values(model)).toMatchObject({ Astar: '124,074,072,957.40', A: '124,074,072,957.40' });
+    // An exact instalment with few digits keeps them, padded to the minor units.
+    const short = instalmentFormula(
+      {
+        formulaId: 'instalment.annuity',
+        values: { P: '12000.00', N: '12', j: '0', m: '12', Astar: '1000', A: '1000.00' },
+      },
+      'en-US',
+      2,
+    );
+    expect(values(short).Astar).toBe('1,000.00');
+  });
+
   it('keeps the sign of a negative rate', () => {
     const model = instalmentFormula(loan({ annualRatePct: '-1' }).explain, 'en-US', 2);
     expect(strip(model)).toContain('i = -0.01 ÷ 12');

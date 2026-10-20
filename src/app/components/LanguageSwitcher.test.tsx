@@ -155,12 +155,14 @@ describe('LanguageSwitcher', () => {
     }
   });
 
-  it('draws the pill with the globe icon and a visually hidden label', async () => {
+  it('draws the pill with a chevron and a visually hidden label, without the globe', async () => {
     const { select } = await renderSwitcher();
     expect(select.classList.contains('select--pill')).toBe(true);
     expect(select.labels[0]?.classList.contains('visually-hidden')).toBe(true);
-    const icon = select.parentElement?.querySelector('svg.icon');
-    expect(icon?.getAttribute('aria-hidden')).toBe('true');
+    const icons = select.parentElement?.querySelectorAll('svg.icon') ?? [];
+    expect(icons).toHaveLength(1);
+    expect(icons[0]?.classList.contains('select-wrap__chevron')).toBe(true);
+    expect(icons[0]?.getAttribute('aria-hidden')).toBe('true');
   });
 
   it('shows a visible label above a plain select in the field variant', async () => {
@@ -170,7 +172,9 @@ describe('LanguageSwitcher', () => {
     const select = screen.getByRole<HTMLSelectElement>('combobox', { name: 'Language' });
     expect(select.classList.contains('select--pill')).toBe(false);
     expect(select.labels[0]?.className).toBe('field__label');
-    expect(select.parentElement?.querySelector('svg')).toBeNull();
+    expect(
+      select.parentElement?.querySelector('svg')?.classList.contains('select-wrap__chevron'),
+    ).toBe(true);
   });
 
   it('ignores a value that is not a supported language', async () => {

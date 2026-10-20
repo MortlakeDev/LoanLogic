@@ -3,9 +3,10 @@
 
 import { useSignal } from '@preact/signals';
 import type { ComponentChildren, JSX, TargetedEvent } from 'preact';
+import { useEffect } from 'preact/hooks';
 import { type DecimalInputKind, formatNumber, parseDecimalInput } from '../../i18n';
 import { formatLocale } from '../state/i18n';
-import { type FieldPath, fieldErrors, inputIdFor, setInputInvalid } from '../state/loan';
+import { type FieldPath, fieldErrors, inputIdFor, noteInput, setInputInvalid } from '../state/loan';
 import { fieldErrorMessage } from '../state/messages';
 import { Icon } from './Icon';
 
@@ -116,8 +117,11 @@ export function formatInputValue(
     return '';
   }
   const decimals = decimalsOf(value);
+  const minimum = kind === 'money' ? Math.max(fractionDigits, decimals) : decimals;
   return formatNumber(value, locale, {
-    minimumFractionDigits: kind === 'money' ? Math.max(fractionDigits, decimals) : decimals,
+    minimumFractionDigits: minimum,
+    // Every digit typed stays visible (parseDecimalInput accepts at most 100 decimals).
+    maximumFractionDigits: Math.max(minimum, 20),
     useGrouping: kind === 'money',
   });
 }
@@ -160,19 +164,38 @@ export function NumberInput(props: NumberInputProps): JSX.Element {
   const shown =
     draft.value ?? formatInputValue(props.value, props.kind, locale, props.fractionDigits);
 
-  const onInput = (event: TargetedEvent<HTMLInputElement>): void => {
-    const text = event.currentTarget.value;
-    draft.value = text;
+  // A field that goes away (another repetition, term mode or balloon kind) or is
+  // remounted shows the stored valid value, so its typing error must go with it; otherwise
+  // the results would stay blank with no field left to fix.
+  const field = props.field;
+  useEffect(
+    () => () => {
+      setInputInvalid(field, false);
+    },
+    [field],
+  );
+
+  /** Applies text that parses: clears the field's error and sends a changed value to state. */
+  const apply = (text: string): boolean => {
     const parsed = parseDecimalInput(text, locale, props.kind);
     setInputInvalid(props.field, !parsed.ok);
     if (parsed.ok && parsed.value !== props.value) {
       props.onValue(parsed.value);
     }
+    return parsed.ok;
+  };
+
+  const onInput = (event: TargetedEvent<HTMLInputElement>): void => {
+    draft.value = event.currentTarget.value;
+    noteInput();
+    apply(draft.value);
   };
 
   const onBlur = (): void => {
-    // A valid entry is reformatted from state; an invalid one stays as typed.
-    if (draft.value !== null && parseDecimalInput(draft.value, locale, props.kind).ok) {
+    // A valid entry is reformatted from state; an invalid one stays as typed. Text typed
+    // before a language change is read again in the new locale (a space groups digits in
+    // ru-RU but not in en-US), so it is applied, not dropped.
+    if (draft.value !== null && apply(draft.value)) {
       draft.value = null;
     }
   };

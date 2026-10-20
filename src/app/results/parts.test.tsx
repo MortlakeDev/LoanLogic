@@ -5,7 +5,7 @@
 import { cleanup, render, screen, within } from '@testing-library/preact';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { calculateLoan, type RateMethodId } from '../../engine';
-import { setLanguage } from '../state/i18n';
+import { setLanguage, t } from '../state/i18n';
 import {
   defaultForm,
   type FeeDraft,
@@ -15,8 +15,9 @@ import {
   toLoanInput,
   updateForm,
 } from '../state/loan';
+import { fieldErrorMessage } from '../state/messages';
 import { Changing, HeroAmount, type OkLoanResult } from './figures';
-import { fixItems } from './FixFields';
+import { fixItems, fixListText } from './FixFields';
 import { KpiTiles, overText } from './KpiTiles';
 import { includesText, RateCard } from './RateCard';
 import { summaryText } from './ResultsPanel';
@@ -196,6 +197,30 @@ describe('KPI tiles', () => {
       ['Over 30 years', 'Interest only, no fees', 'Principal + interest'],
     );
   });
+
+  it.each([
+    [
+      'insurance alone',
+      [fee({ uid: 'a', kind: 'insurance', value: '20.00' })],
+      'Principal, interest and insurance',
+    ],
+    [
+      'periodic fees and insurance',
+      [
+        fee({ uid: 'a', kind: 'periodic', value: '10.00', inApr: false }),
+        fee({ uid: 'b', kind: 'insurance', value: '20.00' }),
+      ],
+      'Principal, interest, fees and insurance',
+    ],
+    [
+      'an insurance row that costs nothing',
+      [fee({ uid: 'a', kind: 'insurance', value: '0' })],
+      'Principal + interest',
+    ],
+  ] as const)('names %s in the payments caption', (_name, fees, caption) => {
+    render(<KpiTiles result={compute({ fees: [...fees] })} frequency="monthly" />);
+    expect(document.querySelectorAll('.kpi__caption')[2]?.textContent).toBe(caption);
+  });
 });
 
 describe('figures', () => {
@@ -255,5 +280,23 @@ describe('fixItems', () => {
     expect(fixItems(new Set(), [{ code: 'TERM_TOO_SHORT', field: null }])).toEqual([
       { key: 'engine:0', field: null, message: 'The term is shorter than one payment period.' },
     ]);
+  });
+});
+
+describe('fixListText', () => {
+  it('announces the title and every item as sentences', () => {
+    expect(fixListText(new Set(), [{ code: 'TERM_TOO_SHORT', field: null }])).toBe(
+      'Fix the highlighted fields. The term is shorter than one payment period.',
+    );
+  });
+
+  it('ends the title with the full stop of the language', () => {
+    setLanguage('zh-CN');
+    const item = t('results.fixItem', {
+      field: t('inputs.amount'),
+      message: fieldErrorMessage('amount', { code: 'INPUT_INVALID', field: 'amount' }),
+    });
+    expect(fixListText(new Set(['amount']), [])).toBe(`${t('results.fixFields')}。${item}`);
+    expect(item).toMatch(/。$/u);
   });
 });

@@ -125,8 +125,8 @@ describe('term', () => {
     renderPanel();
     const years = input('field-term-years');
     const months = input('field-term-months');
-    expect(years.getAttribute('aria-label')).toBe('Years');
-    expect(months.getAttribute('aria-label')).toBe('Months');
+    expect(years.getAttribute('aria-label')).toBe('Years (yr)');
+    expect(months.getAttribute('aria-label')).toBe('Months (mo)');
     expect(descriptionOf(years)).toBe('360 payments');
     typeInto(years, '15');
     typeInto(months, '6');

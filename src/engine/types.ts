@@ -384,9 +384,12 @@ export interface FeeAmount {
   /** The item's `id` as entered. */
   readonly id: string;
   readonly kind: 'upfront' | 'periodic' | 'insurance';
-  /** Upfront: the amount; periodic and insurance: the amount of the first period. */
+  /**
+   * Upfront: the amount; periodic and insurance: the amount of the first period. Major
+   * units as a decimal string at the currency's minor units ("3500.00").
+   */
   readonly amount: string;
-  /** Every period together (upfront items: the amount). */
+  /** Every period together (upfront items: the amount), in the same format as `amount`. */
   readonly total: string;
 }
 

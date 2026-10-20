@@ -35,6 +35,11 @@ export interface NumberFormatOptions {
   readonly maximumFractionDigits?: number;
   /** Rounds to this many significant digits instead (irrational explain values, DESIGN §8.6). */
   readonly maximumSignificantDigits?: number;
+  /**
+   * With both significant and fraction digits: `morePrecision` keeps whichever rounding
+   * shows more (an exact instalment never shown coarser than its minor units).
+   */
+  readonly roundingPriority?: 'auto' | 'morePrecision' | 'lessPrecision';
   readonly useGrouping?: boolean;
 }
 

@@ -6,7 +6,7 @@ import { Fragment } from 'preact';
 import type { FrequencyId, LoanSummary } from '../../engine';
 import { Rich } from '../components/Rich';
 import { FormulaStrip } from '../explain/FormulaStrip';
-import { toMinor } from '../state/derived';
+import { type HeroAmounts, heroAmounts, toMinor } from '../state/derived';
 import { currencyDigits, date, money } from '../state/display';
 import { t } from '../state/i18n';
 import { paymentLabel } from '../state/messages';
@@ -25,12 +25,18 @@ export function heroLabel(summary: LoanSummary, frequency: FrequencyId): string 
   return isEqualPrincipal(summary) ? t('hero.firstPayment') : paymentLabel(frequency);
 }
 
+/** The hero's amounts of a result, in the form's currency (`heroAmounts`). */
+function amountsOf(result: OkLoanResult): HeroAmounts {
+  return heroAmounts(result.summary, result.rows, currencyDigits.value);
+}
+
 /**
- * The payment the hero shows: the regular instalment (annuity, balloon), else the first
- * payment (equal principal; interest-only, whose principal comes with the last payment).
+ * The payment the hero shows, on the instalment basis (principal + interest): the regular
+ * instalment (annuity, balloon), else the first payment's (equal principal; interest-only,
+ * whose principal comes with the last payment). Every view of the payment uses it.
  */
-export function heroPayment(summary: LoanSummary): string {
-  return summary.regularInstalment ?? summary.firstPayment;
+export function heroPayment(result: OkLoanResult): string {
+  return amountsOf(result).payment;
 }
 
 /** An amount inside running text, in mono (DESIGN §1). */
@@ -40,19 +46,26 @@ function inlineAmount(value: string): JSX.Element {
 
 /**
  * The meta line under the hero number (DESIGN §8.6): "360 payments · final payment
- * $2,300.28 · paid off Nov 1, 2056", with the balloon for a balloon loan.
+ * $2,300.28 · paid off Nov 1, 2056", with the first payment as paid when payments carry
+ * periodic fees or insurance (the hero shows principal + interest only) and the balloon
+ * for a balloon loan.
  */
-export function HeroMeta(props: { readonly summary: LoanSummary }): JSX.Element {
-  const { summary } = props;
+export function HeroMeta(props: { readonly result: OkLoanResult }): JSX.Element {
+  const { summary } = props.result;
+  const amounts = amountsOf(props.result);
   const items: { readonly key: string; readonly content: ComponentChildren }[] = [
     { key: 'payments', content: t('hero.payments', { count: summary.paymentsCount }) },
-    {
-      key: 'final',
-      content: (
-        <Rich message="hero.finalPayment" nodes={{ amount: inlineAmount(summary.lastPayment) }} />
-      ),
-    },
   ];
+  if (amounts.firstPaid !== null) {
+    items.push({
+      key: 'withFees',
+      content: <Rich message="hero.withFees" nodes={{ amount: inlineAmount(amounts.firstPaid) }} />,
+    });
+  }
+  items.push({
+    key: 'final',
+    content: <Rich message="hero.finalPayment" nodes={{ amount: inlineAmount(amounts.last) }} />,
+  });
   // After an early close the balloon is zero: there is no lump sum to mention.
   if (summary.balloon !== null && toMinor(summary.balloon, currencyDigits.value) !== 0n) {
     items.push({
@@ -79,14 +92,14 @@ export function HeroMeta(props: { readonly summary: LoanSummary }): JSX.Element 
  * The hero number over its dotted grid, with the range to the last payment for equal
  * principal ("→ last $972.00").
  */
-export function HeroFigure(props: { readonly summary: LoanSummary }): JSX.Element {
-  const { summary } = props;
+export function HeroFigure(props: { readonly result: OkLoanResult }): JSX.Element {
+  const amounts = amountsOf(props.result);
   return (
     <div class="hero__figure">
-      <HeroAmount value={heroPayment(summary)} />
-      {isEqualPrincipal(summary) && (
+      <HeroAmount value={amounts.payment} />
+      {isEqualPrincipal(props.result.summary) && (
         <p class="hero__range">
-          <Rich message="hero.lastPayment" nodes={{ amount: inlineAmount(summary.lastPayment) }} />
+          <Rich message="hero.lastPayment" nodes={{ amount: inlineAmount(amounts.last) }} />
         </p>
       )}
     </div>
@@ -105,8 +118,8 @@ export function PaymentHero(props: {
   return (
     <div class="hero">
       <h3 class="hero__label">{heroLabel(summary, props.frequency)}</h3>
-      <HeroFigure summary={summary} />
-      <HeroMeta summary={summary} />
+      <HeroFigure result={props.result} />
+      <HeroMeta result={props.result} />
       <FormulaStrip explain={props.result.explain} />
     </div>
   );

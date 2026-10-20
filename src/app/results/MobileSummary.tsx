@@ -13,7 +13,7 @@ import { methodName, repaymentName } from '../state/messages';
 import { openExplain } from '../state/ui';
 import { CompactBar, useScrolledPast } from './CompactBar';
 import { type OkLoanResult, RateLine } from './figures';
-import { FixFields } from './FixFields';
+import { FixFields, fixListShown } from './FixFields';
 import { HeroFigure, HeroMeta, heroLabel } from './PaymentHero';
 import { Warnings } from './Warnings';
 
@@ -39,8 +39,8 @@ export function SummaryContent(props: {
         <p class="hero__label">{heroLabel(summary, props.frequency)}</p>
         <span class="badge">{repaymentName(props.repayment)}</span>
       </div>
-      <HeroFigure summary={summary} />
-      <HeroMeta summary={summary} />
+      <HeroFigure result={props.result} />
+      <HeroMeta result={props.result} />
       {/* The desktop hero's formula strip is hidden on mobile; its action stays reachable. */}
       <button
         type="button"
@@ -89,37 +89,40 @@ export function SummaryContent(props: {
 
 /**
  * The mobile summary card (DESIGN §7.2), first on the page below 64rem and hidden above,
- * with the compact bar that replaces it once it scrolls away. Invalid input shows the same
- * "Fix the highlighted fields" list as the desktop results.
+ * with the compact bar that replaces it once it scrolls away. Invalid input blanks the
+ * figures at once (`aria-busy`) and then shows the same "Fix the highlighted fields" list
+ * as the desktop results, at the same moment (`fixListShown`); the results panel's live
+ * region announces both.
  */
 export function MobileSummary(): JSX.Element {
   const result = okResult.value;
+  const shown = fixListShown.value;
   const { frequency, repayment } = form.value;
   const headline = headlineMethod.value;
   const card = useRef<HTMLElement>(null);
   const scrolledPast = useScrolledPast(card);
   return (
     <>
-      <section
-        ref={card}
-        class="card mobile-summary"
-        aria-labelledby="summary-title"
-        aria-busy={result === null ? 'true' : undefined}
-      >
+      <section ref={card} class="card mobile-summary" aria-labelledby="summary-title">
         <h2 id="summary-title" class="visually-hidden">
           {t('panels.summary.title')}
         </h2>
-        {result === null ? (
-          <FixFields />
-        ) : (
-          <SummaryContent
-            result={result}
-            frequency={frequency}
-            repayment={repayment}
-            headline={headline}
-            secondary={secondaryMethod.value}
-          />
-        )}
+        <div
+          class="mobile-summary__body"
+          aria-busy={result === null && !shown ? 'true' : undefined}
+        >
+          {result === null ? (
+            <FixFields />
+          ) : (
+            <SummaryContent
+              result={result}
+              frequency={frequency}
+              repayment={repayment}
+              headline={headline}
+              secondary={secondaryMethod.value}
+            />
+          )}
+        </div>
       </section>
       {scrolledPast && result !== null && (
         <CompactBar result={result} frequency={frequency} headline={headline} />

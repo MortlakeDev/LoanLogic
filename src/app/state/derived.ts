@@ -3,8 +3,9 @@
 
 /**
  * Figures the results display derives from an engine result: loan-year groups of the
- * schedule with exact subtotals (DESIGN §8.10), the cost structure (§8.9) and the fees a
- * headline rate includes (§8.7). Pure functions over the engine's decimal strings; sums are
+ * schedule with exact subtotals (DESIGN §8.10), the cost structure (§8.9), the fees a
+ * headline rate includes (§8.7), the payment hero's amounts (§8.6) and the payments the
+ * rates count (SPEC §9.1). Pure functions over the engine's decimal strings; sums are
  * exact (BigInt minor units), so a subtotal always equals the sum of its rows. Components
  * call these instead of doing arithmetic on money.
  */
@@ -215,6 +216,80 @@ export function includedFees(
       items.map((fee) => fee.total),
       minorUnits,
     ),
+  };
+}
+
+/**
+ * The payments as the cost-of-credit rates count them (SPEC §9.1): principal and interest
+ * plus only the periodic fees and insurance included in the rates. `totalPayments` also
+ * holds the per-payment items left out of the rates, which the rates were not solved on.
+ *
+ * @param totalPayments `summary.totalPayments`, in major units.
+ * @param amounts The engine's fee amounts (`result.fees`).
+ * @param inApr Whether each fee id is included.
+ */
+export function paymentsInRates(
+  totalPayments: string,
+  amounts: readonly FeeAmount[],
+  inApr: (id: string) => boolean,
+  minorUnits: number,
+): string {
+  return fromMinor(
+    amounts
+      .filter((fee) => fee.kind !== 'upfront' && !inApr(fee.id))
+      .reduce(
+        (total, fee) => total - toMinor(fee.total, minorUnits),
+        toMinor(totalPayments, minorUnits),
+      ),
+    minorUnits,
+  );
+}
+
+/** A payment's instalment: principal + interest, without its fees and insurance. */
+export function instalmentOf(row: LedgerRow, minorUnits: number): string {
+  return sumMoney([row.principal, row.interestPaid], minorUnits);
+}
+
+/**
+ * The payment hero's amounts (DESIGN §8.6), all on the instalment basis (principal +
+ * interest). `regularInstalment` is `A` without fees while the summary's first and last
+ * payments include periodic fees and insurance (SPEC §8.2), so mixing them would compare
+ * unlike amounts ("payment $8,560.75 · final payment $8,570.73" for one loan).
+ */
+export interface HeroAmounts {
+  /** `A` for annuity and balloon, else the first payment's principal + interest. */
+  readonly payment: string;
+  /** The last payment's principal + interest. */
+  readonly last: string;
+  /**
+   * The first payment as paid, with its periodic fees and insurance, or `null` when no
+   * payment carries any (it then equals the instalment).
+   */
+  readonly firstPaid: string | null;
+}
+
+/**
+ * The hero's amounts of a computed loan.
+ *
+ * @throws RangeError without rows: a computed loan always has at least one payment.
+ */
+export function heroAmounts(
+  summary: LoanSummary,
+  rows: readonly LedgerRow[],
+  minorUnits: number,
+): HeroAmounts {
+  const first = rows[0];
+  const last = rows[rows.length - 1];
+  if (first === undefined || last === undefined) {
+    throw new RangeError('A computed loan has at least one payment');
+  }
+  const charged = rows.some(
+    (row) => toMinor(row.fees, minorUnits) !== 0n || toMinor(row.insurance, minorUnits) !== 0n,
+  );
+  return {
+    payment: summary.regularInstalment ?? instalmentOf(first, minorUnits),
+    last: instalmentOf(last, minorUnits),
+    firstPaid: charged ? first.payment : null,
   };
 }
 

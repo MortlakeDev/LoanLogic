@@ -209,7 +209,11 @@ function TermField(): JSX.Element {
             onValue={(termYears) => {
               updateForm({ termYears });
             }}
-            ariaLabel={t('inputs.termYears')}
+            // The name contains the unit shown next to the digits (WCAG 2.5.3 label in name).
+            ariaLabel={t('inputs.termUnitLabel', {
+              name: t('inputs.termYears'),
+              unit: t('units.years'),
+            })}
             suffix={t('units.years')}
             invalid={termInvalid}
             {...optional('hintId', shared)}
@@ -222,7 +226,10 @@ function TermField(): JSX.Element {
             onValue={(termMonths) => {
               updateForm({ termMonths });
             }}
-            ariaLabel={t('inputs.termMonths')}
+            ariaLabel={t('inputs.termUnitLabel', {
+              name: t('inputs.termMonths'),
+              unit: t('units.months'),
+            })}
             suffix={t('units.months')}
             invalid={termInvalid}
             {...optional('hintId', shared)}

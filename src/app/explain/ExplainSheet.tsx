@@ -5,7 +5,7 @@ import './explain.css';
 import type { ComponentChildren, JSX } from 'preact';
 import type { LoanResult, RateMethodId } from '../../engine';
 import { Sheet } from '../components/Sheet';
-import { includedFees } from '../state/derived';
+import { includedFees, paymentsInRates } from '../state/derived';
 import { currencyDigits, money, ratePercent } from '../state/display';
 import { type FormulaModel, instalmentFormula, rateFormula, rateNote } from '../state/formula';
 import { formatLocale, t } from '../state/i18n';
@@ -173,12 +173,19 @@ function RateContent(props: {
   );
 }
 
-/** The cash flows behind a rate (SPEC §9.1): amount financed, payments and included fees. */
+/**
+ * The cash flows behind a rate (SPEC §9.1): amount financed, payments and included fees.
+ * The payments are counted as the rate counts them, without the periodic fees and
+ * insurance left out of it.
+ */
 function CashFlows(props: { readonly result: OkResult }): JSX.Element {
   const { summary } = props.result;
-  const inRate = includedFees(
+  const inApr = (id: string): boolean => form.value.fees.some((fee) => fee.uid === id && fee.inApr);
+  const inRate = includedFees(props.result.fees, inApr, currencyDigits.value);
+  const payments = paymentsInRates(
+    summary.totalPayments,
     props.result.fees,
-    (id) => form.value.fees.some((fee) => fee.uid === id && fee.inApr),
+    inApr,
     currencyDigits.value,
   );
   return (
@@ -192,7 +199,7 @@ function CashFlows(props: { readonly result: OkResult }): JSX.Element {
       <p class="explain__text">
         {t('explain.paymentsTotal', {
           count: summary.paymentsCount,
-          amount: money(summary.totalPayments),
+          amount: money(payments),
         })}
       </p>
       {inRate.items.length > 0 ? (

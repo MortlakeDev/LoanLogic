@@ -264,6 +264,17 @@ export function fieldOfEngineError(
 // Typing errors (fields whose text does not parse)
 // ---------------------------------------------------------------------------------------
 
+/**
+ * Counts keystrokes in number fields, valid or not, so a pause in typing can be detected
+ * even while the text stays invalid (the 300 ms "Fix the highlighted fields" delay).
+ */
+export const inputRevision = signal(0);
+
+/** Records a keystroke in a number field. */
+export function noteInput(): void {
+  inputRevision.value += 1;
+}
+
 /** Fields whose current text does not parse; any entry blanks the results. */
 export const inputErrors = signal<ReadonlySet<FieldPath>>(new Set());
 

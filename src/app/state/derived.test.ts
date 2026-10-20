@@ -16,7 +16,10 @@ import {
   costStructure,
   durationOf,
   fromMinor,
+  heroAmounts,
   includedFees,
+  instalmentOf,
+  paymentsInRates,
   periodsPerYear,
   scheduleTotals,
   scheduleYears,
@@ -437,6 +440,131 @@ describe('includedFees', () => {
     const result = calculate();
     expect(includedFees(result.fees, () => false, 2)).toEqual({ items: [], total: '0.00' });
     expect(includedFees([], () => true, 0)).toEqual({ items: [], total: '0' });
+  });
+});
+
+/** A fixed fee or insurance item charged with every payment. */
+function perPayment(
+  uid: string,
+  kind: 'periodic' | 'insurance',
+  value: string,
+  inApr: boolean,
+): LoanForm['fees'][number] {
+  return { uid, name: '', kind, calc: 'fixed', value, financing: 'paid', inApr };
+}
+
+/** USD 100,000.00 at 5 % over 12 monthly payments, with some fields changed. */
+function shortLoan(patch: Partial<LoanForm> = {}): OkResult {
+  return calculate({
+    amount: '100000.00',
+    annualRatePct: '5',
+    termMode: 'payments',
+    termPayments: '12',
+    fees: [perPayment('service', 'periodic', '10.00', false)],
+    ...patch,
+  });
+}
+
+describe('paymentsInRates', () => {
+  it('leaves out the per-payment items that are not in the rates', () => {
+    const result = shortLoan();
+    expect(result.summary.totalPayments).toBe('102848.98');
+    expect(paymentsInRates(result.summary.totalPayments, result.fees, () => false, 2)).toBe(
+      '102728.98',
+    );
+    // Included, they stay; upfront fees are not part of any payment.
+    expect(paymentsInRates(result.summary.totalPayments, result.fees, () => true, 2)).toBe(
+      '102848.98',
+    );
+  });
+
+  it('subtracts every excluded periodic fee and insurance item exactly, never upfront fees', () => {
+    const result = calculate({
+      fees: [
+        ...defaultForm('2026-11-01').fees,
+        perPayment('service', 'periodic', '10.00', false),
+        perPayment('cover', 'insurance', '25.00', false),
+        perPayment('admin', 'periodic', '1.00', true),
+      ],
+    });
+    const included = (id: string): boolean => id === 'admin';
+    const excluded = result.fees
+      .filter((fee) => fee.kind !== 'upfront' && !included(fee.id))
+      .map((fee) => fee.total);
+    expect(excluded).toEqual(['3600.00', '9000.00']);
+    expect(paymentsInRates(result.summary.totalPayments, result.fees, included, 2)).toBe(
+      exactSum([result.summary.totalPayments]).minus(exactSum(excluded)).toFixed(2),
+    );
+  });
+});
+
+describe('instalmentOf', () => {
+  it('is principal + interest, without fees and insurance', () => {
+    const row = rowAt(shortLoan().rows, 0);
+    expect([row.principal, row.interestPaid, row.fees, row.payment]).toEqual([
+      '8144.08',
+      '416.67',
+      '10.00',
+      '8570.75',
+    ]);
+    expect(instalmentOf(row, 2)).toBe('8560.75');
+  });
+
+  it('keeps the sign of negative interest', () => {
+    const row = rowAt(calculate({ repayment: 'equal-principal', annualRatePct: '-5' }).rows, 0);
+    expect(instalmentOf(row, 2)).toBe(exactSum([row.principal, row.interestPaid]).toFixed(2));
+    expect(instalmentOf(row, 2)).toBe('-486.11');
+  });
+});
+
+describe('heroAmounts', () => {
+  it('puts the annuity, its last payment and nothing else on the instalment basis', () => {
+    const result = calculate();
+    expect(heroAmounts(result.summary, result.rows, 2)).toEqual({
+      payment: '2299.25',
+      last: '2300.28',
+      firstPaid: null,
+    });
+  });
+
+  it('shows the first payment as paid when payments carry periodic fees', () => {
+    const result = shortLoan();
+    const last = rowAt(result.rows, result.rows.length - 1);
+    expect(heroAmounts(result.summary, result.rows, 2)).toEqual({
+      payment: '8560.75',
+      last: exactSum([last.principal, last.interestPaid]).toFixed(2),
+      firstPaid: '8570.75',
+    });
+    expect(heroAmounts(result.summary, result.rows, 2).last).toBe('8560.73');
+    expect(result.summary.lastPayment).toBe('8570.73');
+  });
+
+  it('takes the first instalment of equal principal, without fees or insurance', () => {
+    const result = shortLoan({
+      repayment: 'equal-principal',
+      fees: [perPayment('cover', 'insurance', '10.00', true)],
+    });
+    const first = rowAt(result.rows, 0);
+    const last = rowAt(result.rows, result.rows.length - 1);
+    expect(heroAmounts(result.summary, result.rows, 2)).toEqual({
+      payment: exactSum([first.principal, first.interestPaid]).toFixed(2),
+      last: exactSum([last.principal, last.interestPaid]).toFixed(2),
+      firstPaid: first.payment,
+    });
+    expect(heroAmounts(result.summary, result.rows, 2).payment).toBe('8750.00');
+  });
+
+  it('takes the first interest payment of an interest-only loan', () => {
+    const result = calculate({ repayment: 'bullet', fees: [] });
+    expect(heroAmounts(result.summary, result.rows, 2)).toEqual({
+      payment: '2005.21',
+      last: exactSum([result.summary.amount, rowAt(result.rows, 359).interestPaid]).toFixed(2),
+      firstPaid: null,
+    });
+  });
+
+  it('refuses a schedule without payments', () => {
+    expect(() => heroAmounts(calculate().summary, [], 2)).toThrow(RangeError);
   });
 });
 

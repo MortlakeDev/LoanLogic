@@ -13,6 +13,7 @@ import {
   feeValueField,
   form,
   inputErrors,
+  inputRevision,
   resetForm,
   setInputInvalid,
   updateForm,
@@ -409,5 +410,76 @@ describe('NumberInput', () => {
     expect(inputErrors.value.has('term.years')).toBe(true);
     fireEvent.input(textbox('Rate'), { target: { value: '7,25' } });
     expect(onRate).toHaveBeenCalledWith('7.25');
+  });
+});
+
+describe('NumberInput: review fixes', () => {
+  it('clears its typing error when it goes away, so the results can come back', () => {
+    const view = render(
+      <NumberInput
+        id="balloon"
+        field="balloon.value"
+        kind="money"
+        value="1.00"
+        onValue={vi.fn()}
+        ariaLabel="Balloon"
+      />,
+    );
+    fireEvent.input(textbox('Balloon'), { target: { value: 'abc' } });
+    expect(inputErrors.value.has('balloon.value')).toBe(true);
+    view.unmount();
+    expect(inputErrors.value.has('balloon.value')).toBe(false);
+  });
+
+  it('applies text typed before a language change when it parses in the new locale', async () => {
+    const onValue = vi.fn();
+    render(
+      <NumberInput
+        id="amount"
+        field="amount"
+        kind="money"
+        value="350000.00"
+        onValue={onValue}
+        fractionDigits={2}
+        ariaLabel="Amount"
+      />,
+    );
+    const input = textbox('Amount');
+    // A space does not group digits in en-US …
+    fireEvent.input(input, { target: { value: '1 000 000' } });
+    expect(inputErrors.value.has('amount')).toBe(true);
+    // … but it does in ru-RU: leaving the field applies the value instead of dropping it.
+    await act(() => {
+      setLanguage('ru');
+    });
+    fireEvent.blur(input);
+    expect(onValue).toHaveBeenCalledWith('1000000');
+    expect(inputErrors.value.has('amount')).toBe(false);
+  });
+
+  it('shows a value with more than 20 decimals instead of crashing', () => {
+    expect(formatInputValue('6.5000000000000000000000', 'percent', 'en-US')).toBe(
+      '6.5000000000000000000000',
+    );
+    expect(formatInputValue('1.0000000000000000000001', 'money', 'en-US', 2)).toBe(
+      '1.0000000000000000000001',
+    );
+  });
+
+  it('counts every keystroke, valid or not', () => {
+    render(
+      <NumberInput
+        id="rate"
+        field="annualRatePct"
+        kind="percent"
+        value="6.875"
+        onValue={vi.fn()}
+        ariaLabel="Rate"
+      />,
+    );
+    const before = inputRevision.value;
+    fireEvent.input(textbox('Rate'), { target: { value: '6,' } });
+    fireEvent.input(textbox('Rate'), { target: { value: 'x' } });
+    expect(inputRevision.value).toBe(before + 2);
   });
 });

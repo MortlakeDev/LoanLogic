@@ -88,6 +88,13 @@ export function Sheet(props: {
         event.preventDefault();
         return;
       }
+      // A click on plain text inside focuses the panel itself (tabIndex -1); Tab and
+      // Shift+Tab from there would leave the dialog without this.
+      if (document.activeElement === container) {
+        event.preventDefault();
+        (event.shiftKey ? last : first).focus();
+        return;
+      }
       if (event.shiftKey && isOnStop(document.activeElement, first)) {
         event.preventDefault();
         last.focus();

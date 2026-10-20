@@ -51,6 +51,9 @@ export default defineConfig(({ mode }) => {
       // Performance budgets run on their own: `npm run bench` (vitest.bench.config.ts).
       exclude: [...configDefaults.exclude, 'src/**/*.bench.test.ts'],
       environment: 'node',
+      // Shell tests import the whole app afresh per test; with every file running in
+      // parallel under coverage that first import can take longer than the 5 s default.
+      testTimeout: 15_000,
       restoreMocks: true,
       unstubGlobals: true,
       coverage: {
