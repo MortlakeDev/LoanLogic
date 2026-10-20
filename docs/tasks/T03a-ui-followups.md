@@ -69,8 +69,8 @@ the live site are fixed too.
 - **e2e:**
   - the strip's result equals the hero for equal principal and interest-only;
   - the theme menu keyboard and click behaviour;
-  - in ru and uk at 360 and 1280 px, no word in the repayment cards is split across
-    lines without a hyphen (compare the line boxes of each word with `Range`);
+  - in ru and uk at 360, 390, 1024 and 1280 px, no word in the repayment cards is split
+    across lines without a hyphen (compare the line boxes of each word with `Range`);
   - axe stays clean.
 
 ## Acceptance criteria
