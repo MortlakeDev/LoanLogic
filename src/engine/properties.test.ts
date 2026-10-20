@@ -51,7 +51,12 @@ const POLICIES: readonly PaymentRounding[] = [
 const REPAYMENTS: readonly RepaymentType[] = ['annuity', 'equal-principal', 'bullet', 'balloon'];
 
 /** Errors a valid-looking input may still produce, depending on the schedule (SPEC §13). */
-const SCHEDULE_ERRORS = new Set(['NEG_AMORTIZATION', 'BALLOON_RANGE', 'AMOUNT_TOO_SMALL_FOR_TERM']);
+const SCHEDULE_ERRORS = new Set([
+  'NEG_AMORTIZATION',
+  'BALLOON_RANGE',
+  'AMOUNT_TOO_SMALL_FOR_TERM',
+  'FEE_RANGE',
+]);
 
 /** A decimal string for `units / 10^digits`, as SPEC §15 spells it. */
 function decimal(units: bigint, digits: number): string {
@@ -216,7 +221,10 @@ describe('calculateLoan on random valid inputs', () => {
           for (const error of result.errors) {
             expect(SCHEDULE_ERRORS.has(error.code), JSON.stringify(error)).toBe(true);
             // Each error belongs to one repayment type and one field (SPEC §5, §13).
-            if (error.code === 'BALLOON_RANGE') {
+            if (error.code === 'FEE_RANGE') {
+              // Upfront fees paid at closing take the whole amount (SPEC §6.1).
+              expect(error.field).toBe('fees');
+            } else if (error.code === 'BALLOON_RANGE') {
               expect([input.repayment, error.field]).toEqual(['balloon', 'balloon.value']);
             } else if (error.code === 'AMOUNT_TOO_SMALL_FOR_TERM') {
               expect([input.repayment, input.rounding?.principalRemainder, error.field]).toEqual([
@@ -225,8 +233,12 @@ describe('calculateLoan on random valid inputs', () => {
                 'amount',
               ]);
             } else {
+              // NEG_AMORTIZATION: annuity or balloon, never the exact payment basis (§5.1).
               expect(['annuity', 'balloon']).toContain(input.repayment);
               expect(error.field).toBeNull();
+              expect(
+                input.accrual?.mode === 'daycount' && input.accrual.paymentBasis === 'exact',
+              ).toBe(false);
             }
           }
           return;

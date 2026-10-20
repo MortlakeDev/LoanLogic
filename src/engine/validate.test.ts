@@ -1577,3 +1577,162 @@ describe('validateLoanInput — properties', () => {
     );
   });
 });
+
+// ---------------------------------------------------------------------------------------
+// SPEC v0.2.2: bounds and decimals of fees and percentages, fees paid at closing
+// ---------------------------------------------------------------------------------------
+
+/** A single fee item with the given properties. */
+function oneFee(fee: Input): Input {
+  return input({ fees: [{ id: 'f', ...fee }] });
+}
+
+describe('validateLoanInput — percentages are multiples of 10^−10 (SPEC v0.2.2 §13)', () => {
+  it.each(['7.1234567891', '6.50000000000', '-19.9999999999', '0.0000000001'])(
+    'accepts the rate %s',
+    (rate) => {
+      expect(termsOf(input({ annualRatePct: rate })).annualRatePct).toBe(rate);
+    },
+  );
+
+  it.each(['7.12345678912', '0.00000000001', '-0.00000000005'])(
+    'rejects the rate %s with TOO_MANY_DECIMALS',
+    (rate) => {
+      expect(errorsOf(input({ annualRatePct: rate }))).toEqual(['TOO_MANY_DECIMALS@annualRatePct']);
+    },
+  );
+
+  it('checks the range before the decimals', () => {
+    expect(errorsOf(input({ annualRatePct: '1000.00000000001' }))).toEqual([
+      'RATE_RANGE@annualRatePct',
+    ]);
+  });
+
+  it('applies the same rule to a percentage balloon, not to an amount balloon', () => {
+    const balloon = (kind: string, value: string): Input =>
+      input({ repayment: 'balloon', balloon: { kind, value } });
+    expect(errorsOf(balloon('percent', '30.00000000001'))).toEqual([
+      'TOO_MANY_DECIMALS@balloon.value',
+    ]);
+    expect(termsOf(balloon('percent', '30.0000000001')).balloon).toEqual({
+      kind: 'percent',
+      pct: parseDecimal('30.0000000001'),
+    });
+    expect(errorsOf(balloon('amount', '300.001'))).toEqual(['TOO_MANY_DECIMALS@balloon.value']);
+  });
+});
+
+describe('validateLoanInput — fee bounds (SPEC v0.2.2 §13)', () => {
+  it('accepts a fixed fee of exactly 1e15 and rejects one above it with FEE_RANGE', () => {
+    const fixed = (value: string): Input =>
+      oneFee({ kind: 'upfront', calc: 'fixed', value, financing: 'financed' });
+    expect(termsOf(fixed('1000000000000000.00')).fees[0]?.value).toEqual({
+      calc: 'fixed',
+      amount: 10n ** 17n,
+    });
+    expect(errorsOf(fixed('1000000000000000.01'))).toEqual(['FEE_RANGE@fees[0].value']);
+  });
+
+  it.each(['percent', 'pct-original', 'pct-balance'])(
+    'accepts a %s fee of exactly 100 and rejects one above it',
+    (calc) => {
+      const kind = calc === 'percent' ? 'upfront' : 'periodic';
+      expect(validated(oneFee({ kind, calc, value: '100', financing: 'financed' })).ok).toBe(true);
+      expect(errorsOf(oneFee({ kind, calc, value: '100.0000000001' }))).toEqual([
+        'FEE_RANGE@fees[0].value',
+      ]);
+    },
+  );
+
+  it('rejects a percentage fee with 11 decimals with TOO_MANY_DECIMALS, after the range', () => {
+    expect(
+      errorsOf(oneFee({ kind: 'insurance', calc: 'pct-balance', value: '0.01234567891' })),
+    ).toEqual(['TOO_MANY_DECIMALS@fees[0].value']);
+    expect(
+      errorsOf(oneFee({ kind: 'insurance', calc: 'pct-balance', value: '100.00000000001' })),
+    ).toEqual(['FEE_RANGE@fees[0].value']);
+  });
+
+  it('checks the value against the calc as given, even when kind or calc do not fit', () => {
+    // An unknown kind: the calc is not checked, but the value follows it.
+    expect(errorsOf(oneFee({ kind: 'monthly', calc: 'pct-balance', value: '100.5' }))).toEqual([
+      'FEE_RANGE@fees[0].value',
+      'INPUT_INVALID@fees[0].kind',
+    ]);
+    // A percentage calc on an upfront item: the calc is wrong, the value is a percentage.
+    expect(
+      errorsOf(oneFee({ kind: 'upfront', calc: 'pct-balance', value: '1.00000000001' })),
+    ).toEqual(['INPUT_INVALID@fees[0].calc', 'TOO_MANY_DECIMALS@fees[0].value']);
+    // An unknown calc: only the calc-independent checks apply.
+    expect(errorsOf(oneFee({ kind: 'periodic', calc: 'weekly', value: '1e400' }))).toEqual([
+      'INPUT_INVALID@fees[0].calc',
+      'INPUT_INVALID@fees[0].value',
+    ]);
+    expect(
+      errorsOf(oneFee({ kind: 'periodic', calc: 'weekly', value: '1000.123456789123' })),
+    ).toEqual(['INPUT_INVALID@fees[0].calc']);
+  });
+});
+
+describe('validateLoanInput — upfront fees paid at closing (SPEC v0.2.2 §6.1)', () => {
+  const upfront = (value: string, financing: string, calc = 'fixed'): Input => ({
+    kind: 'upfront',
+    calc,
+    value,
+    financing,
+  });
+
+  it('rejects paid upfront fees of at least the amount with FEE_RANGE on fees (phase 2)', () => {
+    expect(
+      validateLoanInput(
+        input({
+          fees: [
+            { id: 'a', ...upfront('600.00', 'paid') },
+            { id: 'b', ...upfront('40', 'paid', 'percent') },
+          ],
+        }),
+      ),
+    ).toEqual({
+      ok: false,
+      errors: [{ code: 'FEE_RANGE', field: 'fees' }],
+    });
+    expect(errorsOf(input({ fees: [{ id: 'a', ...upfront('1000.01', 'paid') }] }))).toEqual([
+      'FEE_RANGE@fees',
+    ]);
+  });
+
+  it('accepts paid fees just below the amount, and ignores financed fees', () => {
+    expect(validated(input({ fees: [{ id: 'a', ...upfront('999.99', 'paid') }] })).ok).toBe(true);
+    expect(
+      validated(
+        input({
+          fees: [
+            { id: 'a', ...upfront('999.99', 'paid') },
+            { id: 'b', ...upfront('5000.00', 'financed') },
+          ],
+        }),
+      ).ok,
+    ).toBe(true);
+  });
+
+  it('rounds percentage fees with the fee rounding mode before comparing', () => {
+    // 99.9995 % of 1 000.00 is 999.995: half-up 1 000.00 (fails), floor 999.99 (passes).
+    const fee = [{ id: 'a', ...upfront('99.9995', 'paid', 'percent') }];
+    expect(errorsOf(input({ fees: fee }))).toEqual(['FEE_RANGE@fees']);
+    expect(validated(input({ fees: fee, rounding: { fees: 'floor' } })).ok).toBe(true);
+  });
+
+  it('is a phase-2 check: reported with the other combinations, not with field errors', () => {
+    expect(
+      errorsOf(
+        input({
+          term: { years: 0, months: 0 },
+          fees: [{ id: 'a', ...upfront('1000.00', 'paid') }],
+        }),
+      ),
+    ).toEqual(['FEE_RANGE@fees', 'TERM_TOO_SHORT@term']);
+    expect(
+      errorsOf(input({ amount: '-1.00', fees: [{ id: 'a', ...upfront('1000.00', 'paid') }] })),
+    ).toEqual(['AMOUNT_RANGE@amount']);
+  });
+});

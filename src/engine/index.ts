@@ -4,7 +4,7 @@
 /**
  * LoanLogic financial engine — public API.
  *
- * Implements docs/SPEC-finance.md v0.2.1 §0–§6, §8–§10, §13 and the input contract of
+ * Implements docs/SPEC-finance.md v0.2.2 §0–§6, §8–§10, §13 and the input contract of
  * §15. Pure and deterministic: no DOM, no UI imports, no global state, no I/O, no JS
  * `Date`, no `Intl`; its only dependency is decimal.js. Ledger money is exact (BigInt
  * rationals, posted at the currency's minor units); rate metrics are solved in double

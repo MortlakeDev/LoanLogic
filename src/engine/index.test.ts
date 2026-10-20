@@ -10,6 +10,8 @@
 import { Decimal } from 'decimal.js';
 import { describe, expect, it } from 'vitest';
 import { type LoanInput, type RateMetric, calculateLoan, computeRateMetrics } from './index';
+import { parseDecimal } from './rational';
+import { periodicRate } from './rates';
 
 const BASE: LoanInput = {
   currency: 'USD',
@@ -45,34 +47,6 @@ function significantDigits(text: string): string {
 }
 
 describe('calculateLoan: warnings', () => {
-  it('reports IRR_MULTIPLE at the top level and on the affected metric', () => {
-    // A paid fee above the amount makes the inflow at D0 negative; the negative rate then
-    // gives the periodic flows several sign changes.
-    const result = okResult({
-      ...BASE,
-      annualRatePct: '-20',
-      repayment: 'bullet',
-      term: { payments: 600 },
-      fees: [
-        {
-          id: 'f',
-          kind: 'upfront',
-          calc: 'fixed',
-          value: '1000.01',
-          financing: 'paid',
-          inApr: true,
-        },
-      ],
-      rateMethods: ['irrNominal', 'xirr'],
-    });
-    expect(result.warnings).toEqual([
-      { code: 'RATE_NEGATIVE', params: { annualRatePct: '-20' } },
-      { code: 'IRR_MULTIPLE', params: { methods: 'irrNominal' } },
-    ]);
-    expect(metric(result.rates.irrNominal).warnings).toEqual(['IRR_MULTIPLE']);
-    expect(metric(result.rates.xirr).warnings).toBeUndefined();
-  });
-
   it('reports EARLY_CLOSE with the actual and the scheduled number of payments', () => {
     const result = okResult({
       ...BASE,
@@ -136,38 +110,49 @@ describe('calculateLoan: the instalment explanation (SPEC §9.6)', () => {
 });
 
 describe('calculateLoan at the edges of the number ranges', () => {
-  it('does not throw for a fee value beyond the double range, and still solves the rates', () => {
-    const fee = `1${'0'.repeat(400)}.00`;
+  it('rejects a fixed fee above 1e15 and computes one at the limit (SPEC §13)', () => {
+    const fee = (value: string) => [
+      {
+        id: 'f',
+        kind: 'upfront' as const,
+        calc: 'fixed' as const,
+        value,
+        financing: 'financed' as const,
+        inApr: false,
+      },
+    ];
+    expect(calculateLoan({ ...BASE, fees: fee('1000000000000000.01') })).toEqual({
+      ok: false,
+      errors: [{ code: 'FEE_RANGE', field: 'fees[0].value' }],
+    });
     // A financed fee that is not a finance charge is credit received: the IRR is the contract rate.
-    const financed = okResult({
-      ...BASE,
-      fees: [
-        {
-          id: 'f',
-          kind: 'upfront',
-          calc: 'fixed',
-          value: fee,
-          financing: 'financed',
-          inApr: false,
-        },
-      ],
-    });
-    expect(metric(financed.rates.irrNominal).display).toBe('6.00');
-    expect(metric(financed.rates.usRegZApr).display).toBe('6.000');
-    // A paid finance charge larger than the amount leaves no sign change: no rate, no throw.
-    const paid = okResult({
-      ...BASE,
-      fees: [
-        { id: 'f', kind: 'upfront', calc: 'fixed', value: fee, financing: 'paid', inApr: true },
-      ],
-    });
-    expect(paid.rates.irrNominal).toEqual({ ok: false, reason: 'IRR_NO_CONVERGENCE' });
+    const atLimit = okResult({ ...BASE, fees: fee('1000000000000000.00') });
+    expect(metric(atLimit.rates.irrNominal).display).toBe('6.00');
+    expect(metric(atLimit.rates.usRegZApr).display).toBe('6.000');
   });
 
-  it('posts exact interest and instalment for an irrational rate on a huge principal', () => {
-    // Continuous compounding: i = e^(0.06/12) − 1. A financed fee of 1e60 makes P 61 digits long.
+  it('rejects upfront fees paid at closing that take the whole amount (SPEC §6.1)', () => {
+    const paid = (value: string) => [
+      {
+        id: 'f',
+        kind: 'upfront' as const,
+        calc: 'fixed' as const,
+        value,
+        financing: 'paid' as const,
+      },
+    ];
+    expect(calculateLoan({ ...BASE, fees: paid('1000.00') })).toEqual({
+      ok: false,
+      errors: [{ code: 'FEE_RANGE', field: 'fees' }],
+    });
+    expect(okResult({ ...BASE, fees: paid('999.99') }).summary.netProceeds).toBe('0.01');
+  });
+
+  it('posts exact interest and instalment for an irrational rate at the largest principal', () => {
+    // Continuous compounding, i = e^(0.06/12) − 1, on P = 1e15 + a financed fee of 1e15.
     const result = okResult({
       ...BASE,
+      amount: '1000000000000000.00',
       term: { payments: 2 },
       accrual: { mode: 'periodic', compounding: 'continuous' },
       fees: [
@@ -175,14 +160,14 @@ describe('calculateLoan at the edges of the number ranges', () => {
           id: 'f',
           kind: 'upfront',
           calc: 'fixed',
-          value: `1${'0'.repeat(60)}.00`,
+          value: '1000000000000000.00',
           financing: 'financed',
           inApr: false,
         },
       ],
     });
     const i = new Reference('0.005').exp().minus(1);
-    const principal = new Reference(`1${'0'.repeat(60)}`).plus(1000);
+    const principal = new Reference('2e15');
     const interest = principal.times(i).toDecimalPlaces(2, Decimal.ROUND_HALF_UP);
     const astar = principal.times(i).div(new Reference(1).minus(i.plus(1).pow(-2)));
     expect(result.rows[0]?.interestAccrued).toBe(interest.toFixed(2));
@@ -191,31 +176,37 @@ describe('calculateLoan at the edges of the number ranges', () => {
     );
   });
 
-  it('keeps at least 40 significant digits of a tiny irrational rate, and never makes it 0', () => {
-    for (const compounding of ['continuous', 'semiannual'] as const) {
-      // j = 1e−40 (1e−38 %): i ≈ j/12 = 8.333…e−42.
-      const tiny = okResult({
-        ...BASE,
-        annualRatePct: `0.${'0'.repeat(37)}1`,
-        accrual: { mode: 'periodic', compounding },
-      });
-      const j = new Reference('1e-40');
-      const reference =
-        compounding === 'continuous'
-          ? j.div(12).exp().minus(1)
-          : j.div(2).plus(1).pow(new Reference(2).div(12)).minus(1);
-      const shown = tiny.explain.values.i ?? '0';
-      // The explanation carries 20 significant digits, all of them correct.
-      expect(significantDigits(shown)).toHaveLength(20);
-      expect(new Reference(shown).minus(reference).abs().div(reference).lt('1e-19')).toBe(true);
-      // j = 1e−50 (1e−48 %): still a non-zero rate, not the j = 0 shortcut.
-      const tinier = okResult({
-        ...BASE,
-        annualRatePct: `0.${'0'.repeat(47)}1`,
-        accrual: { mode: 'periodic', compounding },
-      });
-      expect(tinier.explain.values.i).not.toBe('0');
-      expect(Number(tinier.explain.values.i)).toBeGreaterThan(0);
+  it('keeps at least 40 significant digits of the smallest irrational rate (SPEC §1.6)', () => {
+    // 1e−10 % is the smallest rate SPEC §13 allows: j = 1e−12, i ≈ j/12 ≈ 8.3e−14. The
+    // subtraction in e^x − 1 cancels 13 digits, which a fixed 50 digits could not spare.
+    for (const sign of ['', '-'] as const) {
+      const j = new Reference(`${sign}1e-12`);
+      for (const compounding of ['continuous', 'semiannual'] as const) {
+        const reference =
+          compounding === 'continuous'
+            ? j.div(12).exp().minus(1)
+            : j.div(2).plus(1).pow(new Reference(2).div(12)).minus(1);
+        const i = periodicRate(parseDecimal(`${sign}0.000000000001`), 'monthly', compounding);
+        if (i.kind !== 'decimal') {
+          throw new Error('expected an irrational rate');
+        }
+        const relative = new Reference(i.value.toString())
+          .minus(reference)
+          .abs()
+          .div(reference.abs());
+        expect(relative.lt('1e-40')).toBe(true);
+        // Through the API, the explanation shows 20 correct significant digits.
+        const shown =
+          okResult({
+            ...BASE,
+            annualRatePct: `${sign}0.0000000001`,
+            accrual: { mode: 'periodic', compounding },
+          }).explain.values.i ?? '0';
+        expect(significantDigits(shown)).toHaveLength(20);
+        expect(new Reference(shown).minus(reference).abs().div(reference.abs()).lt('1e-19')).toBe(
+          true,
+        );
+      }
     }
   });
 });

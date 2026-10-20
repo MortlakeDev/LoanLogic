@@ -130,8 +130,10 @@ export type FeeInput =
       readonly kind: 'upfront';
       readonly calc: 'fixed' | 'percent';
       /**
-       * `fixed`: the fee in major units, a whole number of minor units, used as entered.
-       * `percent`: a percentage of the requested amount (1.5 = 1.5 %). Never negative.
+       * `fixed`: the fee in major units, a whole number of minor units, at most 1e15, used
+       * as entered. `percent`: a percentage of the requested amount (1.5 = 1.5 %), at most
+       * 100, a multiple of 10^−10. Never negative. Fees paid at closing must stay below the
+       * amount (SPEC §6.1, §13).
        */
       readonly value: DecimalString;
       readonly financing?: 'paid' | 'financed';
@@ -145,7 +147,8 @@ export type FeeInput =
        * Charged every period. `fixed`: the amount per period in major units, a whole number
        * of minor units. `pct-original` / `pct-balance`: a percentage **per payment period**
        * (a 1.5 % monthly commission is 1.5 with monthly payments) of the requested amount
-       * or of the period's opening balance (SPEC §6.2). Never negative.
+       * or of the period's opening balance (SPEC §6.2). Never negative; fixed at most 1e15,
+       * percentages at most 100 and multiples of 10^−10 (SPEC §13).
        */
       readonly value: DecimalString;
       readonly inApr?: boolean;
@@ -157,13 +160,14 @@ export interface LoanInput {
   readonly currency: string;
   /** Requested amount in major units, whole minor units. */
   readonly amount: DecimalString;
-  /** Nominal annual rate in percent: "6.5" = 6.5 %. */
+  /** Nominal annual rate in percent: "6.5" = 6.5 %; −20 … 1000, a multiple of 10^−10. */
   readonly annualRatePct: DecimalString;
   readonly repayment: RepaymentType;
   /**
    * The residual (SPEC §5.5); required for `balloon`, ignored otherwise. `amount`: in major
    * units, a whole number of minor units; `percent`: a percentage of the principal
-   * financed (amount + financed upfront fees). `0 < Bal < P` after rounding.
+   * financed (amount + financed upfront fees), a multiple of 10^−10. `0 < Bal < P` after
+   * rounding.
    */
   readonly balloon?: { readonly kind: 'amount' | 'percent'; readonly value: DecimalString };
   readonly frequency: FrequencyId;

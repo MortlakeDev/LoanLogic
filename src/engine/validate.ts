@@ -96,6 +96,14 @@ const MAX_AMOUNT = fromInteger(10n ** 15n);
 /** Rate limits in percent (SPEC §3.4). */
 const MIN_RATE_PCT = fromInteger(-20);
 const MAX_RATE_PCT = fromInteger(1000);
+/** Largest fixed fee, in major units (SPEC §13), the same bound as the amount. */
+const MAX_FIXED_FEE = MAX_AMOUNT;
+/** Largest percentage fee (SPEC §13). */
+const MAX_FEE_PCT = fromInteger(100);
+/** A percentage is a multiple of 10^−10 (SPEC §13, §15). */
+const PERCENT_SCALE = 10n ** 10n;
+/** The `calc` values whose fee value is a percentage. */
+const PERCENT_CALCS: readonly string[] = ['percent', 'pct-original', 'pct-balance'];
 /** Most years of a years + months term (SPEC §2.4). */
 const MAX_TERM_YEARS = 100;
 
@@ -188,6 +196,21 @@ function checkDate(value: unknown, field: string, errors: EngineError[]): LocalD
 }
 
 /**
+ * A percentage that is a multiple of 10^−10 ("6.1234567891" and "6.50000000000" are fine,
+ * "6.12345678912" is not), else `TOO_MANY_DECIMALS` and `null` (SPEC §13). The bound
+ * keeps exact evaluation fast: a power such as `(1 + i)^1200` grows with the digits.
+ */
+function percentageDecimals(
+  exact: Rational,
+  field: string,
+  errors: EngineError[],
+): Rational | null {
+  return (exact.n * PERCENT_SCALE) % exact.d === 0n
+    ? exact
+    : fail(errors, field, 'TOO_MANY_DECIMALS');
+}
+
+/**
  * Money as a whole number of minor units. Without a valid currency the minor units are
  * unknown: nothing is checked (the currency error is already recorded) and the result is
  * `null`.
@@ -246,7 +269,7 @@ interface RateField {
   readonly rate: Rational;
 }
 
-/** Annual rate in percent, −20 … 1000 (SPEC §3.4). */
+/** Annual rate in percent, −20 … 1000 (SPEC §3.4), a multiple of 10^−10 (§13). */
 function checkRate(value: unknown, errors: EngineError[]): RateField | null {
   if (!isDecimalString(value)) {
     return fail(errors, 'annualRatePct');
@@ -254,6 +277,9 @@ function checkRate(value: unknown, errors: EngineError[]): RateField | null {
   const pct = parseDecimal(value);
   if (compare(pct, MIN_RATE_PCT) < 0 || compare(pct, MAX_RATE_PCT) > 0) {
     return fail(errors, 'annualRatePct', 'RATE_RANGE');
+  }
+  if (percentageDecimals(pct, 'annualRatePct', errors) === null) {
+    return null;
   }
   return { annualRatePct: value, rate: rational(pct.n, pct.d * 100n) };
 }
@@ -276,7 +302,11 @@ function checkBalloon(
     const amount = wholeMinorUnits(text, digits, 'balloon.value', errors);
     return amount === null ? null : { kind, amount };
   }
-  return kind === null ? null : { kind, pct: parseDecimal(text) };
+  if (kind === null) {
+    return null;
+  }
+  const pct = percentageDecimals(parseDecimal(text), 'balloon.value', errors);
+  return pct === null ? null : { kind, pct };
 }
 
 /** An integer term field within `min … max`, else `TERM_RANGE` on that field. */
@@ -410,11 +440,11 @@ function checkRounding(value: unknown, errors: EngineError[]): RoundingOptions |
 }
 
 /**
- * A fee's value: a non-negative decimal; with `calc: 'fixed'` also whole minor units.
- *
- * The minor units are checked whenever `calc` is the string `'fixed'`, even when the
- * fee's kind is invalid: `fixed` is money for every kind, so the check does not depend on
- * the kind.
+ * A fee's value (SPEC §13): a non-negative decimal, then checked against its `calc` as
+ * given — `fixed`: at most 1e15 and whole minor units; `percent`, `pct-original`,
+ * `pct-balance`: at most 100 and a multiple of 10^−10 — even when that `calc` does not
+ * fit the kind or the kind is invalid. Range comes before decimals (`FEE_RANGE`, then
+ * `TOO_MANY_DECIMALS`).
  */
 function checkFeeValue(
   value: unknown,
@@ -432,8 +462,19 @@ function checkFeeValue(
     return fail(errors, field, 'FEE_RANGE');
   }
   if (rawCalc === 'fixed') {
+    if (compare(exact, MAX_FIXED_FEE) > 0) {
+      return fail(errors, field, 'FEE_RANGE');
+    }
     const amount = wholeMinorUnits(value, digits, field, errors);
     return amount === null ? null : { calc: 'fixed', amount };
+  }
+  if (typeof rawCalc === 'string' && PERCENT_CALCS.includes(rawCalc)) {
+    if (compare(exact, MAX_FEE_PCT) > 0) {
+      return fail(errors, field, 'FEE_RANGE');
+    }
+    if (percentageDecimals(exact, field, errors) === null) {
+      return null;
+    }
   }
   return calc === null || calc === 'fixed' ? null : { calc, pct: exact };
 }
@@ -644,7 +685,12 @@ function checkCombinations(fields: LoanFields): LoanValidation {
     errors.push({ code: 'UNSUPPORTED', field: 'accrual.paymentBasis' });
   }
 
-  const principal = principalFinanced(amount, upfrontTotals(fields.fees, amount, rounding.fees));
+  const upfront = upfrontTotals(fields.fees, amount, rounding.fees);
+  // The borrower must receive something (SPEC §6.1); financed fees do not count.
+  if (upfront.paid >= amount) {
+    errors.push({ code: 'FEE_RANGE', field: 'fees' });
+  }
+  const principal = principalFinanced(amount, upfront);
   if (balloon !== null) {
     const residual = balloonResidual(balloon, principal);
     if (residual <= 0n || residual >= principal) {
