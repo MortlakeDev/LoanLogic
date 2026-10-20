@@ -384,11 +384,11 @@ open with `--duration-normal`.
   for equal principal "First payment" with the range "→ last $…".
 - Hero number (§4.2) over a dotted grid (`radial-gradient` dots in `--color-chart-grid`,
   16 px pitch).
-- The hero is the instalment — principal + interest — for every repayment type: the
-  first payment for equal principal, the interest payment for interest-only (principal +
-  interest with a single payment). Periodic fees and insurance are not part of it; when
-  payments carry them, the meta line adds "first payment $… with periodic fees" (or
-  "with insurance").
+- The hero is the engine's instalment: `A` for annuity and balloon, `first` for equal
+  principal and interest-only. It is the principal and interest of one payment, so for
+  interest-only it is the interest alone (`I₁`, principal 0), or `P + I₁` with a single
+  payment. Periodic fees and insurance are not part of it; when payments carry them, the
+  meta line adds "first payment $… with periodic fees" (or "with insurance").
 - Meta line: "360 payments · final payment $2,300.28 · paid off Nov 1, 2056".
 - Formula strip: surface-2 box, mono xs–sm, built from the engine's `explain` values
   (SPEC §9.6) so that it reproduces the result. The strip's result is the engine's own
