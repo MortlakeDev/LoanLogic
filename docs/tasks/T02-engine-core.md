@@ -1,6 +1,6 @@
 # T02 — Engine core: money, dates, day-count, schedules, fees, rate metrics
 
-- **Milestone:** M1 · **Status:** ready (R1 delivered: reference implementation + core vectors)
+- **Milestone:** M1 · **Status:** done (PR #4, merged 2026-10-20)
 - **Depends on:** T01, R1 · **Blocks:** T03 and all later engine work
 - **Branch:** `task/T02-engine-core`
 
@@ -174,8 +174,8 @@ fail on the engine of PR #4 before these changes: `cashflows-regz-single-payment
 
 ## Completion notes
 
-**Status:** in review, [PR #4](https://github.com/MortlakeDev/LoanLogic/pull/4) (branch
-`task/T02-engine-core`). Implements SPEC v0.2.2: `main` (with #3 and the action pins of
+**Status:** done, merged in [PR #4](https://github.com/MortlakeDev/LoanLogic/pull/4) on
+2026-10-20 after the architect's acceptance check (branch `task/T02-engine-core`). Implements SPEC v0.2.2: `main` (with #3 and the action pins of
 #5) is merged in, and the v0.2.2 changes of the architect review are done.
 
 **Acceptance criteria (local evidence, 2026-10-20, Windows, Node 24.19):**
