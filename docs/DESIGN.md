@@ -383,13 +383,26 @@ open with `--duration-normal`.
   "with insurance").
 - Meta line: "360 payments · final payment $2,300.28 · paid off Nov 1, 2056".
 - Formula strip: surface-2 box, mono xs–sm, built from the engine's `explain` values
-  (SPEC §9.6) so that it reproduces the result: `i` is shown as `j ÷ m` when interest
-  compounds with the payment frequency (`c = m`); otherwise the payload's `i` is shown as
-  a value (`I₁ = P × i`). Irrational operands are displayed with 10 significant digits;
-  the strip's result is the engine's own value (`A`, `first`), never recomputed in the
-  UI, so it always equals the hero, e.g.
-  `A = P·i ÷ (1 − (1+i)^−N), i = 0.06875 ÷ 12, N = 360 → 2,299.25`; and the accent
-  action "How it's calculated →" that opens the Explain sheet (§8.12).
+  (SPEC §9.6) so that it reproduces the result. The strip's result is the engine's own
+  value (`A` or `first`), never recomputed in the UI, so it always equals the hero.
+  Irrational operands are displayed with 10 significant digits, for display only. The
+  accent action "How it's calculated →" opens the Explain sheet (§8.12). One branch per
+  payload:
+  - The rate `i`: when the payload carries `i` (periodic interest with `c ≠ m`), its
+    value is shown; otherwise `i` is shown as `j ÷ m` (periodic interest with `c = m`,
+    and the nominal payment basis in day-count mode).
+  - `instalment.annuity`: `A = P·i ÷ (1 − (1+i)^−N)`, e.g.
+    `A = P·i ÷ (1 − (1+i)^−N), i = 0.06875 ÷ 12, N = 360 → 2,299.25`.
+  - `instalment.balloon`: `A = (P − Bal·(1+i)^−N)·i ÷ (1 − (1+i)^−N)`.
+  - `instalment.annuity-exact-basis`: there is no single `i`. The strip names the rate
+    per period, `r_k = j × YF_k` with the day-count method (`dayCount`), and shows `P`,
+    `N` → `A`.
+  - The first period's interest `I₁` (equal principal, interest-only): `I₁ = P × j × YF₁`
+    in day-count mode (the payload carries `yf1`); in periodic mode `I₁ = P × i` when the
+    payload carries `i`, else `I₁ = P × j ÷ m`.
+  - `instalment.equal-principal`: `q = P ÷ N`, then `first = p₁ + I₁`, where `p₁ = q`,
+    or `p₁ = P − (N − 1)·q` when the remainder comes first.
+  - `instalment.bullet`: `first = I₁`, or `first = P + I₁` with a single payment.
 
 ### 8.7 Regional rate card
 

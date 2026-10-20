@@ -669,8 +669,9 @@ The loan result also carries the instalment's payload in a top-level `explain`
 (formula ids `instalment.*`). Golden vectors store `value` as a decimal string with 12
 decimals, list `warnings` only when there are any, and omit `explain`. Explain values are decimal strings — exact when
 the value is a terminating decimal, otherwise with at least 12 significant digits — so a
-formula shown from them reproduces the result (the UI shows `i` as `j ÷ m`, e.g.
-`0.06875 ÷ 12`, never as a rounded quotient).
+formula shown from them reproduces the result (when `i = j ÷ m`, the UI shows it as
+`0.06875 ÷ 12`, never as a rounded quotient; DESIGN §8.6 has the strip for every
+payload).
 
 | `formulaId` | `values` |
 |---|---|
