@@ -1,0 +1,286 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later */
+/* Copyright (C) 2026 Mortlake */
+
+/*
+ * The schedule card (DESIGN §8.10, §7.2): the table at 64rem and wider, the list below.
+ * Rows and items run to the card's edges, so their dividers span the card; the bleed
+ * equals the card padding of `.card` (24 px desktop, 16 px mobile).
+ */
+
+.schedule {
+  --schedule-bleed: var(--space-6);
+
+  display: grid;
+  gap: var(--space-4);
+}
+
+.schedule__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+/* A long title wraps beside the switch rather than pushing it to a line of its own. */
+.schedule__title {
+  min-width: 0;
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-semibold);
+}
+
+.schedule__summary-toggle {
+  flex: none;
+}
+
+/* A view switch: the selected look of the quiet segmented variant (DESIGN §8.3). */
+.schedule__summary-toggle[aria-pressed='true'] {
+  background: var(--color-surface-3);
+  box-shadow: inset 0 -2px 0 var(--color-text-primary);
+}
+
+.schedule__interest {
+  color: var(--color-accent);
+}
+
+.schedule__note {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-snug);
+}
+
+.schedule__note-icon {
+  margin-top: 0.1em;
+  color: var(--color-success);
+}
+
+/* ---------- Table (≥ 64rem) ---------- */
+
+.schedule-table {
+  margin-inline: calc(-1 * var(--schedule-bleed));
+  overflow-x: auto;
+}
+
+/* The region runs to the card's edges: keep its focus outline inside. */
+.schedule-table:focus-visible {
+  outline-offset: calc(-1 * var(--focus-ring-width));
+}
+
+.schedule-table__table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--font-size-sm);
+}
+
+.schedule-table__table th,
+.schedule-table__table td {
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--color-border);
+  font-weight: var(--font-weight-regular);
+  text-align: end;
+  white-space: nowrap;
+}
+
+.schedule-table__table th:first-child,
+.schedule-table__table td:first-child {
+  padding-inline-start: var(--schedule-bleed);
+}
+
+.schedule-table__table th:last-child,
+.schedule-table__table td:last-child {
+  padding-inline-end: var(--schedule-bleed);
+}
+
+.schedule-table__table thead th {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.schedule-table__table .schedule-table__start {
+  text-align: start;
+}
+
+.schedule-table__index {
+  color: var(--color-text-muted);
+}
+
+/* Programmatic focus after "Show more" lands on a row header that touches the card edge. */
+.schedule-table__index:focus-visible {
+  outline-offset: calc(-1 * var(--focus-ring-width));
+}
+
+.schedule-table__group {
+  background: var(--color-surface-2);
+}
+
+.schedule-table__table .schedule-table__group th {
+  padding-block: 0;
+}
+
+.schedule-table__toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: var(--size-target);
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--color-text-primary);
+  text-align: start;
+  cursor: pointer;
+}
+
+.schedule-table__year {
+  font-weight: var(--font-weight-semibold);
+}
+
+.schedule-table__range {
+  color: var(--color-text-muted);
+}
+
+.schedule-table__chevron {
+  color: var(--color-text-muted);
+  transition: transform var(--duration-normal) var(--easing-standard);
+}
+
+.schedule-table__toggle[aria-expanded='true'] .schedule-table__chevron {
+  transform: rotate(180deg);
+}
+
+.schedule-table__table .schedule-table__more td {
+  padding-block: 0;
+}
+
+.schedule-table__more-years {
+  min-height: var(--size-target);
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--color-text-muted);
+  cursor: pointer;
+}
+
+.schedule-table__more-years:hover {
+  color: var(--color-text-secondary);
+  text-decoration: underline;
+  text-underline-offset: 0.15em;
+}
+
+.schedule-table__table tfoot th,
+.schedule-table__table tfoot td {
+  font-weight: var(--font-weight-semibold);
+}
+
+.schedule-table__settled {
+  color: var(--color-success);
+}
+
+/* ---------- List (< 64rem) ---------- */
+
+.schedule-list {
+  margin-inline: calc(-1 * var(--schedule-bleed));
+}
+
+.schedule-list__items {
+  margin: 0;
+  padding: 0;
+  border-top: 1px solid var(--color-border);
+  list-style: none;
+}
+
+.schedule-list__item {
+  display: grid;
+  gap: var(--space-1);
+  padding: var(--space-3) var(--schedule-bleed);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.schedule-list__item:focus-visible {
+  outline-offset: calc(-1 * var(--focus-ring-width));
+}
+
+.schedule-list__line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-1) var(--space-3);
+  min-width: 0;
+}
+
+/* The first line is the item's caption (xs), so number, date and balance fit at 360 px. */
+.schedule-list__title {
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-xs);
+}
+
+.schedule-list__balance {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+}
+
+.schedule-list__parts,
+.schedule-list__paid {
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+}
+
+.schedule-list__amount {
+  color: var(--color-text-primary);
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-medium);
+}
+
+.schedule-list__more {
+  padding-inline: var(--schedule-bleed);
+}
+
+/* ---------- Breakpoints ---------- */
+
+@media (min-width: 64rem) {
+  .schedule-list,
+  .schedule__summary-toggle {
+    display: none;
+  }
+}
+
+@media (max-width: 63.99rem) {
+  .schedule {
+    --schedule-bleed: var(--space-4);
+  }
+
+  .schedule-table {
+    display: none;
+  }
+
+  .schedule__title {
+    font-size: var(--font-size-xl);
+    font-weight: var(--font-weight-medium);
+  }
+}
+
+/* ---------- Forced colors ---------- */
+
+@media (forced-colors: active) {
+  /* Group rows lose their fill: a rule above each keeps the years apart. */
+  .schedule-table__group th,
+  .schedule-table__group td {
+    border-top: 1px solid CanvasText;
+  }
+
+  .schedule__summary-toggle[aria-pressed='true'] {
+    forced-color-adjust: none;
+    border-color: Highlight;
+    background: Highlight;
+    color: HighlightText;
+  }
+
+  .schedule-table__more-years {
+    color: LinkText;
+  }
+}

@@ -4,10 +4,17 @@
 import { expect, test, type Page } from '@playwright/test';
 import {
   bodyBackground,
+  chooseTheme,
   expectTheme,
+  expectThemeChoice,
   gotoApp,
   hasReloadMarker,
   measureThemeBackgrounds,
+  menuButton,
+  menuSheet,
+  message,
+  openMenuSheet,
+  openThemeMenu,
   opposite,
   readStorage,
   resolveColorToken,
@@ -16,6 +23,7 @@ import {
   setSystemScheme,
   STORAGE_KEYS,
   THEME_PREFERENCES,
+  themeButton,
   themeGroup,
   themeRadio,
   THEMES,
@@ -24,16 +32,31 @@ import {
 
 test.use({ locale: 'en-US' });
 
-test.describe('theme switcher', () => {
+test.describe('theme menu', () => {
   test('offers System, Dark and Light as radio buttons', async ({ page }) => {
     await gotoApp(page);
-    await expect(themeGroup(page).getByRole('radio')).toHaveCount(THEME_PREFERENCES.length);
+    const button = themeButton(page);
+    await expect(button).toHaveAttribute('aria-expanded', 'false');
+    await expect(themeGroup(page)).toBeHidden();
+
+    const group = await openThemeMenu(page);
+    const panelId = await button.getAttribute('aria-controls');
+    expect(panelId, 'the button names the panel it controls').toBeTruthy();
+    await expect(page.locator(`[id="${panelId ?? ''}"]`)).toBeVisible();
+    await expect(group.getByRole('radio')).toHaveCount(THEME_PREFERENCES.length);
     for (const preference of THEME_PREFERENCES) {
       await expect(themeRadio(page, preference)).toBeVisible();
     }
-    await expect(themeRadio(page, 'system')).toBeChecked();
-    await expect(themeRadio(page, 'dark')).not.toBeChecked();
-    await expect(themeRadio(page, 'light')).not.toBeChecked();
+    await expectThemeChoice(page, 'system');
+  });
+
+  test('closes on a click outside and keeps the choice', async ({ page }) => {
+    await gotoApp(page);
+    await chooseTheme(page, 'light');
+    await page.getByRole('main').click({ position: { x: 4, y: 4 } });
+    await expect(themeButton(page)).toHaveAttribute('aria-expanded', 'false');
+    await expect(themeGroup(page)).toBeHidden();
+    await expectTheme(page, 'light');
   });
 
   for (const theme of THEMES) {
@@ -46,10 +69,9 @@ test.describe('theme switcher', () => {
         await expectTheme(page, opposite(theme));
         await setReloadMarker(page);
 
-        await themeRadio(page, theme).check();
+        await chooseTheme(page, theme);
         await expectTheme(page, theme);
-        await expect(themeRadio(page, theme)).toBeChecked();
-        await expect(themeRadio(page, 'system')).not.toBeChecked();
+        await expectThemeChoice(page, theme);
         expect(await hasReloadMarker(page), 'switching theme must not reload').toBe(true);
         expect(await readStorage(page, STORAGE_KEYS.theme)).toBe(JSON.stringify(theme));
 
@@ -61,10 +83,31 @@ test.describe('theme switcher', () => {
 
         await page.reload();
         await expectTheme(page, theme);
-        await expect(themeRadio(page, theme)).toBeChecked();
+        await expectThemeChoice(page, theme);
       });
     });
   }
+});
+
+test.describe('theme in the mobile menu sheet', () => {
+  test.use({ colorScheme: 'dark', viewport: { width: 360, height: 740 } });
+
+  test('applies a choice at once and the close button returns focus', async ({ page }) => {
+    await gotoApp(page);
+    await expect(themeButton(page)).toBeHidden();
+    const sheet = await openMenuSheet(page);
+    await expect(themeRadio(page, 'system')).toBeChecked();
+    await themeRadio(page, 'light').check();
+    await expectTheme(page, 'light');
+    expect(await readStorage(page, STORAGE_KEYS.theme)).toBe(JSON.stringify('light'));
+
+    await sheet
+      .getByRole('button', { name: message('en', 'header.closeMenu'), exact: true })
+      .click();
+    await expect(menuSheet(page)).toBeHidden();
+    await expect(menuButton(page)).toBeFocused();
+    await expectTheme(page, 'light');
+  });
 });
 
 test.describe('System preference', () => {
@@ -74,7 +117,7 @@ test.describe('System preference', () => {
 
       test('is the default and follows the system', async ({ page }) => {
         await gotoApp(page);
-        await expect(themeRadio(page, 'system')).toBeChecked();
+        await expectThemeChoice(page, 'system');
         await expectTheme(page, scheme);
         expect(await readStorage(page, STORAGE_KEYS.theme)).toBeNull();
       });
@@ -95,20 +138,20 @@ test.describe('System preference', () => {
       await expectTheme(page, 'light');
 
       expect(await hasReloadMarker(page), 'the page must not reload').toBe(true);
-      await expect(themeRadio(page, 'system')).toBeChecked();
+      await expectThemeChoice(page, 'system');
     });
 
     test('returning to System follows the system again and persists', async ({ page }) => {
       await gotoApp(page);
-      await themeRadio(page, 'dark').check();
+      await chooseTheme(page, 'dark');
       await expectTheme(page, 'dark');
 
-      await themeRadio(page, 'system').check();
+      await chooseTheme(page, 'system');
       await expectTheme(page, 'light');
       expect(await readStorage(page, STORAGE_KEYS.theme)).toBe(JSON.stringify('system'));
 
       await page.reload();
-      await expect(themeRadio(page, 'system')).toBeChecked();
+      await expectThemeChoice(page, 'system');
       await expectTheme(page, 'light');
       await setSystemScheme(page, 'dark');
       await expectTheme(page, 'dark');

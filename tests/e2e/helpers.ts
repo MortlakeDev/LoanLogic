@@ -162,12 +162,15 @@ export function languageSelect(page: Page, language: Language): Locator {
   return page.getByRole('combobox', { name: message(language, 'language.label'), exact: true });
 }
 
-/** The theme radio group (a fieldset whose legend names it). */
+/**
+ * The theme radio group (a fieldset whose legend names it). It is visible only while the
+ * header theme menu (desktop) or the menu sheet (mobile) is open.
+ */
 export function themeGroup(page: Page, language: Language = 'en'): Locator {
   return page.getByRole('group', { name: message(language, 'theme.label'), exact: true });
 }
 
-/** One theme radio button, by its accessible name. */
+/** One theme radio button, by its accessible name (inside an open menu). */
 export function themeRadio(
   page: Page,
   preference: ThemePreference,
@@ -177,6 +180,75 @@ export function themeRadio(
     name: message(language, `theme.${preference}`),
     exact: true,
   });
+}
+
+/** The desktop header's theme menu button (an icon button named by the theme label). */
+export function themeButton(page: Page, language: Language = 'en'): Locator {
+  return page
+    .getByRole('banner')
+    .getByRole('button', { name: message(language, 'theme.label'), exact: true });
+}
+
+/** Opens the header theme menu unless it is open, and waits for its radio group. */
+export async function openThemeMenu(page: Page, language: Language = 'en'): Promise<Locator> {
+  const button = themeButton(page, language);
+  if ((await button.getAttribute('aria-expanded')) !== 'true') {
+    await button.click();
+  }
+  await expect(button).toHaveAttribute('aria-expanded', 'true');
+  const group = themeGroup(page, language);
+  await expect(group).toBeVisible();
+  return group;
+}
+
+/** Chooses a theme in the header menu (desktop); the menu stays open. */
+export async function chooseTheme(
+  page: Page,
+  preference: ThemePreference,
+  language: Language = 'en',
+): Promise<void> {
+  await openThemeMenu(page, language);
+  await themeRadio(page, preference, language).check();
+}
+
+/**
+ * Asserts which theme option is checked, opening the header menu to look. The other
+ * options must be unchecked.
+ */
+export async function expectThemeChoice(
+  page: Page,
+  preference: ThemePreference,
+  language: Language = 'en',
+): Promise<void> {
+  await openThemeMenu(page, language);
+  for (const option of THEME_PREFERENCES) {
+    const radio = themeRadio(page, option, language);
+    if (option === preference) {
+      await expect(radio).toBeChecked();
+    } else {
+      await expect(radio).not.toBeChecked();
+    }
+  }
+}
+
+/** The mobile header's menu button (below 64rem). */
+export function menuButton(page: Page, language: Language = 'en'): Locator {
+  return page
+    .getByRole('banner')
+    .getByRole('button', { name: message(language, 'header.menu'), exact: true });
+}
+
+/** The mobile menu sheet (a modal dialog named by its title). */
+export function menuSheet(page: Page, language: Language = 'en'): Locator {
+  return page.getByRole('dialog', { name: message(language, 'header.menuTitle'), exact: true });
+}
+
+/** Opens the mobile menu sheet and waits for it. */
+export async function openMenuSheet(page: Page, language: Language = 'en'): Promise<Locator> {
+  await menuButton(page, language).click();
+  const sheet = menuSheet(page, language);
+  await expect(sheet).toBeVisible();
+  return sheet;
 }
 
 /** The two workspace panels (sections labelled by their headings). */

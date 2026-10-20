@@ -1,0 +1,687 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later */
+/* Copyright (C) 2026 Mortlake */
+
+/*
+ * Shared components of the design system (docs/DESIGN.md §8): icons, buttons, fields and
+ * number inputs, selects, segmented controls, choice cards, disclosures, sheets, notices
+ * and cards. Area styles (header, inputs, results, schedule) live next to their
+ * components.
+ */
+
+/* ---------- Numbers and icons ---------- */
+
+.num {
+  font-family: var(--font-mono);
+}
+
+.icon {
+  width: 1rem;
+  height: 1rem;
+  flex: none;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.75;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.wordmark {
+  display: block;
+  width: auto;
+  height: 1.375rem;
+  color: var(--color-text-primary);
+}
+
+.wordmark__accent {
+  fill: var(--color-accent);
+}
+
+@media (forced-colors: active) {
+  .wordmark__accent {
+    fill: CanvasText;
+  }
+}
+
+/* ---------- Cards and section labels ---------- */
+
+.card {
+  min-width: 0;
+  padding: var(--space-6);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-xl);
+  background: var(--color-surface-1);
+  box-shadow: var(--shadow-1);
+}
+
+.section-label {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+@media (max-width: 63.99rem) {
+  .card {
+    padding: var(--space-4);
+    border-radius: var(--radius-lg);
+  }
+}
+
+/* ---------- Buttons (DESIGN §8.1) ---------- */
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  min-height: var(--size-target);
+  padding: 0 var(--space-4);
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--color-text-primary);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  line-height: var(--line-height-tight);
+  text-decoration: none;
+  cursor: pointer;
+  transition:
+    background-color var(--duration-fast) var(--easing-standard),
+    border-color var(--duration-fast) var(--easing-standard),
+    color var(--duration-fast) var(--easing-standard);
+}
+
+.btn:disabled {
+  opacity: 0.4;
+  pointer-events: none;
+}
+
+.btn--primary {
+  background: var(--color-button-primary-bg);
+  color: var(--color-button-primary-fg);
+}
+
+.btn--secondary {
+  border-color: var(--color-border);
+}
+
+.btn--secondary:hover {
+  background: var(--color-surface-3);
+}
+
+.btn--accent {
+  min-height: var(--size-target);
+  padding-inline: 0;
+  color: var(--color-accent);
+}
+
+.btn--accent:hover {
+  color: var(--color-accent-hover);
+  text-decoration: underline;
+  text-underline-offset: 0.15em;
+}
+
+.btn--add {
+  border: 1px dashed var(--color-border-strong);
+  color: var(--color-text-primary);
+  font-weight: var(--font-weight-medium);
+}
+
+.btn--add:hover {
+  background: var(--color-surface-3);
+}
+
+.btn--icon {
+  width: var(--size-target);
+  padding: 0;
+  border-color: var(--color-border);
+  border-radius: var(--radius-full);
+  background: var(--color-surface-1);
+}
+
+.btn--icon:hover {
+  background: var(--color-surface-3);
+}
+
+.btn--icon .icon {
+  width: 1.125rem;
+  height: 1.125rem;
+}
+
+@media (forced-colors: active) {
+  .btn {
+    border-color: ButtonText;
+  }
+
+  .btn--accent {
+    border-color: transparent;
+    color: LinkText;
+  }
+}
+
+/* ---------- Fields (DESIGN §8.2) ---------- */
+
+.field {
+  display: grid;
+  gap: var(--space-2);
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.field__label {
+  padding: 0;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-regular);
+}
+
+.field__hint {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+}
+
+.field__error {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-1);
+  color: var(--color-danger);
+  font-size: var(--font-size-xs);
+}
+
+.field__error .icon {
+  width: 0.875rem;
+  height: 0.875rem;
+  margin-top: 0.1em;
+}
+
+/* A control: the input with its units, one bordered box (DESIGN §8.2). */
+.control {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+  min-height: var(--size-control);
+  padding: 0 var(--space-4);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-2);
+  transition:
+    border-color var(--duration-fast) var(--easing-standard),
+    box-shadow var(--duration-fast) var(--easing-standard);
+}
+
+.control:focus-within {
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 3px var(--color-accent-subtle);
+}
+
+.control--lg {
+  min-height: var(--size-control-lg);
+}
+
+.control--lg .control__input {
+  font-size: var(--font-size-amount);
+  font-weight: var(--font-weight-medium);
+}
+
+.control--invalid,
+.control--invalid:focus-within {
+  border-color: var(--color-danger);
+}
+
+.control__input {
+  flex: 1;
+  width: 100%;
+  min-width: 0;
+  min-height: calc(var(--size-control) - 2px);
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--color-text-primary);
+  font-size: var(--font-size-control);
+}
+
+/* The box shows focus (border and ring) and, for keyboard users, the outline moves from
+   the input to the box. Without :has() (Firefox before 121) the input keeps its own
+   outline, so only browsers that can draw the box's outline drop the input's. */
+@supports selector(:has(*)) {
+  .control__input:focus {
+    outline: none;
+  }
+
+  .control:has(.control__input:focus-visible) {
+    outline: var(--focus-ring-width) solid var(--color-focus-ring);
+    outline-offset: var(--focus-ring-offset);
+  }
+}
+
+.control__affix {
+  flex: none;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+}
+
+/* A native select styled as a control; the chevron icon is drawn by `.select-wrap`. */
+.select {
+  appearance: none;
+  min-width: 0;
+  min-height: var(--size-control);
+  padding: 0 var(--space-10) 0 var(--space-4);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-md);
+  background-color: var(--color-surface-2);
+  color: var(--color-text-primary);
+  font-size: var(--font-size-control);
+  text-overflow: ellipsis;
+  cursor: pointer;
+}
+
+/* Wraps a select so the project's chevron-down icon (DESIGN §10) sits at its end. */
+.select-wrap {
+  position: relative;
+  display: grid;
+  min-width: 0;
+}
+
+.select-wrap__chevron {
+  position: absolute;
+  inset-inline-end: var(--space-4);
+  top: 50%;
+  color: var(--color-text-secondary);
+  transform: translateY(-50%);
+  pointer-events: none;
+}
+
+.select:hover {
+  border-color: var(--color-text-secondary);
+}
+
+/* The focus look of inputs (DESIGN §8.2); the keyboard outline comes from :focus-visible. */
+.select:focus {
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 3px var(--color-accent-subtle);
+}
+
+.select[aria-invalid='true'],
+.select[aria-invalid='true']:focus {
+  border-color: var(--color-danger);
+}
+
+.select--pill {
+  min-height: var(--size-target);
+  border-color: var(--color-border);
+  border-radius: var(--radius-full);
+  background-color: var(--color-surface-1);
+  font-size: var(--font-size-sm);
+}
+
+/* A checkbox row: native checkbox, 44 px target. */
+.check {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: var(--size-target);
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+  cursor: pointer;
+}
+
+.check input {
+  width: 1.125rem;
+  height: 1.125rem;
+  margin: 0;
+  accent-color: var(--color-accent);
+}
+
+/* Forced colors keep the native select arrow (system colors, T01 rule) instead of the icon. */
+@media (forced-colors: active) {
+  .select {
+    appearance: auto;
+  }
+
+  .select-wrap__chevron {
+    display: none;
+  }
+
+  .control:focus-within,
+  .select:focus {
+    border-color: Highlight;
+  }
+}
+
+/* ---------- Segmented control (DESIGN §8.3) ---------- */
+
+.segmented {
+  display: grid;
+  gap: var(--space-2);
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.segmented__track {
+  display: grid;
+  grid-template-columns: repeat(var(--segment-columns, auto-fit), minmax(0, 1fr));
+  gap: 2px;
+  padding: 3px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-2);
+}
+
+.segmented__option {
+  position: relative;
+  display: flex;
+  min-width: 0;
+}
+
+.segmented__input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.segmented__face {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  min-height: var(--size-target);
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-sm);
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+  text-align: center;
+  transition:
+    background-color var(--duration-fast) var(--easing-standard),
+    color var(--duration-fast) var(--easing-standard);
+}
+
+.segmented__input:hover + .segmented__face {
+  color: var(--color-text-primary);
+}
+
+.segmented--solid .segmented__input:checked + .segmented__face {
+  background: var(--color-accent);
+  color: var(--color-on-accent);
+  font-weight: var(--font-weight-semibold);
+}
+
+.segmented--quiet .segmented__input:checked + .segmented__face {
+  background: var(--color-surface-3);
+  box-shadow: inset 0 -2px 0 var(--color-text-primary);
+  color: var(--color-text-primary);
+  font-weight: var(--font-weight-semibold);
+}
+
+/* `:focus` as well as `:focus-visible`: WebKit does not match :focus-visible when arrow keys
+   move focus between radios. */
+.segmented__input:focus-visible + .segmented__face,
+.segmented__input:focus + .segmented__face {
+  outline: var(--focus-ring-width) solid var(--color-focus-ring);
+  outline-offset: 1px;
+}
+
+@media (forced-colors: active) {
+  .segmented__input:checked + .segmented__face {
+    forced-color-adjust: none;
+    background: Highlight;
+    color: HighlightText;
+  }
+}
+
+/* ---------- Choice cards (DESIGN §8.4) ---------- */
+
+.choices {
+  display: grid;
+  gap: var(--space-2);
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.choices__grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-2);
+}
+
+.choice {
+  position: relative;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  /* Titles of a row line up when a neighbour's description wraps. */
+  align-content: start;
+  align-items: center;
+  gap: var(--space-1) var(--space-2);
+  min-height: var(--size-target);
+  padding: var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface-2);
+  cursor: pointer;
+  transition:
+    background-color var(--duration-fast) var(--easing-standard),
+    border-color var(--duration-fast) var(--easing-standard);
+}
+
+.choice:hover {
+  border-color: var(--color-border-strong);
+}
+
+.choice__input {
+  width: 1rem;
+  height: 1rem;
+  margin: 0;
+  accent-color: var(--color-accent);
+}
+
+.choice__title {
+  color: var(--color-text-primary);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+}
+
+.choice__text {
+  grid-column: 1 / -1;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-xs);
+}
+
+.choice:has(.choice__input:checked) {
+  border-color: var(--color-accent);
+  background: var(--color-accent-subtle);
+}
+
+@media (forced-colors: active) {
+  .choice:has(.choice__input:checked) {
+    border: 2px solid Highlight;
+  }
+}
+
+/* ---------- Disclosure (DESIGN §8.5) ---------- */
+
+.disclosure {
+  min-width: 0;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface-2);
+}
+
+.disclosure__button {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  width: 100%;
+  min-height: 3.5rem;
+  padding: var(--space-3) var(--space-4);
+  border: 0;
+  border-radius: inherit;
+  background: transparent;
+  color: var(--color-text-primary);
+  text-align: start;
+  cursor: pointer;
+}
+
+.disclosure__heading {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.disclosure__title {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+}
+
+.disclosure__status {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+}
+
+.disclosure__chevron {
+  transition: transform var(--duration-normal) var(--easing-standard);
+}
+
+.disclosure--open > .disclosure__button .disclosure__chevron {
+  transform: rotate(180deg);
+}
+
+/* The content slides open with --duration-normal (0 under reduced motion). While closed it
+   is `visibility: hidden`, which also keeps its controls out of the tab order and the
+   accessibility tree. */
+.disclosure__content {
+  display: grid;
+  grid-template-rows: 1fr;
+  /* Opening shows the content at once (focusField can focus inside it in the next frame);
+     only the height slides. */
+  transition: grid-template-rows var(--duration-normal) var(--easing-standard);
+}
+
+.disclosure:not(.disclosure--open) > .disclosure__content {
+  grid-template-rows: 0fr;
+  visibility: hidden;
+  /* Closing hides the content only once the slide has finished. */
+  transition:
+    grid-template-rows var(--duration-normal) var(--easing-standard),
+    visibility 0s linear var(--duration-normal);
+}
+
+.disclosure__inner {
+  min-height: 0;
+  overflow: hidden;
+}
+
+.disclosure__body {
+  display: grid;
+  gap: var(--space-5);
+  padding: 0 var(--space-4) var(--space-4);
+}
+
+/* ---------- Sheet (DESIGN §8.12) ---------- */
+
+.sheet-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+}
+
+.sheet-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgb(0 0 0 / 0.55);
+}
+
+.sheet {
+  position: absolute;
+  inset-block: 0;
+  inset-inline-end: 0;
+  display: grid;
+  align-content: start;
+  gap: var(--space-4);
+  width: min(30rem, 100%);
+  padding: var(--space-6);
+  overflow-y: auto;
+  border-inline-start: 1px solid var(--color-border);
+  background: var(--color-surface-1);
+  box-shadow: var(--shadow-3);
+  overscroll-behavior: contain;
+}
+
+.sheet:focus {
+  outline: none;
+}
+
+.sheet__close {
+  justify-self: end;
+}
+
+@media (max-width: 63.99rem) {
+  .sheet {
+    inset-block: auto 0;
+    inset-inline: 0;
+    width: 100%;
+    max-height: 85dvh;
+    padding: var(--space-4) var(--space-4) var(--space-6);
+    border-inline-start: 0;
+    border-top: 1px solid var(--color-border);
+    border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+  }
+}
+
+@media (forced-colors: active) {
+  .sheet {
+    border: 1px solid CanvasText;
+  }
+}
+
+/* ---------- Notices (DESIGN §8.13) ---------- */
+
+.notice {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-2);
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+}
+
+.notice__icon {
+  margin-top: 0.15em;
+}
+
+.notice__text {
+  display: grid;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.notice--info .notice__icon {
+  color: var(--color-info);
+}
+
+.notice--warning .notice__icon {
+  color: var(--color-warning);
+}
+
+.notice--danger .notice__icon {
+  color: var(--color-danger);
+}
+
+.notice--success .notice__icon {
+  color: var(--color-success);
+}

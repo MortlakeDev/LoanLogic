@@ -376,6 +376,23 @@ export interface LoanSummary {
   readonly balloon: string | null;
 }
 
+/**
+ * The amounts of one fee or insurance item (SPEC §8.1: per-item amounts may be exposed),
+ * so a UI can show what each item costs without computing money itself.
+ */
+export interface FeeAmount {
+  /** The item's `id` as entered. */
+  readonly id: string;
+  readonly kind: 'upfront' | 'periodic' | 'insurance';
+  /**
+   * Upfront: the amount; periodic and insurance: the amount of the first period. Major
+   * units as a decimal string at the currency's minor units ("3500.00").
+   */
+  readonly amount: string;
+  /** Every period together (upfront items: the amount), in the same format as `amount`. */
+  readonly total: string;
+}
+
 /** A computed rate (SPEC §9.6). */
 export interface RateMetric {
   /** Percent, unrounded: 6.97421… for 6.974 %. */
@@ -408,6 +425,8 @@ export type LoanResult =
       readonly rates: Rates;
       /** The instalment's explanation (formula ids `instalment.*`). */
       readonly explain: Explain;
+      /** The amounts of every fee and insurance item, in input order. */
+      readonly fees: readonly FeeAmount[];
     }
   | { readonly ok: false; readonly errors: readonly EngineError[] };
 

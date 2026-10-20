@@ -194,4 +194,93 @@ comparison and other tabs (M4–M5); exports and Share (T14–T15).
 
 ## Completion notes
 
-_(to be filled by the implementer)_
+**Status:** in review, [PR #8](https://github.com/MortlakeDev/LoanLogic/pull/8)
+(branch `task/T03-calculator-ui`).
+
+**Acceptance criteria (local evidence, 2026-10-20, Windows, Node 24.19):**
+
+- Screenshots of the built app (design scenario disbursed 2026-11-01; the zh-CN one is the
+  CN scenario) are in [`T03-screenshots/`](T03-screenshots/): desktop dark and light at
+  1 280 px, 360 px dark and light, zh-CN 360 px dark.
+- Every figure comes from the engine result or `src/app/state/derived.ts` (exact BigInt
+  sums for subtotals, totals, shares and the ratio) and is formatted by `display.ts` and
+  the i18n helpers. The e2e scenarios pin the golden figures to their elements: hero
+  `$2,299.25`, final `$2,300.28`, APR `6.974%`, total interest `$477,731.03`, year 1
+  `3,641.84` / `23,949.16`; zh-CN `¥4,270.16`, 年化利率（单利） `3.10%`,
+  年化利率（复利，IRR 法） `3.14%`.
+- Live recalculation through one computed signal; a field that does not parse or an
+  engine error blanks every figure at once, and "Fix the highlighted fields" with a list
+  of linked errors appears after 300 ms without typing (and is announced).
+- Every SPEC §13 error code and every warning has a message in en, zh-CN, ru and uk;
+  parameters are parsed from their strings and formatted by Intl.
+- `npm run check` passes: 2 678 unit tests, coverage 99.67 % statements, 98.96 %
+  branches, 99.86 % functions. `npm run e2e` (Chromium + WebKit): 224 passed, 10 skipped
+  (the known WebKit-on-Windows and forced-colors cases). axe: no serious or critical
+  violation in both themes at 360 and 1 280 px in all four languages, plus Advanced open,
+  the Explain sheet open and the error state; no horizontal scroll at 360 px with the fee
+  editor and Advanced open.
+- Initial JS 81.5 KiB gzip (budget raised from 60 to the brief's 150 KiB).
+  `dist-single/LoanLogic.html`: 351 753 bytes (gzip 242 727) before, 538 651 bytes
+  (gzip 253 297) after — most of the growth is the two font families in base64.
+- Input-to-paint of a 1 200-period loan (Chromium, median of 5, informational): 62.1 ms
+  on the CI runner (`ubuntu-latest`), 62–86 ms on the development machine; under the
+  100 ms target, so the engine stays on the main thread.
+
+**Engine and i18n additions:**
+
+- `calculateLoan` returns `fees: FeeAmount[]` (amount and total of every fee and
+  insurance item, SPEC §8.1 allows per-item amounts), so fee hints and the "Includes …"
+  line need no money math in the UI. `parseIsoDate` and `isLastDayOfMonth` are exported
+  for the UI boundary.
+- `parseDecimalInput(text, locale, kind)`, `formatMoneyParts`, `formatMonthYear`,
+  `formatCurrencyName`; `formatNumber` takes `maximumSignificantDigits` and
+  `roundingPriority`.
+
+**Decisions and deviations (to confirm or correct):**
+
+1. Rate failures show "n/a" with the reason as visible text, not a tooltip (DESIGN §8.13):
+   a hover tooltip fails keyboard and touch users.
+2. The hero figure is the instalment (principal + interest) for every repayment type, so
+   the formula strip reproduces it, and "final payment" uses the same basis; when payments
+   carry periodic fees or insurance, the meta line adds "first payment $… with periodic
+   fees" (or "with insurance", or both). DESIGN §8.6 does not say which basis the hero
+   uses with periodic fees.
+3. The loan amount uses `--font-size-lg` (18 px) below 30rem: with the currency select
+   beside it, `--font-size-amount` does not fit "1,000,000.00" at 360 px. DESIGN §4.2 has
+   no phone step; the alternative is the currency select under the amount.
+4. The currency select has an accessible name ("Currency") but no visible label: DESIGN
+   §11 asks for one, the concept render shows a bare chip. Without a visual change the
+   amount and currency could become a fieldset with "Loan amount" as its legend (the
+   pattern of the term field).
+5. The schedule card shows a heading instead of tabs (only implemented tabs are shown);
+   Fees and Insurance columns, when present, sit between Interest and Balance.
+6. The language pill has no globe icon (DESIGN §7.1 gives the globe to the region pill of
+   T05); selects use the chevron-down icon; disclosures slide with `--duration-normal`.
+7. The headline-rate select shows the source when two methods share a name ("APR · Reg Z
+   · US", "APR · FCA · UK"). Until presets exist, `ukAprc` is called "APR" (the consumer
+   credit name of GLOSSARY §6).
+8. Each item of "Fix the highlighted fields" names its field ("Loan amount: …").
+9. The mobile summary carries "How it's calculated" (the desktop hero with the formula
+   strip is hidden on phones, DESIGN §7.2).
+10. ru/uk "In {rateName}": GLOSSARY gives «Входит в расчёт ставки» / «Враховується у
+    ставці» without the rate's name; the catalog keeps the placeholder in brackets. The
+    ru/uk add-fee button reads «Добавить комиссию» / «Додати комісію» so its visible text
+    is part of its name (WCAG 2.5.3).
+11. Codes written the same in every language (XIRR, APR, APRC, IRR) are listed in the
+    locale test instead of being translated.
+12. Under `prefers-reduced-motion` transitions now last 0 s (T01 used 0.01 ms): a running
+    transition of an inherited property kept freshly opened disclosure content hidden
+    from Tab and from focus for a moment.
+
+**SPEC and GLOSSARY questions:**
+
+1. `instalment.equal-principal` and `instalment.bullet` cannot reproduce the hero figure:
+   equal principal shows `q`, while the hero shows the first payment `q + I_1`; the
+   bullet payload has `I1` but no `j`, `m` or `i`, so `I_1` cannot be derived. A
+   first-payment payload (or `i` for the bullet) would let the strip reproduce the result
+   as DESIGN §8.6 asks. With one payment, an interest-only loan's hero is principal +
+   interest while its strip ends at `I_1`.
+2. GLOSSARY §6 has no name for `irrNominal`; the UI uses "Nominal IRR (r × m)".
+
+**Open items:** a native-speaker review of the zh-CN, ru and uk strings (GLOSSARY
+status).

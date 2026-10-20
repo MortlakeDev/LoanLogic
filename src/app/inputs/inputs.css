@@ -1,0 +1,318 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later */
+/* Copyright (C) 2026 Mortlake */
+
+/*
+ * The inputs panel (docs/DESIGN.md §5, §7, §8.2–§8.5): field rhythm, the amount with its
+ * currency, the term box, fee rows, Advanced, and the phone disclosure around fees and
+ * Advanced, which a desktop shows open and without its frame.
+ */
+
+.inputs {
+  /* Between fields: 22 px on a desktop, 16 px on a phone (DESIGN §5). */
+  --inputs-gap: 1.375rem;
+
+  display: grid;
+  align-content: start;
+  gap: var(--space-6);
+}
+
+@media (max-width: 63.99rem) {
+  .inputs {
+    --inputs-gap: var(--space-4);
+
+    gap: var(--space-4);
+  }
+}
+
+/* Desktop: the panel sticks to the top and scrolls on its own (DESIGN §7.1). */
+@media (min-width: 64rem) {
+  .inputs {
+    position: sticky;
+    top: var(--space-6);
+    max-height: calc(100dvh - 3rem);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+}
+
+.inputs__section {
+  display: grid;
+  gap: var(--inputs-gap);
+  min-width: 0;
+}
+
+/* Rate and term side by side; they stack when the panel is too narrow for both. */
+.inputs__pair {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(8.5rem, 1fr));
+  align-items: start;
+  gap: var(--inputs-gap) var(--space-3);
+  min-width: 0;
+}
+
+.inputs__pair--wide {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+/* The rendered legend of a fieldset sits outside its grid, so the grid gap misses it. */
+.term > legend,
+.advanced__rounding > legend {
+  margin-bottom: var(--space-2);
+}
+
+/* ---------- Amount and currency ---------- */
+
+.amount__row {
+  display: flex;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.amount__row > .control {
+  flex: 1;
+}
+
+/* The select is transparent and covers the face, which shows only the code. */
+.currency {
+  position: relative;
+  display: flex;
+  flex: none;
+}
+
+.currency__select {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  opacity: 0;
+  font-size: var(--font-size-control);
+  cursor: pointer;
+}
+
+.currency__face {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: var(--size-control-lg);
+  padding: 0 var(--space-3) 0 var(--space-4);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-2);
+  color: var(--color-text-primary);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  pointer-events: none;
+  transition:
+    border-color var(--duration-fast) var(--easing-standard),
+    box-shadow var(--duration-fast) var(--easing-standard);
+}
+
+.currency__select:hover + .currency__face {
+  border-color: var(--color-text-secondary);
+}
+
+.currency__select:focus + .currency__face {
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 3px var(--color-accent-subtle);
+}
+
+.currency__select:focus-visible + .currency__face {
+  outline: var(--focus-ring-width) solid var(--color-focus-ring);
+  outline-offset: var(--focus-ring-offset);
+}
+
+.currency__face--invalid,
+.currency__select:focus + .currency__face--invalid {
+  border-color: var(--color-danger);
+}
+
+/* At phone width the amount keeps room for seven figures and cents next to the currency
+   ("1,000,000.00" in zh-CN at 360 px): a smaller amount step and tighter padding. */
+@media (max-width: 29.99rem) {
+  .amount__row > .control {
+    padding-inline: var(--space-3);
+  }
+
+  .amount__row .control__input {
+    font-size: var(--font-size-lg);
+  }
+
+  .currency__face {
+    padding-inline: var(--space-3) var(--space-2);
+  }
+}
+
+/* ---------- Term: years and months in one box ---------- */
+
+.term__box {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-width: 0;
+  min-height: var(--size-control);
+  padding: 0 var(--space-4);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-2);
+  transition:
+    border-color var(--duration-fast) var(--easing-standard),
+    box-shadow var(--duration-fast) var(--easing-standard);
+}
+
+.term__box:focus-within {
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 3px var(--color-accent-subtle);
+}
+
+.term__box--invalid,
+.term__box--invalid:focus-within {
+  border-color: var(--color-danger);
+}
+
+/* The two number inputs lose their own boxes; the term box draws one for both. */
+.term__box > .control,
+.term__box > .control:focus-within {
+  flex: 1 1 0;
+  gap: var(--space-1);
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  box-shadow: none;
+}
+
+.term__box .control__input {
+  min-width: 2ch;
+}
+
+/* At 360 px the box is about 140 px wide: tighter spacing leaves room for the digits. */
+@media (max-width: 63.99rem) {
+  .term__box {
+    gap: var(--space-2);
+    padding-inline: var(--space-3);
+  }
+}
+
+/* ---------- Dates ---------- */
+
+.control--date .control__icon {
+  width: 1.125rem;
+  height: 1.125rem;
+  color: var(--color-text-muted);
+}
+
+/* ---------- Repayment and balloon ---------- */
+
+.balloon {
+  margin-top: var(--space-3);
+}
+
+.balloon__row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
+  align-items: center;
+  gap: var(--space-3);
+}
+
+/* ---------- Fees and insurance ---------- */
+
+.fees {
+  display: grid;
+  gap: var(--space-4);
+  min-width: 0;
+}
+
+.fees__list {
+  display: grid;
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.fees__empty {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+}
+
+.fees__add {
+  justify-self: start;
+}
+
+/* A fee row: a nested block (DESIGN §5: radius lg for nested cards). */
+.fee {
+  display: grid;
+  gap: var(--space-4);
+  min-width: 0;
+  margin: 0;
+  padding: var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface-2);
+}
+
+.fee__head {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: var(--space-2);
+}
+
+/* Centres the 44 px button on the 48 px input beside it. */
+.fee__remove {
+  margin-bottom: 2px;
+}
+
+/* ---------- Advanced ---------- */
+
+.advanced > .disclosure__content > .disclosure__inner > .disclosure__body {
+  gap: var(--inputs-gap);
+}
+
+.advanced__rounding {
+  gap: var(--space-4);
+}
+
+/* ---------- Fees and Advanced: a disclosure on a phone, open on a desktop ---------- */
+
+.inputs__more > .disclosure__content > .disclosure__inner > .disclosure__body {
+  gap: var(--inputs-gap);
+}
+
+@media (min-width: 64rem) {
+  .inputs__more.disclosure {
+    padding-top: var(--space-6);
+    border: 0;
+    border-top: 1px solid var(--color-border);
+    border-radius: 0;
+    background: transparent;
+  }
+
+  .inputs__more.disclosure > .disclosure__button {
+    display: none;
+  }
+
+  /* Overrides `.disclosure:not(.disclosure--open) > .disclosure__content` (closed). */
+  .inputs .inputs__more.disclosure > .disclosure__content {
+    grid-template-rows: 1fr;
+    visibility: visible;
+  }
+
+  .inputs__more > .disclosure__content > .disclosure__inner {
+    overflow: visible;
+  }
+
+  .inputs__more > .disclosure__content > .disclosure__inner > .disclosure__body {
+    gap: var(--space-6);
+    padding: 0;
+  }
+}
+
+@media (forced-colors: active) {
+  .currency__select:focus + .currency__face,
+  .term__box:focus-within {
+    border-color: Highlight;
+  }
+}

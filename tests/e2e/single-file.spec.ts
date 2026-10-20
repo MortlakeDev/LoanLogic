@@ -106,7 +106,7 @@ test.describe('single-file build (dist-single/LoanLogic.html)', () => {
 
     await page.goto(SINGLE_FILE_URL.href);
     expect(new URL(page.url()).protocol).toBe('file:');
-    await expect(page.getByRole('heading', { level: 1 })).toHaveText(APP_NAME);
+    await expect(page.getByRole('heading', { level: 1 })).toHaveAccessibleName(APP_NAME);
     const { parameters, results } = panels(page);
     await expect(parameters).toBeVisible();
     await expect(results).toBeVisible();
@@ -134,10 +134,8 @@ test.describe('single-file build (dist-single/LoanLogic.html)', () => {
     await languageSelect(page, 'en').selectOption('uk');
     await expect(page.locator('html')).toHaveAttribute('lang', 'uk');
     await expect(page).toHaveTitle(message('uk', 'meta.title'));
-    await expect(page.getByRole('main').getByRole('heading', { level: 2 })).toHaveText([
-      message('uk', 'panels.parameters.title'),
-      message('uk', 'panels.results.title'),
-    ]);
+    await expect(panels(page, 'uk').parameters).toBeVisible();
+    await expect(panels(page, 'uk').results).toBeVisible();
     // Cyrillic text loads another subset of the same font, still without the network.
     await expect
       .poll(

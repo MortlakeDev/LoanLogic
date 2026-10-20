@@ -26,8 +26,32 @@ body {
   overflow-wrap: break-word;
 }
 
-:lang(zh) {
-  font-family: var(--font-sans-cjk);
+/* One soft accent glow on the page background, never on cards (DESIGN §2). */
+body {
+  background-image: radial-gradient(
+    1100px 520px at 88% -180px,
+    var(--color-accent-subtle),
+    transparent 70%
+  );
+  background-repeat: no-repeat;
+}
+
+@media print {
+  body {
+    background-image: none;
+  }
+}
+
+@media (forced-colors: active) {
+  body {
+    background-image: none;
+  }
+}
+
+/* Chinese pages use the CJK stack wherever sans text is set. Redefining the token (not
+   `font-family` on every :lang(zh) element) keeps mono amounts mono inside them. */
+:root:lang(zh) {
+  --font-sans: var(--font-sans-cjk);
 }
 
 h1,

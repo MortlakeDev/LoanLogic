@@ -7,12 +7,14 @@ import {
   gotoApp,
   LANGUAGES,
   languageSelect,
+  menuButton,
   message,
+  openMenuSheet,
+  openThemeMenu,
   panels,
   seedStorage,
-  THEME_PREFERENCES,
+  themeButton,
   themeGroup,
-  themeRadio,
   THEMES,
   type Language,
 } from './helpers.ts';
@@ -42,26 +44,61 @@ async function viewportWidth(page: Page): Promise<number> {
   return page.evaluate(() => document.documentElement.clientWidth);
 }
 
-/** Visible elements that stick out of the viewport horizontally, described for a message. */
-async function overflowingElements(page: Page): Promise<string[]> {
-  return page.evaluate((epsilon) => {
-    const limit = document.documentElement.clientWidth;
-    const offenders: string[] = [];
-    for (const element of document.body.querySelectorAll('*')) {
-      const rect = element.getBoundingClientRect();
-      if (rect.width === 0 || rect.height === 0) {
-        continue;
+/**
+ * Visible elements inside `root` (a CSS selector, the whole body by default) that stick out
+ * of the viewport horizontally, described for a message.
+ */
+async function overflowingElements(page: Page, root = 'body'): Promise<string[]> {
+  return page.evaluate(
+    ({ epsilon, selector }) => {
+      const limit = document.documentElement.clientWidth;
+      const offenders: string[] = [];
+      for (const element of document.querySelector(selector)?.querySelectorAll('*') ?? []) {
+        const rect = element.getBoundingClientRect();
+        if (rect.width === 0 || rect.height === 0) {
+          continue;
+        }
+        if (rect.left < -epsilon || rect.right > limit + epsilon) {
+          const classes = element.getAttribute('class') ?? '';
+          const name = `${element.tagName.toLowerCase()}${classes === '' ? '' : `.${classes.trim().split(/\s+/).join('.')}`}`;
+          offenders.push(
+            `${name} [${String(Math.round(rect.left))}, ${String(Math.round(rect.right))}]`,
+          );
+        }
       }
-      if (rect.left < -epsilon || rect.right > limit + epsilon) {
-        const classes = element.getAttribute('class') ?? '';
-        const name = `${element.tagName.toLowerCase()}${classes === '' ? '' : `.${classes.trim().split(/\s+/).join('.')}`}`;
-        offenders.push(
-          `${name} [${String(Math.round(rect.left))}, ${String(Math.round(rect.right))}]`,
-        );
-      }
-    }
-    return offenders;
-  }, EPSILON);
+      return offenders;
+    },
+    { epsilon: EPSILON, selector: root },
+  );
+}
+
+/**
+ * Asserts that the document is no wider than the layout viewport and cannot be scrolled
+ * sideways; `state` names what is open, for the failure messages.
+ */
+async function expectNoHorizontalScroll(page: Page, state: string): Promise<void> {
+  const scroll = await page.evaluate(() => ({
+    scrollWidth: document.documentElement.scrollWidth,
+    clientWidth: document.documentElement.clientWidth,
+    bodyScrollWidth: document.body.scrollWidth,
+  }));
+  expect(scroll.clientWidth, `layout viewport width (${state})`).toBeGreaterThan(0);
+  expect(scroll.scrollWidth, `document scroll width (${state})`).toBeLessThanOrEqual(
+    scroll.clientWidth,
+  );
+  expect(scroll.bodyScrollWidth, `body scroll width (${state})`).toBeLessThanOrEqual(
+    scroll.clientWidth,
+  );
+
+  // The page cannot actually be scrolled sideways; the vertical position is kept.
+  const scrolledX = await page.evaluate(() => {
+    const top = window.scrollY;
+    window.scrollTo({ left: 200, top, behavior: 'instant' });
+    const x = window.scrollX;
+    window.scrollTo({ left: 0, top, behavior: 'instant' });
+    return x;
+  });
+  expect(scrolledX, `horizontal scroll offset after scrolling right (${state})`).toBe(0);
 }
 
 /**
@@ -92,20 +129,15 @@ async function expectStacked(page: Page, language: Language): Promise<void> {
 }
 
 /**
- * The header, its settings controls, both panels and the footer as [description, locator]
- * pairs, for per-part layout checks; `language` is the UI language the accessible names are
- * in.
+ * The parts of the phone layout as [description, locator] pairs, for per-part layout
+ * checks: the header and its menu button, both panels and the footer; `language` is the UI
+ * language the accessible names are in.
  */
 function shellParts(page: Page, language: Language): [string, Locator][] {
   const { parameters, results } = panels(page, language);
   return [
     ['header', page.getByRole('banner')],
-    [
-      'header settings',
-      page.getByRole('group', { name: message(language, 'header.settings'), exact: true }),
-    ],
-    ['language select', languageSelect(page, language)],
-    ['theme switcher', themeGroup(page, language)],
+    ['menu button', menuButton(page, language)],
     ['parameters panel', parameters],
     ['results panel', results],
     ['footer', page.getByRole('contentinfo')],
@@ -126,42 +158,108 @@ test.describe('narrow screens (360 × 740)', () => {
           await expect(page.locator('html')).toHaveAttribute('lang', language);
           await expectTheme(page, theme);
 
-          const scroll = await page.evaluate(() => ({
-            scrollWidth: document.documentElement.scrollWidth,
-            clientWidth: document.documentElement.clientWidth,
-            bodyScrollWidth: document.body.scrollWidth,
-          }));
-          expect(scroll.clientWidth, 'layout viewport width').toBeGreaterThan(0);
-          expect(scroll.scrollWidth, 'document scroll width').toBeLessThanOrEqual(
-            scroll.clientWidth,
-          );
-          expect(scroll.bodyScrollWidth, 'body scroll width').toBeLessThanOrEqual(
-            scroll.clientWidth,
-          );
-
-          // The page cannot actually be scrolled sideways.
-          const scrolledX = await page.evaluate(() => {
-            window.scrollTo({ left: 200, top: 0, behavior: 'instant' });
-            const x = window.scrollX;
-            window.scrollTo({ left: 0, top: 0, behavior: 'instant' });
-            return x;
-          });
-          expect(scrolledX, 'horizontal scroll offset after scrolling right').toBe(0);
+          await expectNoHorizontalScroll(page, 'closed');
 
           for (const [name, locator] of shellParts(page, language)) {
             await expectInsideViewport(page, name, locator);
           }
           expect(await overflowingElements(page), 'elements wider than the viewport').toEqual([]);
 
-          // Icon-only segments must keep their text as the accessible name.
-          for (const preference of THEME_PREFERENCES) {
-            await expect(themeRadio(page, preference, language)).toHaveCount(1);
-          }
+          // The phone header shows the menu button instead of the desktop settings.
+          await expect(themeButton(page, language)).toBeHidden();
+          await expect(
+            page.getByRole('banner').getByText(message(language, 'header.byline')),
+          ).toBeHidden();
 
           await expectStacked(page, language);
+
+          // The menu sheet and its controls fit as well.
+          const sheet = await openMenuSheet(page, language);
+          for (const [name, locator] of [
+            ['menu sheet', sheet],
+            ['language select', languageSelect(page, language)],
+            ['theme radios', themeGroup(page, language)],
+          ] as const) {
+            await expectInsideViewport(page, name, locator);
+          }
+          expect(
+            await overflowingElements(page),
+            'elements wider than the viewport with the menu open',
+          ).toEqual([]);
+          await page.keyboard.press('Escape');
+          await expect(sheet).toBeHidden();
+
+          // The fee editor and Advanced, behind "Fees and advanced settings" on a phone.
+          for (const id of ['more-button', 'advanced-button']) {
+            const button = page.locator(`#${id}`);
+            await button.click();
+            await expect(button).toHaveAttribute('aria-expanded', 'true');
+          }
+          await expect(page.locator('#advanced-content')).toBeVisible();
+          await expectNoHorizontalScroll(page, 'with Advanced open');
+          expect(
+            await overflowingElements(page),
+            'elements wider than the viewport with Advanced open',
+          ).toEqual([]);
+
+          // A periodic fee shows the most controls (calculation of three, per-period hint).
+          await page
+            .getByRole('button', { name: message(language, 'fees.addLabel'), exact: true })
+            .click();
+          const fee = page.locator('.fees__list > li').last();
+          await fee.locator('select[id$="-kind"]').selectOption('periodic');
+          await fee.locator('select[id$="-calc"]').selectOption('pct-balance');
+          await fee.locator('input[id$="-value"]').fill('1');
+          await expect(fee.locator('.fee__summary')).toBeVisible();
+          await expectNoHorizontalScroll(page, 'with a periodic fee');
+          expect(
+            await overflowingElements(page),
+            'elements wider than the viewport with a periodic fee',
+          ).toEqual([]);
         });
       });
     }
+  }
+});
+
+test.describe('desktop header (1024 × 768)', () => {
+  test.use({ viewport: { width: 1024, height: 768 }, colorScheme: 'dark' });
+
+  for (const language of LANGUAGES) {
+    test.describe(language, () => {
+      test.use({ locale: 'en-US' });
+
+      test('fits the wordmark, byline, language pill and theme button', async ({ page }) => {
+        await seedStorage(page, { language });
+        await gotoApp(page);
+        await expect(menuButton(page, language)).toBeHidden();
+        const settings = page.getByRole('group', {
+          name: message(language, 'header.settings'),
+          exact: true,
+        });
+        for (const [name, locator] of [
+          ['header settings', settings],
+          ['language select', languageSelect(page, language)],
+          ['theme button', themeButton(page, language)],
+        ] as const) {
+          await expect(locator).toBeVisible();
+          await expectInsideViewport(page, name, locator);
+        }
+        // Only the header: a wide schedule table scrolls inside its own card at 1024 px.
+        expect(await overflowingElements(page, 'header'), 'header overflow').toEqual([]);
+        // Pills and icon buttons are 44 px targets (DESIGN §8.1, §11).
+        for (const locator of [languageSelect(page, language), themeButton(page, language)]) {
+          expect((await boxOf(locator)).height).toBeGreaterThanOrEqual(44 - EPSILON);
+        }
+
+        // The open theme menu stays inside the viewport too.
+        const menu = await openThemeMenu(page, language);
+        await expectInsideViewport(page, 'theme menu', menu);
+        expect(await overflowingElements(page, 'header'), 'overflow with the menu open').toEqual(
+          [],
+        );
+      });
+    });
   }
 });
 
@@ -225,10 +323,79 @@ test.describe('workspace columns', () => {
 
       await page.setViewportSize({ width: 800, height: 800 });
       await expect.poll(sideBySide, { message: 'panels stack below 1024 px' }).toBe(false);
-      await expectStacked(page, 'en');
+      // Below the breakpoint "Fees and advanced settings" becomes a closed disclosure, which
+      // slides shut (DESIGN §8.5): the parameters panel shrinks for a moment, so the stacked
+      // layout is checked once the slide has settled.
+      await expect(async () => {
+        await expectStacked(page, 'en');
+      }).toPass();
 
       await page.setViewportSize({ width: 1024, height: 800 });
       await expect.poll(sideBySide, { message: 'panels sit side by side at 1024 px' }).toBe(true);
     });
+  });
+});
+
+test.describe('segmented controls', () => {
+  for (const width of [360, 1280]) {
+    test(`every segment is a 44 px target at ${String(width)} px (DESIGN §11)`, async ({
+      page,
+    }) => {
+      await page.setViewportSize({ width, height: 900 });
+      await gotoApp(page);
+      const segments = page.locator('.segmented__option:has(input[name="frequency"])');
+      await expect(segments).toHaveCount(6);
+      for (const segment of await segments.all()) {
+        expect((await boxOf(segment)).height).toBeGreaterThanOrEqual(44 - EPSILON);
+      }
+    });
+  }
+});
+
+test.describe('sticky inputs panel (1280 × 800)', () => {
+  test.use({ locale: 'en-US', colorScheme: 'dark', viewport: { width: 1280, height: 800 } });
+
+  test('sticks to the top and scrolls on its own', async ({ page }) => {
+    await gotoApp(page);
+    const style = await page.locator('.inputs').evaluate((element) => {
+      const computed = getComputedStyle(element);
+      return { position: computed.position, overflowY: computed.overflowY };
+    });
+    expect(style).toEqual({ position: 'sticky', overflowY: 'auto' });
+  });
+});
+
+test.describe('compact bar on a phone (360 × 740)', () => {
+  test.use({ locale: 'en-US', colorScheme: 'dark', viewport: { width: 360, height: 740 } });
+
+  test('appears once the summary card scrolls away and never covers a focused field', async ({
+    page,
+  }) => {
+    await gotoApp(page);
+    const bar = page.getByRole('region', {
+      name: message('en', 'results.compactBar'),
+      exact: true,
+    });
+    await expect(page.locator('.mobile-summary')).toBeInViewport();
+    await expect(bar).toBeHidden();
+
+    // Far down the page (the schedule), the summary card and the inputs are above it.
+    await page.evaluate(() => {
+      window.scrollTo({ top: document.documentElement.scrollHeight, behavior: 'instant' });
+    });
+    await expect(bar).toBeVisible();
+    const barBox = await boxOf(bar);
+    expect(barBox.y, 'the bar is at the top of the viewport').toBeLessThanOrEqual(EPSILON);
+    const amount = page.locator('#field-amount');
+    await expect(amount).not.toBeInViewport();
+
+    // Focusing scrolls the field back into view below the bar (scroll padding).
+    await amount.focus();
+    await expect(amount).toBeFocused();
+    await expect(amount).toBeInViewport();
+    const fieldTop = (await boxOf(amount)).y;
+    expect(fieldTop, 'focused field top vs. compact bar bottom').toBeGreaterThanOrEqual(
+      barBox.y + barBox.height - EPSILON,
+    );
   });
 });

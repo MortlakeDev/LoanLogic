@@ -3,7 +3,16 @@
 
 import { AxeBuilder } from '@axe-core/playwright';
 import { expect, test, type Page } from '@playwright/test';
-import { expectTheme, gotoApp, LANGUAGES, message, seedStorage, THEMES } from './helpers.ts';
+import {
+  expectTheme,
+  gotoApp,
+  LANGUAGES,
+  message,
+  openMenuSheet,
+  openThemeMenu,
+  seedStorage,
+  THEMES,
+} from './helpers.ts';
 
 type AxeResults = Awaited<ReturnType<AxeBuilder['analyze']>>;
 type AxeViolation = AxeResults['violations'][number];
@@ -113,6 +122,92 @@ for (const language of LANGUAGES) {
           await gotoApp(page);
           await expect(page.locator('html')).toHaveAttribute('lang', language);
           await expectTheme(page, theme);
+          await expectNoBlockingViolations(page);
+        });
+      });
+    }
+  }
+}
+
+for (const theme of THEMES) {
+  test.describe(`${theme} theme with the header theme menu open, 1280px`, () => {
+    test.use({ locale: 'en-US', colorScheme: theme, viewport: { width: 1280, height: 800 } });
+
+    test('has no serious or critical axe violations', async ({ page }) => {
+      await gotoApp(page);
+      await expectTheme(page, theme);
+      await openThemeMenu(page);
+      await expectNoBlockingViolations(page);
+    });
+  });
+
+  test.describe(`${theme} theme with the menu sheet open, 360px`, () => {
+    test.use({ locale: 'en-US', colorScheme: theme, viewport: { width: 360, height: 740 } });
+
+    test('has no serious or critical axe violations', async ({ page }) => {
+      await gotoApp(page);
+      await expectTheme(page, theme);
+      await openMenuSheet(page);
+      await expectNoBlockingViolations(page);
+    });
+  });
+}
+
+/**
+ * Opens the Advanced disclosure; below 64rem it sits inside "Fees and advanced settings",
+ * which is opened first (on a desktop that disclosure has no button and is always open).
+ */
+async function openAdvanced(page: Page): Promise<void> {
+  const more = page.locator('#more-button');
+  if (await more.isVisible()) {
+    await more.click();
+    await expect(more).toHaveAttribute('aria-expanded', 'true');
+  }
+  const advanced = page.locator('#advanced-button');
+  await advanced.click();
+  await expect(advanced).toHaveAttribute('aria-expanded', 'true');
+  await expect(page.locator('#advanced-content')).toBeVisible();
+}
+
+/**
+ * Opens the Explain sheet from "How it's calculated": the formula strip's action on a
+ * desktop, the summary card's button on a phone (only the visible one is a candidate).
+ */
+async function openExplainSheet(page: Page): Promise<void> {
+  await page
+    .getByRole('button', { name: message('en', 'hero.howCalculated'), exact: true })
+    .click();
+  await expect(
+    page.getByRole('dialog', { name: message('en', 'explain.instalmentTitle'), exact: true }),
+  ).toBeVisible();
+}
+
+/** Types text that does not parse into the rate and waits for the fix list (300 ms). */
+async function showErrorState(page: Page): Promise<void> {
+  await page.locator('#field-annualRatePct').fill('abc');
+  await expect(page.locator('#field-annualRatePct')).toHaveAttribute('aria-invalid', 'true');
+  await expect(
+    page.getByRole('heading', { name: message('en', 'results.fixFields'), exact: true }),
+  ).toBeVisible();
+}
+
+const CALCULATOR_STATES = [
+  { name: 'with Advanced open', open: openAdvanced },
+  { name: 'with the Explain sheet open', open: openExplainSheet },
+  { name: 'in the error state', open: showErrorState },
+] as const;
+
+for (const theme of THEMES) {
+  for (const viewport of VIEWPORTS) {
+    for (const state of CALCULATOR_STATES) {
+      test.describe(`en, ${theme} theme, ${String(viewport.width)}px, ${state.name}`, () => {
+        test.use({ locale: 'en-US', colorScheme: theme, viewport });
+
+        test('has no serious or critical axe violations', async ({ page }) => {
+          await seedStorage(page, { language: 'en', theme });
+          await gotoApp(page);
+          await expectTheme(page, theme);
+          await state.open(page);
           await expectNoBlockingViolations(page);
         });
       });

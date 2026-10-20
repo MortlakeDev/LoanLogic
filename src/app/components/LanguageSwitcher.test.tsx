@@ -25,7 +25,7 @@ async function renderSwitcher(): Promise<Rendered> {
   vi.resetModules();
   const { LanguageSwitcher } = await import('./LanguageSwitcher');
   const i18n = await import('../state/i18n');
-  render(<LanguageSwitcher />);
+  render(<LanguageSwitcher id="language-select" variant="pill" />);
   const select = screen.getByRole('combobox', { name: 'Language' });
   if (!(select instanceof HTMLSelectElement)) {
     throw new Error('the language control is not a <select>');
@@ -137,6 +137,44 @@ describe('LanguageSwitcher', () => {
     fireEvent.blur(select);
     expect(i18n.language.value).toBe('en');
     expect(localStorage.getItem(LANGUAGE_KEY)).toBeNull();
+  });
+
+  it('uses the given id, so two pickers on one page keep their own labels', async () => {
+    vi.resetModules();
+    const { LanguageSwitcher } = await import('./LanguageSwitcher');
+    render(
+      <>
+        <LanguageSwitcher id="language-select" variant="pill" />
+        <LanguageSwitcher id="menu-language-select" variant="field" />
+      </>,
+    );
+    const selects = screen.getAllByRole<HTMLSelectElement>('combobox', { name: 'Language' });
+    expect(selects.map((select) => select.id)).toEqual(['language-select', 'menu-language-select']);
+    for (const select of selects) {
+      expect(select.labels[0]?.textContent).toBe('Language');
+    }
+  });
+
+  it('draws the pill with a chevron and a visually hidden label, without the globe', async () => {
+    const { select } = await renderSwitcher();
+    expect(select.classList.contains('select--pill')).toBe(true);
+    expect(select.labels[0]?.classList.contains('visually-hidden')).toBe(true);
+    const icons = select.parentElement?.querySelectorAll('svg.icon') ?? [];
+    expect(icons).toHaveLength(1);
+    expect(icons[0]?.classList.contains('select-wrap__chevron')).toBe(true);
+    expect(icons[0]?.getAttribute('aria-hidden')).toBe('true');
+  });
+
+  it('shows a visible label above a plain select in the field variant', async () => {
+    vi.resetModules();
+    const { LanguageSwitcher } = await import('./LanguageSwitcher');
+    render(<LanguageSwitcher id="menu-language-select" variant="field" />);
+    const select = screen.getByRole<HTMLSelectElement>('combobox', { name: 'Language' });
+    expect(select.classList.contains('select--pill')).toBe(false);
+    expect(select.labels[0]?.className).toBe('field__label');
+    expect(
+      select.parentElement?.querySelector('svg')?.classList.contains('select-wrap__chevron'),
+    ).toBe(true);
   });
 
   it('ignores a value that is not a supported language', async () => {

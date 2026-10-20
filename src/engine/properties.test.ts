@@ -269,7 +269,9 @@ describe('calculateLoan on random valid inputs', () => {
       }),
       { numRuns: 150 },
     );
-  });
+    // 150 random loans of up to 1 200 periods: several seconds under coverage while the
+    // UI test files run in parallel, so the default 5 s limit is too tight.
+  }, 30_000);
 
   it('is deterministic: the same input gives the same output', () => {
     fc.assert(
@@ -280,5 +282,5 @@ describe('calculateLoan on random valid inputs', () => {
       }),
       { numRuns: 40 },
     );
-  });
+  }, 30_000);
 });

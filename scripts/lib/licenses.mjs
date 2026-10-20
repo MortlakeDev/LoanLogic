@@ -22,7 +22,10 @@ export const RUNTIME_LICENSES = Object.freeze([
 export const FONT_LICENSES = Object.freeze(['OFL-1.1']);
 
 /** Font packages (reviewed one by one) that may use FONT_LICENSES. */
-export const FONT_PACKAGES = Object.freeze(['@fontsource-variable/inter']);
+export const FONT_PACKAGES = Object.freeze([
+  '@fontsource-variable/onest',
+  '@fontsource-variable/jetbrains-mono',
+]);
 
 /**
  * The runtime allowlist for one package: RUNTIME_LICENSES, plus FONT_LICENSES for fonts.

@@ -18,29 +18,34 @@ function ExternalLink(props: { href: string; children: string }): JSX.Element {
 }
 
 /**
- * Page footer: copyright, links to the license and to the source code (the AGPL "Source"
- * offer), and the on-device privacy and not-financial-advice notes.
+ * Page footer (DESIGN §7.1): copyright, links to the license and to the source code (the
+ * AGPL "Source" offer) on the left; the on-device privacy note and the not-financial-advice
+ * disclaimer on the right. On mobile the two parts stack.
  */
 export function Footer(): JSX.Element {
   return (
     <footer class="app-footer">
-      <p class="app-footer__legal">
-        <span>{t('footer.copyright', { year: COPYRIGHT_YEAR, author: AUTHOR })}</span>
-        <span class="app-footer__separator" aria-hidden="true">
-          ·
-        </span>
-        <span>
-          <ExternalLink href={LICENSE_URL}>{LICENSE_ID}</ExternalLink>
-        </span>
-        <span class="app-footer__separator" aria-hidden="true">
-          ·
-        </span>
-        <span>
-          <ExternalLink href={SOURCE_CODE_URL}>{t('footer.sourceCode')}</ExternalLink>
-        </span>
-      </p>
-      <p class="app-footer__note">{t('footer.privacy')}</p>
-      <p class="app-footer__note">{t('footer.disclaimer')}</p>
+      <div class="app-footer__inner">
+        <p class="app-footer__legal">
+          <span>{t('footer.copyright', { year: COPYRIGHT_YEAR, author: AUTHOR })}</span>
+          <span class="app-footer__separator" aria-hidden="true">
+            ·
+          </span>
+          <span>
+            <ExternalLink href={LICENSE_URL}>{LICENSE_ID}</ExternalLink>
+          </span>
+          <span class="app-footer__separator" aria-hidden="true">
+            ·
+          </span>
+          <span>
+            <ExternalLink href={SOURCE_CODE_URL}>{t('footer.sourceCode')}</ExternalLink>
+          </span>
+        </p>
+        <div class="app-footer__notes">
+          <p>{t('footer.privacy')}</p>
+          <p>{t('footer.disclaimer')}</p>
+        </div>
+      </div>
     </footer>
   );
 }

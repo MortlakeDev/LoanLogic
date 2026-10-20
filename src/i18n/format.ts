@@ -33,6 +33,13 @@ export interface MoneyFormatOptions {
 export interface NumberFormatOptions {
   readonly minimumFractionDigits?: number;
   readonly maximumFractionDigits?: number;
+  /** Rounds to this many significant digits instead (irrational explain values, DESIGN §8.6). */
+  readonly maximumSignificantDigits?: number;
+  /**
+   * With both significant and fraction digits: `morePrecision` keeps whichever rounding
+   * shows more (an exact instalment never shown coarser than its minor units).
+   */
+  readonly roundingPriority?: 'auto' | 'morePrecision' | 'lessPrecision';
   readonly useGrouping?: boolean;
 }
 
@@ -102,6 +109,11 @@ export function formatMoney(
   locale: string,
   options: MoneyFormatOptions = {},
 ): string {
+  return numberFormat(locale, moneyOptions(currency, options)).format(toIntlValue(value));
+}
+
+/** The Intl options of every money formatter, so text and parts always agree. */
+function moneyOptions(currency: string, options: MoneyFormatOptions): Intl.NumberFormatOptions {
   const intlOptions: Intl.NumberFormatOptions = {
     style: 'currency',
     currency,
@@ -113,7 +125,28 @@ export function formatMoney(
     intlOptions.minimumFractionDigits = options.fractionDigits;
     intlOptions.maximumFractionDigits = options.fractionDigits;
   }
-  return numberFormat(locale, intlOptions).format(toIntlValue(value));
+  return intlOptions;
+}
+
+/**
+ * A monetary amount as Intl parts (`currency`, `integer`, `group`, `decimal`,
+ * `fraction`, `minusSign`, `literal`), for displays that style the parts differently
+ * (DESIGN §4.2 hero numbers: the symbol small and muted, the minor units muted). The parts
+ * join to exactly `formatMoney`'s string, in any locale and currency (`¥4,270.16`,
+ * `12 345,67 ₴`); never split a formatted string by hand.
+ *
+ * @param value Amount in major units as a decimal string.
+ * @param currency ISO 4217 code.
+ * @param locale BCP 47 formatting locale.
+ * @throws RangeError if `value` is not a finite decimal string.
+ */
+export function formatMoneyParts(
+  value: string,
+  currency: string,
+  locale: string,
+  options: MoneyFormatOptions = {},
+): Intl.NumberFormatPart[] {
+  return numberFormat(locale, moneyOptions(currency, options)).formatToParts(toIntlValue(value));
 }
 
 /**
@@ -195,4 +228,48 @@ export function formatDate(
     dateFormats.set(cacheKey, format);
   }
   return format.format(instant);
+}
+
+const monthYearFormats = new Map<string, Intl.DateTimeFormat>();
+
+/**
+ * A month and year as Intl writes it in `locale` ("Dec 2026", "2026年12月", "дек. 2026 г.")
+ * for schedule groups and chart labels (DESIGN §9). Formatted in UTC from the calendar
+ * fields, so the month never shifts with the time zone.
+ *
+ * @param date A calendar date; only `y` and `m` are used.
+ * @param locale BCP 47 formatting locale.
+ * @throws RangeError if `y` < 1 or `m` is not 1–12.
+ */
+export function formatMonthYear(date: Pick<CalendarDate, 'y' | 'm'>, locale: string): string {
+  const { y, m } = date;
+  if (!Number.isInteger(y) || !Number.isInteger(m) || y < 1 || m < 1 || m > 12) {
+    throw new RangeError(`Invalid month: ${String(y)}-${String(m)}`);
+  }
+  const instant = new Date(Date.UTC(2000, 0, 1));
+  instant.setUTCFullYear(y, m - 1, 1);
+  let format = monthYearFormats.get(locale);
+  if (format === undefined) {
+    format = new Intl.DateTimeFormat(locale, { year: 'numeric', month: 'short', timeZone: 'UTC' });
+    monthYearFormats.set(locale, format);
+  }
+  return format.format(instant);
+}
+
+const currencyNames = new Map<string, Intl.DisplayNames>();
+
+/**
+ * A currency's name in `locale` ("US Dollar", "美元", "доллар США"), as Intl writes it,
+ * for the currency select. Codes Intl does not know come back as the code itself.
+ *
+ * @param code ISO 4217 code.
+ * @param locale BCP 47 locale of the UI language.
+ */
+export function formatCurrencyName(code: string, locale: string): string {
+  let names = currencyNames.get(locale);
+  if (names === undefined) {
+    names = new Intl.DisplayNames(locale, { type: 'currency', fallback: 'code' });
+    currencyNames.set(locale, names);
+  }
+  return names.of(code) ?? code;
 }

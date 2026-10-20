@@ -10,6 +10,7 @@ import { DEFAULT_FORMAT_LOCALE, DEFAULT_LANGUAGE, isLanguage, type Language } fr
 
 export * from './format';
 export * from './languages';
+export * from './parse';
 
 export const PLURAL_CATEGORIES = ['zero', 'one', 'two', 'few', 'many', 'other'] as const;
 

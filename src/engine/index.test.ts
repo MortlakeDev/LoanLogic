@@ -254,3 +254,36 @@ describe('calculateLoan and computeRateMetrics: errors', () => {
     });
   });
 });
+
+describe('calculateLoan: fee amounts (SPEC §8.1)', () => {
+  it('reports every item in input order: upfront amount, periodic first period and total', () => {
+    const result = okResult({
+      ...BASE,
+      amount: '25000.00',
+      annualRatePct: '8.49',
+      term: { payments: 60 },
+      fees: [
+        { id: 'origination', kind: 'upfront', calc: 'percent', value: '2', financing: 'paid' },
+        { id: 'service', kind: 'periodic', calc: 'fixed', value: '9.95' },
+        { id: 'credit-life', kind: 'insurance', calc: 'pct-balance', value: '0.05', inApr: false },
+        { id: 'gap', kind: 'upfront', calc: 'fixed', value: '750.00', financing: 'financed' },
+      ],
+    });
+    expect(result.fees.map((fee) => [fee.id, fee.kind, fee.amount])).toEqual([
+      ['origination', 'upfront', '500.00'],
+      ['service', 'periodic', '9.95'],
+      // 0.05 % of the opening balance 25 750.00 (amount + the financed fee).
+      ['credit-life', 'insurance', '12.88'],
+      ['gap', 'upfront', '750.00'],
+    ]);
+    const service = result.fees[1];
+    expect(service?.total).toBe('597.00');
+    const insurance = result.fees[2];
+    expect(insurance?.total).toBe(result.summary.totalInsurance);
+    expect(result.fees[0]?.total).toBe('500.00');
+  });
+
+  it('is empty without fees', () => {
+    expect(okResult(BASE).fees).toEqual([]);
+  });
+});
