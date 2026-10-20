@@ -387,7 +387,8 @@ open with `--duration-normal`.
   value (`A` or `first`), never recomputed in the UI, so it always equals the hero.
   Irrational operands are displayed with 10 significant digits, for display only. The
   accent action "How it's calculated →" opens the Explain sheet (§8.12). One branch per
-  payload:
+  payload; the equal-principal and bullet branches need the SPEC v0.2.3 payloads, which
+  task T03a adds to the engine:
   - The rate `i`: when the payload carries `i` (periodic interest with `c ≠ m`), its
     value is shown; otherwise `i` is shown as `j ÷ m` (periodic interest with `c = m`,
     and the nominal payment basis in day-count mode).
