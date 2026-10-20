@@ -397,9 +397,11 @@ open with `--duration-normal`.
   accent action "How it's calculated →" opens the Explain sheet (§8.12). One branch per
   payload; the equal-principal and bullet branches need the SPEC v0.2.3 payloads, which
   task T03a adds to the engine:
-  - The rate `i`: when the payload carries `i` (periodic interest with `c ≠ m`), its
-    value is shown; otherwise `i` is shown as `j ÷ m` (periodic interest with `c = m`,
-    and the nominal payment basis in day-count mode).
+  - The rate `i` (annuity and balloon, and `I₁` in periodic mode): when the payload
+    carries `i` (periodic interest with `c ≠ m`), its value is shown; otherwise `i` is
+    shown as `j ÷ m` (periodic interest with `c = m`, and an annuity or balloon with the
+    nominal payment basis in day-count mode). Day-count equal-principal and bullet
+    payloads have no `i` and no `m`; their `I₁` uses `yf1` (below).
   - `instalment.annuity`: `A = P·i ÷ (1 − (1+i)^−N)`, e.g.
     `A = P·i ÷ (1 − (1+i)^−N), i = 0.06875 ÷ 12, N = 360 → 2,299.25`.
   - `instalment.balloon`: `A = (P − Bal·(1+i)^−N)·i ÷ (1 − (1+i)^−N)`.
@@ -409,8 +411,9 @@ open with `--duration-normal`.
   - The first period's interest `I₁` (equal principal, interest-only): `I₁ = P × j × YF₁`
     in day-count mode (the payload carries `yf1`); in periodic mode `I₁ = P × i` when the
     payload carries `i`, else `I₁ = P × j ÷ m`.
-  - `instalment.equal-principal`: `q = P ÷ N`, then `first = p₁ + I₁`, where `p₁ = q`,
-    or `p₁ = P − (N − 1)·q` when the remainder comes first.
+  - `instalment.equal-principal`: `q = R(P ÷ N)` (half-up to the minor unit, SPEC
+    §5.3), then `first = p₁ + I₁`, where `p₁ = q`, or `p₁ = P − (N − 1)·q` when the
+    remainder comes first.
   - `instalment.bullet`: `first = I₁`, or `first = P + I₁` with a single payment.
 
 ### 8.7 Regional rate card

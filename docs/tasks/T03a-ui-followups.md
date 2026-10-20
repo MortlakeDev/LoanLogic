@@ -28,7 +28,7 @@ the live site are fixed too.
    - The interest of the first period: `I₁ = P × j ÷ m` when `c = m`, `I₁ = P × i`
      when `c ≠ m` (the payload then carries `i`), and `I₁ = P × j × YF₁` in day-count
      mode (`yf1`).
-   - Equal principal: `q = P ÷ N`, then `first payment = p₁ + I₁`.
+   - Equal principal: `q = R(P ÷ N)`, then `first payment = p₁ + I₁`.
    - Interest-only: `I₁`, plus `P` with a single payment.
    - The last number of every strip equals the hero, for every repayment type,
      compounding and accrual mode.
