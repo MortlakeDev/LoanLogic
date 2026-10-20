@@ -49,7 +49,9 @@ label, and the theme menu should behave like a standard menu.
   (c = m, c ≠ m) and day-count mode, each payload with only its own fields. Equal
   principal: `p1`, `I1` and `first` equal the first row's principal, interest and their
   sum exactly. Interest-only: `I1` and `first` equal the first row's interest and its
-  principal + interest exactly.
+  principal + interest exactly. The rate values are asserted exactly too: `j` and `m`
+  in periodic mode, plus `i` when `c ≠ m` (and no `i` when `c = m`); `j`, `dayCount`
+  and `yf1` in day-count mode.
 - **Component tests:** the strip for equal principal (remainder last and first),
   interest-only (N = 1 and N > 1), annuity, balloon and the exact basis.
 - **e2e:**
