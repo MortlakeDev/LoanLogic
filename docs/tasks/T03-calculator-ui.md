@@ -194,7 +194,7 @@ comparison and other tabs (M4–M5); exports and Share (T14–T15).
 
 ## Completion notes
 
-**Status:** in review, [PR #__PR__](https://github.com/MortlakeDev/LoanLogic/pull/__PR__)
+**Status:** in review, [PR #8](https://github.com/MortlakeDev/LoanLogic/pull/8)
 (branch `task/T03-calculator-ui`).
 
 **Acceptance criteria (local evidence, 2026-10-20, Windows, Node 24.19):**
