@@ -112,14 +112,23 @@ State lives in `src/app/state` as signals; components hold no business logic.
   - negative amounts: with a negative rate a payment can be negative (§3.4), and with
     the exact payment basis a row's principal can be negative (§5.1). They are shown with
     a minus sign, and no component assumes an amount is positive;
-  - `params` of errors and warnings are strings — numbers as decimal strings, `methods`
-    comma-separated (§13); parse them before formatting them with the i18n helpers;
-  - `TOO_MANY_DECIMALS` means the currency's minor units on a money field and at most 10
-    decimals on a percentage field; `FEE_RANGE` on `fees` (the upfront fees paid at
-    closing take the whole amount) belongs to the fees section, not to one fee;
-    `NEG_AMORTIZATION` names the first period (`params.period`) and suggests the exact
-    payment basis or the periodic interest model;
-  - a failed rate (`IRR_NO_CONVERGENCE`) reads "n/a": no rate within −99 % … 10⁹ %.
+  - `params` of an error or warning is a record whose values are all strings (§13):
+    numbers are decimal strings (`paymentsCount: "242"`) and `methods` is a
+    comma-separated list of method ids; parse each value before formatting it with the
+    i18n helpers;
+  - `TOO_MANY_DECIMALS` on a money field means more decimals than the currency's minor
+    units; on a percentage field it means a value that is not a multiple of 10⁻¹⁰
+    (trailing zeros such as "6.50000000000" are fine);
+  - `FEE_RANGE` on `fees` means the upfront fees paid at closing add up to at least the
+    requested amount (financed fees do not count): it belongs to the fees section, not
+    to one fee;
+  - `NEG_AMORTIZATION` names the first period with a negative principal
+    (`params.period`) and suggests a fix that fits the loan: the exact payment basis for
+    a day-count annuity, the periodic interest model for a day-count balloon (the exact
+    basis is `UNSUPPORTED` there), a finer payment rounding in the periodic model;
+  - a failed rate (`IRR_NO_CONVERGENCE`) shows "n/a" with its localized reason (SPEC
+    §10): no root in the solver range (a rate from −99 % to 10⁹ %), or a result computed
+    from the root beyond ±10⁹ %.
 - Mobile: summary card first, compact sticky bar when it scrolls away, scroll padding
   for the sticky bars (DESIGN §7.2). Desktop: the sticky inputs panel scrolls on its own
   (DESIGN §7.1).
