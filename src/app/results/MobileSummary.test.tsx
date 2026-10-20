@@ -132,7 +132,7 @@ describe('MobileSummary', () => {
     const card = renderSummary();
     expect(el(card, '.hero-amount .visually-hidden').textContent).toBe('$8,560.75');
     expect(el(card, '.hero-meta').textContent).toBe(
-      '12 payments · $8,570.75 with fees and insurance · final payment $8,560.73 · ' +
+      '12 payments · first payment $8,570.75 with periodic fees · final payment $8,560.73 · ' +
         'paid off Nov 1, 2027',
     );
   });

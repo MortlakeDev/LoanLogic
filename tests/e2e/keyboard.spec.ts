@@ -342,6 +342,46 @@ test.describe('the calculator from the keyboard (1280 px)', () => {
   });
 });
 
+test.describe('opened disclosures and error links (1280 px)', () => {
+  test.use({ viewport: { width: 1280, height: 900 } });
+
+  for (const reducedMotion of ['no-preference', 'reduce'] as const) {
+    test(`Tab right after opening Advanced enters it (${reducedMotion} motion)`, async ({
+      page,
+    }) => {
+      await page.emulateMedia({ reducedMotion });
+      await gotoApp(page);
+      await page.locator('#advanced-button').focus();
+      await page.keyboard.press('Enter');
+      // No wait: the content must take focus as soon as it opens, while its height slides.
+      await page.keyboard.press('Tab');
+      const inside = await page.evaluate(
+        () =>
+          document.getElementById('advanced-content')?.contains(document.activeElement) ?? false,
+      );
+      expect(inside, 'focus is inside the Advanced content').toBe(true);
+    });
+  }
+
+  test('a fix link focuses a field inside the closed Advanced disclosure', async ({ page }) => {
+    await gotoApp(page);
+    // Day-count interest at a high rate: the payment does not amortize (NEG_AMORTIZATION),
+    // whose fix lives in Advanced.
+    await page.locator('#advanced-button').click();
+    await page.getByRole('radio', { name: message('en', 'interestModel.daycount') }).check();
+    await page.locator('#field-accrual-method').selectOption('act-360');
+    await page.locator('#advanced-button').click();
+    await expect(page.locator('#advanced-button')).toHaveAttribute('aria-expanded', 'false');
+    await page.locator('#field-annualRatePct').fill('30');
+    await page.locator('#field-amount').fill('100000.00');
+
+    const fix = page.getByRole('button', { name: message('en', 'errors.negAmortizationFixExact') });
+    await fix.click();
+    await expect(page.locator('#advanced-button')).toHaveAttribute('aria-expanded', 'true');
+    await expect(page.locator('#field-accrual-paymentBasis')).toBeFocused();
+  });
+});
+
 test.describe('keyboard navigation on a phone-sized screen', () => {
   test.use({ viewport: { width: 360, height: 740 } });
 

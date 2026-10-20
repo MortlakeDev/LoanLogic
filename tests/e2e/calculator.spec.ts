@@ -112,6 +112,22 @@ test.describe('CN scenario in zh-CN (vector cn-mortgage-30y-equal-instalments)',
     });
     await expect(irr).toHaveCount(1);
     await expect(irr.locator('.rate-card__minor')).toHaveText('3.14%');
+
+    // Amounts stay in JetBrains Mono on a Chinese page (DESIGN §1, §4.1): the CJK stack
+    // replaces only the sans font.
+    const fonts = await column.evaluate((root) =>
+      ['.hero-amount [aria-hidden="true"] *', '.kpi__value *', '.rate-card__rate'].flatMap(
+        (selector) =>
+          Array.from(
+            root.querySelectorAll(selector),
+            (element) => getComputedStyle(element).fontFamily,
+          ),
+      ),
+    );
+    expect(fonts.length).toBeGreaterThan(0);
+    for (const family of fonts) {
+      expect(family).toMatch(/^"?JetBrains Mono/);
+    }
   });
 });
 

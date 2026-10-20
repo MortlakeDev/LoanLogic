@@ -4,9 +4,10 @@
 import type { ComponentChildren, JSX } from 'preact';
 import { Fragment } from 'preact';
 import type { FrequencyId, LoanSummary } from '../../engine';
+import type { MessageKey } from '../../i18n';
 import { Rich } from '../components/Rich';
 import { FormulaStrip } from '../explain/FormulaStrip';
-import { type HeroAmounts, heroAmounts, toMinor } from '../state/derived';
+import { chargedKinds, type HeroAmounts, heroAmounts, toMinor } from '../state/derived';
 import { currencyDigits, date, money } from '../state/display';
 import { t } from '../state/i18n';
 import { paymentLabel } from '../state/messages';
@@ -57,9 +58,17 @@ export function HeroMeta(props: { readonly result: OkLoanResult }): JSX.Element 
     { key: 'payments', content: t('hero.payments', { count: summary.paymentsCount }) },
   ];
   if (amounts.firstPaid !== null) {
+    // Name what the first payment adds to the instalment: periodic fees, insurance or both.
+    const charged = chargedKinds(props.result.fees, currencyDigits.value);
+    const message: MessageKey =
+      charged.periodic && !charged.insurance
+        ? 'hero.firstWithFees'
+        : charged.insurance && !charged.periodic
+          ? 'hero.firstWithInsurance'
+          : 'hero.firstWithFeesInsurance';
     items.push({
       key: 'withFees',
-      content: <Rich message="hero.withFees" nodes={{ amount: inlineAmount(amounts.firstPaid) }} />,
+      content: <Rich message={message} nodes={{ amount: inlineAmount(amounts.firstPaid) }} />,
     });
   }
   items.push({
@@ -81,7 +90,7 @@ export function HeroMeta(props: { readonly result: OkLoanResult }): JSX.Element 
       {items.map((item, index) => (
         <Fragment key={item.key}>
           {index > 0 && <span class="hero-meta__separator"> · </span>}
-          <span>{item.content}</span>
+          <span class="hero-meta__item">{item.content}</span>
         </Fragment>
       ))}
     </p>

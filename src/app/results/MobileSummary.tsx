@@ -54,7 +54,7 @@ export function SummaryContent(props: {
       </button>
       <dl class="mobile-summary__grid">
         {methods.map((method) => (
-          <div key={method} class="mobile-summary__item">
+          <div key={method} class="mobile-summary__item mobile-summary__item--rate">
             <dt class="mobile-summary__label">{methodName(method)}</dt>
             <dd class="mobile-summary__value">
               <RateLine

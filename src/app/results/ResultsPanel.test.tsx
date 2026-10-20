@@ -214,7 +214,7 @@ describe('ResultsPanel: other loans', () => {
     expect([last?.principal, last?.interestPaid]).toEqual(['8525.21', '35.52']);
     expect(el(panel, '.hero-amount .visually-hidden').textContent).toBe('$8,560.75');
     expect(el(panel, '.hero-meta').textContent).toBe(
-      '12 payments · $8,570.75 with fees and insurance · final payment $8,560.73 · ' +
+      '12 payments · first payment $8,570.75 with periodic fees · final payment $8,560.73 · ' +
         'paid off Nov 1, 2027',
     );
     expect(texts(panel, '.hero-meta__amount')).toEqual(['$8,570.75', '$8,560.73']);
@@ -238,9 +238,23 @@ describe('ResultsPanel: other loans', () => {
     expect(el(panel, '.hero-amount .visually-hidden').textContent).toBe('$8,750.00');
     expect(el(panel, '.hero__range').textContent).toBe('→ last $8,368.09');
     expect(el(panel, '.hero-meta').textContent).toBe(
-      '12 payments · $8,760.00 with fees and insurance · final payment $8,368.09 · ' +
+      '12 payments · first payment $8,760.00 with insurance · final payment $8,368.09 · ' +
         'paid off Nov 1, 2027',
     );
+  });
+
+  it('names both kinds when payments carry periodic fees and insurance', () => {
+    updateForm({
+      ...FEE_LOAN,
+      fees: [perPayment('periodic', '10.00', false), perPayment('insurance', '5.00', true)],
+    });
+    const panel = renderPanel();
+    const first = okResult.value?.rows[0]?.payment ?? '';
+    expect(el(panel, '.hero-meta').textContent).toContain(
+      `first payment ${money(first)} with periodic fees and insurance`,
+    );
+    // Lines break between the meta items only.
+    expect(panel.querySelectorAll('.hero-meta__item').length).toBe(4);
   });
 
   it('shows the balloon in the meta line', () => {

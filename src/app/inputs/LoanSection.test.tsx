@@ -6,7 +6,7 @@ import { cleanup, fireEvent, screen } from '@testing-library/preact';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { setLanguage, t } from '../state/i18n';
 import { money } from '../state/display';
-import { form, loanInput, okResult, updateForm } from '../state/loan';
+import { form, inputErrors, loanInput, okResult, updateForm } from '../state/loan';
 import {
   byId,
   change,
@@ -249,6 +249,29 @@ describe('frequency and repayment', () => {
     typeInto(amount, '100,000');
     expect(loanInput.value.balloon).toEqual({ kind: 'amount', value: '100000' });
     expect(descriptionOf(amount)).toBe(`${balloonShown()} with the final payment`);
+  });
+
+  it('drops a typing error of a field that goes away, so the results come back', () => {
+    renderPanel();
+    fireEvent.click(screen.getByRole('radio', { name: /^Balloon/ }));
+    typeInto(input('field-balloon-value'), 'abc');
+    expect(inputErrors.value.has('balloon.value')).toBe(true);
+    expect(okResult.value).toBeNull();
+    // Back to equal payments: the balloon field is gone, and so is its error.
+    fireEvent.click(screen.getByRole('radio', { name: /^Equal payments/ }));
+    expect(inputErrors.value.size).toBe(0);
+    expect(okResult.value).not.toBeNull();
+  });
+
+  it('drops the typing error of the years when the term mode changes', () => {
+    renderPanel();
+    typeInto(input('field-term-years'), 'x');
+    expect(inputErrors.value.has('term.years')).toBe(true);
+    change(() => {
+      updateForm({ termMode: 'payments' });
+    });
+    expect(inputErrors.value.size).toBe(0);
+    expect(okResult.value).not.toBeNull();
   });
 
   it('shows a balloon out of range under the balloon field', () => {

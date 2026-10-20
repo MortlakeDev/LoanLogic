@@ -330,6 +330,22 @@ test.describe('workspace columns', () => {
   });
 });
 
+test.describe('segmented controls', () => {
+  for (const width of [360, 1280]) {
+    test(`every segment is a 44 px target at ${String(width)} px (DESIGN §11)`, async ({
+      page,
+    }) => {
+      await page.setViewportSize({ width, height: 900 });
+      await gotoApp(page);
+      const segments = page.locator('.segmented__option:has(input[name="frequency"])');
+      await expect(segments).toHaveCount(6);
+      for (const segment of await segments.all()) {
+        expect((await boxOf(segment)).height).toBeGreaterThanOrEqual(44 - EPSILON);
+      }
+    });
+  }
+});
+
 test.describe('sticky inputs panel (1280 × 800)', () => {
   test.use({ locale: 'en-US', colorScheme: 'dark', viewport: { width: 1280, height: 800 } });
 

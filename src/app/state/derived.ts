@@ -293,6 +293,19 @@ export function heroAmounts(
   };
 }
 
+/** Which per-payment items a loan charges: periodic fees, insurance (non-zero totals). */
+export interface ChargedKinds {
+  readonly periodic: boolean;
+  readonly insurance: boolean;
+}
+
+/** The per-payment item kinds with a non-zero total, from the engine's fee amounts. */
+export function chargedKinds(fees: readonly FeeAmount[], minorUnits: number): ChargedKinds {
+  const charged = (kind: 'periodic' | 'insurance'): boolean =>
+    fees.some((fee) => fee.kind === kind && toMinor(fee.total, minorUnits) !== 0n);
+  return { periodic: charged('periodic'), insurance: charged('insurance') };
+}
+
 /** A term in whole years and months, or `null` when payments do not fill whole months. */
 export function durationOf(
   payments: number,

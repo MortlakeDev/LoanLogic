@@ -31,7 +31,9 @@
   *::after {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
+    /* 0s, not a tiny duration: a running transition of an inherited property (such as
+       `visibility` in a disclosure) would keep content hidden for a frame per level. */
+    transition-duration: 0s !important;
     scroll-behavior: auto !important;
   }
 }

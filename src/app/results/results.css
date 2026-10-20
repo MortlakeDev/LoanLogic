@@ -132,6 +132,12 @@
   font-size: var(--font-size-sm);
 }
 
+/* Lines break between items, not inside one ("paid off Nov 1, 2056" stays together); an
+   item wider than the line still wraps inside its own box. */
+.hero-meta__item {
+  display: inline-block;
+}
+
 .hero-meta__amount {
   color: var(--color-text-primary);
 }
@@ -248,11 +254,17 @@
 
 .rate-card__item {
   display: grid;
-  /* A wrapped label takes the extra height, so the values of a row line up. */
-  grid-template-rows: 1fr auto;
   gap: var(--space-1);
   align-content: start;
   min-width: 0;
+}
+
+/* Rate labels reserve two lines, so the values of a row line up when one label wraps
+   ("Effective rate (without fees)") and stay at the top when a failed rate shows its
+   reason under "n/a". */
+.rate-card__label,
+.mobile-summary__item--rate > .mobile-summary__label {
+  min-height: calc(2em * var(--line-height-normal));
 }
 
 .rate-card__label {
@@ -503,8 +515,6 @@
 
 .mobile-summary__item {
   display: grid;
-  /* A wrapped label takes the extra height, so the values of a row line up. */
-  grid-template-rows: 1fr auto;
   gap: var(--space-1);
   align-content: start;
   min-width: 0;

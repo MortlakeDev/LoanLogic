@@ -210,7 +210,7 @@ describe('KPI tiles', () => {
         fee({ uid: 'a', kind: 'periodic', value: '10.00', inApr: false }),
         fee({ uid: 'b', kind: 'insurance', value: '20.00' }),
       ],
-      'Principal, interest, fees and insurance',
+      'Principal, interest, periodic fees and insurance',
     ],
     [
       'an insurance row that costs nothing',

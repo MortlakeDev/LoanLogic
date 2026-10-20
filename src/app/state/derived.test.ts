@@ -6,6 +6,7 @@ import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import {
   FREQUENCY_IDS,
+  type FeeAmount,
   type FrequencyId,
   type LedgerRow,
   type LoanResult,
@@ -13,6 +14,7 @@ import {
   calculateLoan,
 } from '../../engine';
 import {
+  chargedKinds,
   costStructure,
   durationOf,
   fromMinor,
@@ -592,4 +594,24 @@ describe('durationOf', () => {
       expect(durationOf(payments, frequency)).toBeNull();
     },
   );
+});
+
+describe('chargedKinds', () => {
+  it('reports the per-payment kinds with a non-zero total', () => {
+    const item = (kind: FeeAmount['kind'], total: string): FeeAmount => ({
+      id: kind,
+      kind,
+      amount: total,
+      total,
+    });
+    expect(chargedKinds([item('upfront', '3500.00')], 2)).toEqual({
+      periodic: false,
+      insurance: false,
+    });
+    expect(chargedKinds([item('periodic', '120.00'), item('insurance', '0.00')], 2)).toEqual({
+      periodic: true,
+      insurance: false,
+    });
+    expect(chargedKinds([item('insurance', '1')], 0)).toEqual({ periodic: false, insurance: true });
+  });
 });

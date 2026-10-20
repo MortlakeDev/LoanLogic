@@ -460,6 +460,8 @@
   position: relative;
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
+  /* Titles of a row line up when a neighbour's description wraps. */
+  align-content: start;
   align-items: center;
   gap: var(--space-1) var(--space-2);
   min-height: var(--size-target);
@@ -562,14 +564,18 @@
 .disclosure__content {
   display: grid;
   grid-template-rows: 1fr;
-  transition:
-    grid-template-rows var(--duration-normal) var(--easing-standard),
-    visibility var(--duration-normal);
+  /* Opening shows the content at once (focusField can focus inside it in the next frame);
+     only the height slides. */
+  transition: grid-template-rows var(--duration-normal) var(--easing-standard);
 }
 
 .disclosure:not(.disclosure--open) > .disclosure__content {
   grid-template-rows: 0fr;
   visibility: hidden;
+  /* Closing hides the content only once the slide has finished. */
+  transition:
+    grid-template-rows var(--duration-normal) var(--easing-standard),
+    visibility 0s linear var(--duration-normal);
 }
 
 .disclosure__inner {
