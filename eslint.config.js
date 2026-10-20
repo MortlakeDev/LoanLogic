@@ -39,6 +39,11 @@ const ENGINE_FORBIDDEN_GLOBALS = [
     'console',
     'process',
   ].map((name) => ({ name, message: ENGINE_RULE })),
+  {
+    name: 'Intl',
+    message:
+      'The engine does not read Intl (SPEC §0.3): minor units come from the embedded ISO 4217 table.',
+  },
 ];
 
 export default defineConfig([

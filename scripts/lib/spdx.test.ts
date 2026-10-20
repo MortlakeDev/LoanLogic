@@ -13,6 +13,7 @@ const BOM = '﻿';
 const LINE = HEADERS.line;
 const BLOCK = HEADERS.block;
 const HTML = HEADERS.html;
+const HASH = HEADERS.hash;
 
 /** Joins lines with LF, ending with a newline like a real source file. */
 function file(...lines: readonly string[]): string {
@@ -24,6 +25,7 @@ describe('HEADERS', () => {
     expect(LINE).toEqual([`// ${SPDX}`, `// ${COPYRIGHT}`]);
     expect(BLOCK).toEqual([`/* ${SPDX} */`, `/* ${COPYRIGHT} */`]);
     expect(HTML).toEqual([`<!-- ${SPDX} -->`, `<!-- ${COPYRIGHT} -->`]);
+    expect(HASH).toEqual([`# ${SPDX}`, `# ${COPYRIGHT}`]);
   });
 });
 
@@ -46,6 +48,13 @@ describe('requiredHeader', () => {
     expect(requiredHeader('src/styles/tokens.css')).toEqual(BLOCK);
     expect(requiredHeader('index.html')).toEqual(HTML);
   });
+
+  it.each(['tools/reference/generate.py', 'tools/reference/loanlogic_ref/__init__.py', 'Tool.PY'])(
+    'requires # comments in %s',
+    (file) => {
+      expect(requiredHeader(file)).toEqual(HASH);
+    },
+  );
 
   it.each(['FOO.TS', 'App.Tsx', 'Build.MJS', 'Theme.CSS', 'Index.HTML'])(
     'matches the extension of %s case-insensitively',
@@ -82,6 +91,13 @@ describe('hasHeader', () => {
 
   it('allows a shebang line before the header', () => {
     expect(hasHeader(file('#!/usr/bin/env node', ...LINE, 'run();'), LINE)).toBe(true);
+    expect(hasHeader(file('#!/usr/bin/env python3', ...HASH, 'main()'), HASH)).toBe(true);
+  });
+
+  it('accepts a Python header followed by a docstring, and rejects it after the docstring', () => {
+    expect(hasHeader(file(...HASH, '"""Module docstring."""'), HASH)).toBe(true);
+    expect(hasHeader(file('"""Module docstring."""', ...HASH), HASH)).toBe(false);
+    expect(hasHeader(file(...LINE, 'import os'), HASH)).toBe(false);
   });
 
   it('allows a <!doctype html> line before an HTML header, in any case', () => {
@@ -144,13 +160,17 @@ describe('hasHeader', () => {
     expect(hasHeader(BOM, LINE)).toBe(false);
   });
 
-  it.each(['index.html', 'src/styles/tokens.css', 'scripts/check-spdx.mjs', 'vite.config.ts'])(
-    'accepts the repository file %s',
-    (file) => {
-      const header = requiredHeader(file);
-      expect(header).toBeDefined();
-      const text = readFileSync(path.resolve(import.meta.dirname, '..', '..', file), 'utf8');
-      expect(header !== undefined && hasHeader(text, header)).toBe(true);
-    },
-  );
+  it.each([
+    'index.html',
+    'src/styles/tokens.css',
+    'scripts/check-spdx.mjs',
+    'vite.config.ts',
+    'tools/reference/generate.py',
+    'tools/reference/cases.py',
+  ])('accepts the repository file %s', (file) => {
+    const header = requiredHeader(file);
+    expect(header).toBeDefined();
+    const text = readFileSync(path.resolve(import.meta.dirname, '..', '..', file), 'utf8');
+    expect(header !== undefined && hasHeader(text, header)).toBe(true);
+  });
 });

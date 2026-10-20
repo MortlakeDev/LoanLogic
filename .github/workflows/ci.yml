@@ -3,8 +3,8 @@
 #
 # Continuous integration: runs on every pull request and every push to main.
 # The `check` job runs the steps of `npm run check` one by one (so a failure names the
-# exact check), adds a coverage table to the job summary and
-# uploads the single-file build.
+# exact check), runs the reference implementation's checks (tools/reference), adds a
+# coverage table to the job summary and uploads the single-file build.
 # The `e2e` job runs the Playwright suite (Chromium + WebKit) in parallel.
 
 name: CI
@@ -58,6 +58,19 @@ jobs:
       - name: Check dependency licenses
         run: npm run check:licenses
 
+      # The reference implementation (tools/reference) is the engine's independent test
+      # oracle: its self-tests must pass and the golden vectors must match its output.
+      - name: Set up Python
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
+        with:
+          python-version: '3.12'
+
+      - name: Check that the golden vectors are up to date
+        run: python -B tools/reference/generate.py --check
+
+      - name: Run the reference implementation self-tests
+        run: python -B -m unittest discover -s tools/reference -p "test_*.py"
+
       - name: Unit tests with coverage
         run: npm run coverage
 
@@ -85,6 +98,10 @@ jobs:
 
       - name: Check bundle size
         run: npm run check:size
+
+      # Runs on its own, without coverage instrumentation, so the timing is meaningful.
+      - name: Check the engine performance budget
+        run: npm run bench
 
       - name: Upload the single-file build
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2

@@ -174,4 +174,74 @@ fail on the engine of PR #4 before these changes: `cashflows-regz-single-payment
 
 ## Completion notes
 
-_(to be filled by the implementer)_
+**Status:** in review, [PR #4](https://github.com/MortlakeDev/LoanLogic/pull/4) (branch
+`task/T02-engine-core`). Implements SPEC v0.2.2: `main` (with #3 and the action pins of
+#5) is merged in, and the v0.2.2 changes of the architect review are done.
+
+**Acceptance criteria (local evidence, 2026-10-20, Windows, Node 24.19):**
+
+- All 106 core vectors pass through the public API (`src/engine/vectors.test.ts`, one
+  test per vector, SPEC §14 rules, plus I1–I9 on every loan).
+- `npm run check` passes: 2 010 tests (1 387 in the engine). Coverage of `src/engine` is
+  99.9 % statements, 99.9 % branches and 100 % functions; `vite.config.ts` enforces
+  ≥ 95 %. `npm run e2e`: 148 passed, 8 skipped (the known WebKit-on-Windows cases).
+- The engine imports only decimal.js; ledger money is `bigint` minor units and exact
+  rationals; there is no JS `Date` and no `Intl` (ESLint bans both in `src/engine`).
+- TSDoc with units on the public API and on every input field.
+- CI sets up Python 3.12 and runs `generate.py --check` (106 vectors) and the reference
+  self-tests; `scripts/lib/spdx.mjs` requires the `#` header in `.py` files. Every
+  action is pinned to a commit SHA (#5).
+- Benchmark: a 1 200-period annuity with all eleven rate metrics takes a median of
+  about 15 ms in Node (budget 50 ms), via `npm run bench`.
+- Every SPEC question of the PR is answered in v0.2.2.
+
+**SPEC v0.2.2 changes in this round:**
+
+1. **Single payment** (§9.3 a, §9.7): `metrics/us-regz.ts` sums the rate flows per date
+   and drops zero sums. The rule applies when exactly two dates remain: a same-date fee,
+   zero interim flows, or an early close at the first payment. The two sums must have
+   opposite signs, and the unit-period rate must lie in `[−0.99, 1e7]`.
+2. **Result range** (§10): `x × m`, `(1 + x)^m − 1` and the single-payment APR fail with
+   `IRR_NO_CONVERGENCE` outside ±10⁹ % (`withinResultRange` in `metrics/display.ts`).
+3. **Validation** (§13): percentages (the rate, percentage fees, a percentage balloon)
+   that are not multiples of 10⁻¹⁰ give `TOO_MANY_DECIMALS`. A fixed fee above 1e15 and
+   a percentage fee above 100 give `FEE_RANGE`, checked against the `calc` as given.
+   Upfront fees paid at closing of at least the amount give `FEE_RANGE` on `fees`
+   (phase 2).
+4. **Exact payment basis** (§5.1, §9.6): no `NEG_AMORTIZATION`; such rows have a negative
+   principal. The explanation is `instalment.annuity-exact-basis` with `P`, `N`, `j`,
+   `dayCount`, `Astar`, `A`.
+5. Tests follow the new rules, each with a case that fails under the old behaviour:
+   - the 40-digit check now uses the smallest valid rate, 10⁻¹⁰ %;
+   - the edge tests use the new fee maximums;
+   - the IRR_MULTIPLE pass-through of `calculateLoan` is tested with a wrapped metrics
+     module, because a valid loan now always has a positive inflow at `D0`.
+
+**Deviations and decisions:**
+
+- The performance budget runs as `npm run bench` (`vitest.bench.config.ts`) and as its
+  own CI step, not inside `npm run coverage`. Under coverage instrumentation and dozens of
+  parallel test files the timing was not meaningful (50.6 ms there against about 15 ms on
+  its own).
+- Module layout follows the brief. Additions: `money.ts` (DecimalString and minor units),
+  `types.ts` (shared types), `metrics/solve.ts` and `metrics/display.ts` (shared metric
+  helpers), and `validate-cashflows.ts` (cash-flow validation, re-exported by
+  `validate.ts`).
+- Irrational values use a decimal.js clone isolated from the global configuration
+  (`defaults: true`). It works at 50 + 10 digits, plus one digit per leading zero of
+  `j/m`, plus the digits of `P` in minor units, so every irrational value keeps at least
+  40 relative digits (§1.6).
+- The rate solvers scale every amount by one exact power of two before the conversion to
+  doubles. Since v0.2.2 bounds the fees this is a safeguard; in the normal range results
+  are bit-identical.
+- An independent multi-agent review found six defects in the first round, all fixed with
+  tests that fail without the fix. The architect's differential test against the
+  reference (6 000 inputs) found no difference beyond the rules that v0.2.2 changed.
+- Independence: nothing under `tools/reference` was read except the ISO 4217 data lines
+  of `currency.py` (extracted as code/digit pairs); its scripts were run.
+- Local note: on a cold Vitest cache, `npm run check` occasionally fails to start a worker
+  for an app test file ("Timeout waiting for worker to respond"). A second run passes, and
+  CI has not shown it.
+
+**Open questions:** none. The 17 questions of the first round are answered in SPEC
+v0.2.2 (§17), and points 10–17 confirm the engine's interpretations.

@@ -10,14 +10,15 @@ const COPYRIGHT = 'Copyright (C) 2026 Mortlake';
 const BYTE_ORDER_MARK = 0xfeff;
 const LINE_BREAK = /\r?\n/;
 
-/** @type {Readonly<Record<'line' | 'block' | 'html', readonly [string, string]>>} */
+/** @type {Readonly<Record<'line' | 'block' | 'html' | 'hash', readonly [string, string]>>} */
 export const HEADERS = {
   line: [`// ${SPDX}`, `// ${COPYRIGHT}`],
   block: [`/* ${SPDX} */`, `/* ${COPYRIGHT} */`],
   html: [`<!-- ${SPDX} -->`, `<!-- ${COPYRIGHT} -->`],
+  hash: [`# ${SPDX}`, `# ${COPYRIGHT}`],
 };
 
-/** @type {Readonly<Record<string, 'line' | 'block' | 'html'>>} */
+/** @type {Readonly<Record<string, 'line' | 'block' | 'html' | 'hash'>>} */
 const STYLE_BY_EXTENSION = {
   '.ts': 'line',
   '.tsx': 'line',
@@ -29,6 +30,8 @@ const STYLE_BY_EXTENSION = {
   '.cjs': 'line',
   '.css': 'block',
   '.html': 'html',
+  // The reference implementation (tools/reference) is Python.
+  '.py': 'hash',
 };
 
 /**

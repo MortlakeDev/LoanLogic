@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2026 Mortlake
 
-/// <reference types="vitest/config" />
 import preact from '@preact/preset-vite';
 import { defineConfig } from 'vite';
+import { configDefaults } from 'vitest/config';
 import { viteSingleFile } from 'vite-plugin-singlefile';
 import { htmlI18n } from './scripts/vite/html-i18n.ts';
 import { thirdPartyNotices } from './scripts/vite/third-party-notices.ts';
@@ -44,6 +44,8 @@ export default defineConfig(({ mode }) => {
     },
     test: {
       include: ['src/**/*.test.{ts,tsx}', 'scripts/**/*.test.{ts,mjs}'],
+      // Performance budgets run on their own: `npm run bench` (vitest.bench.config.ts).
+      exclude: [...configDefaults.exclude, 'src/**/*.bench.test.ts'],
       environment: 'node',
       restoreMocks: true,
       unstubGlobals: true,
@@ -58,8 +60,14 @@ export default defineConfig(({ mode }) => {
           'src/app/main.tsx',
         ],
         reporter: ['text', 'text-summary', 'json-summary', 'html'],
-        // A floor against regressions; the engine gets its own ≥ 95 % gate in T02.
-        thresholds: { statements: 90, branches: 90, functions: 90, lines: 90 },
+        // A floor against regressions; the financial engine has a stricter gate (T02 brief).
+        thresholds: {
+          statements: 90,
+          branches: 90,
+          functions: 90,
+          lines: 90,
+          'src/engine/**': { statements: 95, branches: 95, functions: 95, lines: 95 },
+        },
         reportsDirectory: 'coverage',
       },
     },
