@@ -23,9 +23,11 @@ label, and the theme menu should behave like a standard menu.
    - The values are decimal strings like every explain value: exact when terminating,
      otherwise at least 12 significant digits.
 2. **Formula strips and the Explain sheet (DESIGN §8.6, §8.12).**
-   - Equal principal: `q = P ÷ N`, then `first payment = p₁ + I₁` with
-     `I₁ = P × j ÷ m` (or `× YF` in day-count mode).
-   - Interest-only: `I₁ = P × j ÷ m`, plus `P` with a single payment.
+   - The interest of the first period: `I₁ = P × j ÷ m` when `c = m`, `I₁ = P × i`
+     when `c ≠ m` (the payload then carries `i`), and `I₁ = P × j × YF` in day-count
+     mode (`yf1`).
+   - Equal principal: `q = P ÷ N`, then `first payment = p₁ + I₁`.
+   - Interest-only: `I₁`, plus `P` with a single payment.
    - The last number of every strip equals the hero, for every repayment type,
      compounding and accrual mode.
 3. **Amount group (DESIGN §8.2, §11).** The amount and the currency select are one
@@ -44,8 +46,10 @@ label, and the theme menu should behave like a standard menu.
 ## Tests
 
 - **Engine unit tests:** the new explain values for every repayment type × periodic
-  (c = m, c ≠ m) and day-count mode. `p1`, `I1` and `first` must equal the first row
-  exactly.
+  (c = m, c ≠ m) and day-count mode, each payload with only its own fields. Equal
+  principal: `p1`, `I1` and `first` equal the first row's principal, interest and their
+  sum exactly. Interest-only: `I1` and `first` equal the first row's interest and its
+  principal + interest exactly.
 - **Component tests:** the strip for equal principal (remainder last and first),
   interest-only (N = 1 and N > 1), annuity, balloon and the exact basis.
 - **e2e:**
