@@ -222,8 +222,9 @@ comparison and other tabs (M4–M5); exports and Share (T14–T15).
 - Initial JS 81.5 KiB gzip (budget raised from 60 to the brief's 150 KiB).
   `dist-single/LoanLogic.html`: 351 753 bytes (gzip 242 727) before, 538 651 bytes
   (gzip 253 297) after — most of the growth is the two font families in base64.
-- Input-to-paint of a 1 200-period loan (Chromium, median of 5, informational): 62–86 ms
-  on the development machine; the CI number is in the PR.
+- Input-to-paint of a 1 200-period loan (Chromium, median of 5, informational): 62.1 ms
+  on the CI runner (`ubuntu-latest`), 62–86 ms on the development machine; under the
+  100 ms target, so the engine stays on the main thread.
 
 **Engine and i18n additions:**
 
@@ -281,5 +282,5 @@ comparison and other tabs (M4–M5); exports and Share (T14–T15).
    interest while its strip ends at `I_1`.
 2. GLOSSARY §6 has no name for `irrNominal`; the UI uses "Nominal IRR (r × m)".
 
-**Open items:** the CI value of the input-to-paint median; a native-speaker review of the
-zh-CN, ru and uk strings (GLOSSARY status).
+**Open items:** a native-speaker review of the zh-CN, ru and uk strings (GLOSSARY
+status).

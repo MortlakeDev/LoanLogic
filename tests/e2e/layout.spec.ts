@@ -322,7 +322,12 @@ test.describe('workspace columns', () => {
 
       await page.setViewportSize({ width: 800, height: 800 });
       await expect.poll(sideBySide, { message: 'panels stack below 1024 px' }).toBe(false);
-      await expectStacked(page, 'en');
+      // Below the breakpoint "Fees and advanced settings" becomes a closed disclosure, which
+      // slides shut (DESIGN §8.5): the parameters panel shrinks for a moment, so the stacked
+      // layout is checked once the slide has settled.
+      await expect(async () => {
+        await expectStacked(page, 'en');
+      }).toPass();
 
       await page.setViewportSize({ width: 1024, height: 800 });
       await expect.poll(sideBySide, { message: 'panels sit side by side at 1024 px' }).toBe(true);
