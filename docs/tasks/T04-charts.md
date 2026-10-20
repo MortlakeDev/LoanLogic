@@ -1,6 +1,6 @@
 # T04 — Charts (theme-aware SVG)
 
-- **Milestone:** M2 · **Status:** brief ready; starts after T03 is merged
+- **Milestone:** M2 · **Status:** ready; starts after T03a (small UI follow-ups) is merged
 - **Depends on:** T03 · **Blocks:** T14 (the print report uses the same charts)
 - **Branch:** `task/T04-charts`
 

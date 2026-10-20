@@ -98,6 +98,7 @@ Method names are proper terms; the badge shows the source (SPEC §9.3).
 | `euAprc` | APRC | 综合年化成本率 APRC（欧盟） | APRC (ЕС) | APRC (ЄС) |
 | `cnAnnualized` | Annualized rate (simple) | 年化利率（单利） | Годовая ставка (простые проценты, методика НБК) | Річна ставка (прості проценти, методика НБК) |
 | `irrEffective` (CN label) | Annualized rate (compound, IRR) | 年化利率（复利，IRR 法） | Годовая ставка (сложные проценты, IRR) | Річна ставка (складні проценти, IRR) |
+| `irrNominal` | Nominal IRR (r × m) | 名义内部收益率 | Номинальная годовая IRR | Номінальна річна IRR |
 | `uaRealAnnual` | Real annual interest rate | 真实年利率（乌克兰） | Реальная годовая процентная ставка | Реальна річна процентна ставка |
 | `international` | Effective all-in rate | 综合实际年利率 | Эффективная ставка с учётом всех расходов | Ефективна ставка з усіма витратами |
 | RU ПСК (M4) | Full cost of credit (ПСК) | 全部信贷成本 ПСК（俄罗斯） | Полная стоимость кредита (ПСК) | Повна вартість кредиту (ПСК, Росія) |

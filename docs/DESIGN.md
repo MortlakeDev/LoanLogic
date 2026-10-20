@@ -286,7 +286,9 @@ xs section labels and table headers.
 
 - Header: wordmark (22 px high) + "by Mortlake" (xs, muted) left; right: region and
   currency pill (globe icon, "United States · USD"; T05), language select (endonyms),
-  theme button, **Share** (primary button).
+  theme button, **Share** (primary button). The theme button opens a menu (System, Dark,
+  Light): a click, Enter or Space applies the choice and closes the menu, the arrow keys
+  only move between the options, and Esc closes it; focus returns to the button.
 - Two columns: the inputs panel (≤ 420 px) and the results column. The panel is sticky
   at the top with `max-height: calc(100dvh − 3rem)` and scrolls on its own
   (`overflow-y: auto`), so Fees and Advanced are reachable without scrolling the page.
@@ -340,6 +342,9 @@ never a different color.
   and `aria-describedby`; the message is the localized engine error (SPEC §13).
 - Numbers are typed in the user's locale (grouping and decimal separator) and parsed to
   the engine's decimal strings; the field reformats on blur, never while typing.
+- The loan amount and its currency select are one group: a `fieldset` whose legend
+  "Loan amount" is the visible label (§11); the select keeps the accessible name
+  "Currency". Below 30rem the amount is 18 px so both fit side by side at 360 px.
 
 ### 8.3 Segmented control
 
@@ -371,6 +376,11 @@ open with `--duration-normal`.
   for equal principal "First payment" with the range "→ last $…".
 - Hero number (§4.2) over a dotted grid (`radial-gradient` dots in `--color-chart-grid`,
   16 px pitch).
+- The hero is the instalment — principal + interest — for every repayment type: the
+  first payment for equal principal, the interest payment for interest-only (principal +
+  interest with a single payment). Periodic fees and insurance are not part of it; when
+  payments carry them, the meta line adds "first payment $… with periodic fees" (or
+  "with insurance").
 - Meta line: "360 payments · final payment $2,300.28 · paid off Nov 1, 2056".
 - Formula strip: surface-2 box, mono xs–sm, built from the engine's `explain` values
   (SPEC §9.6) so that it reproduces the result: `i` is shown as `j ÷ m`, irrational
@@ -462,7 +472,9 @@ Esc closes, focus returns to the trigger.
   flash.
 - Engine warnings (`RATE_HIGH`, `EARLY_CLOSE`, …) appear as an info/warning line under the
   hero with the localized explanation.
-- Rate failures (`IRR_NO_CONVERGENCE`) show "n/a" with the reason in a tooltip.
+- Rate failures (`IRR_NO_CONVERGENCE`) show "n/a" with the reason as visible text beside
+  it, not in a tooltip (a tooltip fails keyboard and touch users); a failed rate has no
+  Explain button.
 
 ### 8.14 Checks (T11)
 

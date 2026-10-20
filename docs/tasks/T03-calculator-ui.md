@@ -1,6 +1,6 @@
 # T03 — Calculator UI: design tokens, inputs, results summary, schedule table, explain
 
-- **Milestone:** M2 · **Status:** ready (T02 is merged, PR #4)
+- **Milestone:** M2 · **Status:** done (PR #8); follow-ups in [T03a](T03a-ui-followups.md)
 - **Depends on:** T02 (engine), R2 (`docs/DESIGN.md`, `docs/GLOSSARY.md`) · **Blocks:** T04, T05, T07
 - **Branch:** `task/T03-calculator-ui`
 
@@ -194,8 +194,10 @@ comparison and other tabs (M4–M5); exports and Share (T14–T15).
 
 ## Completion notes
 
-**Status:** in review, [PR #8](https://github.com/MortlakeDev/LoanLogic/pull/8)
-(branch `task/T03-calculator-ui`).
+**Status:** done, merged in [PR #8](https://github.com/MortlakeDev/LoanLogic/pull/8) on
+2026-10-20 after the architect's acceptance check (branch `task/T03-calculator-ui`). The
+spec questions and the decisions to confirm are answered in SPEC v0.2.3, DESIGN and
+GLOSSARY; the remaining work is [T03a](T03a-ui-followups.md).
 
 **Acceptance criteria (local evidence, 2026-10-20, Windows, Node 24.19):**
 

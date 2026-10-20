@@ -1,6 +1,6 @@
 # LoanLogic — Financial Methodology Specification
 
-Status: v0.2.2 · Normative for the engine (`src/engine`). Keywords MUST / SHOULD / MAY are
+Status: v0.2.3 · Normative for the engine (`src/engine`). Keywords MUST / SHOULD / MAY are
 used as in RFC 2119. If the code and this document disagree, this document wins. If this
 document is ambiguous or looks wrong, the implementer stops and reports — financial
 rules are never invented in code.
@@ -677,8 +677,8 @@ formula shown from them reproduces the result (the UI shows `i` as `j ÷ m`, e.g
 | `instalment.annuity` | `P`, `N`, `j`, `m` (and `i` when `c ≠ m`), `Astar`, `A` |
 | `instalment.annuity-exact-basis` | `P`, `N`, `j`, `dayCount` (method id), `Astar`, `A` — the exact payment basis has a rate per period, `r_k = j × YF_k`, and no single `i` |
 | `instalment.balloon` | as `instalment.annuity`, plus `Bal` |
-| `instalment.equal-principal` | `P`, `N`, `q` |
-| `instalment.bullet` | `P`, `N`, `I1` (interest of the first period) |
+| `instalment.equal-principal` | `P`, `N`, `q`; the first payment: `p1` and `I1` (principal and interest of the first row), `first` = `p1 + I1`; the rate behind `I1`: `j`, `m` (and `i` when `c ≠ m`) in periodic mode, or `j`, `dayCount` and `yf1` (the first period's year fraction) in day-count mode |
+| `instalment.bullet` | `P`, `N`, `I1` (interest of the first period), `first` (`I1`, or `P + I1` when N = 1) and the rate behind `I1` as for `instalment.equal-principal` |
 | `rate.nominal` | `j` |
 | `rate.effective` | `j`, `c` (periodic), or `m` and `k` (day-count) |
 | `rate.periodic-irr` | `r` (periodic IRR), `m` — for `irrNominal`, `irrEffective`, `cnAnnualized`, and `usRegZApr` unless the single-payment rule applies |
@@ -1029,6 +1029,12 @@ interface CashFlowInput {
 - Microsoft Support — XIRR function (example).
 
 ## 17. Change history
+
+**v0.2.3 (2026-10-20)** — asked during T03 (PR #8); no vector changes:
+
+- §9.6: the explanations of `instalment.equal-principal` and `instalment.bullet` carry the
+  first payment (`p1`, `I1`, `first`) and the rate behind `I1`, so a formula strip can
+  reproduce the payment the UI shows (DESIGN §8.6).
 
 **v0.2.2 (2026-10-20)** — answers to the questions raised in T02 (PR #4); 14 new vectors,
 no existing vector changes:
