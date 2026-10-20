@@ -20,7 +20,7 @@ to the task file. If anything in the brief or the SPEC is unclear, stop and ask.
 | [T01](T01-foundation.md) | Foundation: scaffold, tooling, CI, app shell, i18n, themes | M0 | done (PR #1) | — |
 | [T02](T02-engine-core.md) | Engine core: money, dates, day-count, schedules, fees, rate metrics | M1 | done (PR #4) | T01, R1 ✓ |
 | [T03](T03-calculator-ui.md) | Calculator UI: design tokens, inputs, results summary, schedule table, explain | M2 | done (PR #8) | T02 ✓, R2 ✓ |
-| [T03a](T03a-ui-followups.md) | UI follow-ups from the T03 review: explain payloads (SPEC v0.2.3), amount group label, theme menu | M2 | ready | T03 ✓ |
+| [T03a](T03a-ui-followups.md) | UI follow-ups from the T03 review: explain payloads (SPEC v0.2.3), amount group label, theme menu, two live-site fixes | M2 | ready | T03 ✓ |
 | [T04](T04-charts.md) | Charts (theme-aware SVG) | M2 | ready, starts after T03a | T03 ✓, T03a |
 | [T05](T05-regions-persistence.md) | Region profiles, presets, URL & local persistence | M2 | ready, starts after T03a | T03 ✓, T03a |
 | T06 | Events engine: prepayments, rate changes, holidays, odd first period, semi-monthly | M3 | planned | T02, R3 |

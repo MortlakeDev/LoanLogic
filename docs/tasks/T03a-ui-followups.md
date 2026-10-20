@@ -8,7 +8,8 @@
 
 Close the gaps that the review of T03 (PR #8) found: the formula strip must reproduce
 the payment for every repayment type, the amount and its currency need a visible group
-label, and the theme menu should behave like a standard menu.
+label, and the theme menu should behave like a standard menu. Two small defects seen on
+the live site are fixed too.
 
 ## Scope
 
@@ -22,9 +23,10 @@ label, and the theme menu should behave like a standard menu.
      values.
    - The values are decimal strings like every explain value: exact when terminating,
      otherwise at least 12 significant digits.
-2. **Formula strips and the Explain sheet (DESIGN §8.6, §8.12).**
+2. **Formula strips and the Explain sheet (DESIGN §8.6, §8.12).** DESIGN §8.6 lists one
+   branch per payload; the new parts are:
    - The interest of the first period: `I₁ = P × j ÷ m` when `c = m`, `I₁ = P × i`
-     when `c ≠ m` (the payload then carries `i`), and `I₁ = P × j × YF` in day-count
+     when `c ≠ m` (the payload then carries `i`), and `I₁ = P × j × YF₁` in day-count
      mode (`yf1`).
    - Equal principal: `q = P ÷ N`, then `first payment = p₁ + I₁`.
    - Interest-only: `I₁`, plus `P` with a single payment.
@@ -37,7 +39,15 @@ label, and the theme menu should behave like a standard menu.
    - A click, Enter or Space applies the choice and closes the menu.
    - The arrow keys only move between the options.
    - Esc closes the menu, and focus returns to the theme button.
-5. **DESIGN decisions confirmed by the architect** (no work beyond what T03 did, keep
+5. **Live-site fixes.**
+   - Repayment cards (DESIGN §8.4): the ru title "Дифференцированный" and the uk title
+     "Диференційований" break inside the word without a hyphen at 360, 390, 1024 and
+     1280 px. Put soft hyphens (U+00AD) at their syllable breaks
+     (Диф-фе-рен-ци-ро-ван-ный, Ди-фе-рен-ці-йо-ва-ний).
+   - Currency select (DESIGN §8.2): 14 options read "CODE · CODE" in Playwright's Chromium
+     (BOV, CHE, CHW, CLF, COU, MXV, SLE, USN, UYI, UYW, VED, XAD, XCG, ZWG), because
+     `Intl.DisplayNames` returns the code when it has no name. Show the code alone then.
+6. **DESIGN decisions confirmed by the architect** (no work beyond what T03 did, keep
    them as they are):
    - "n/a" with a visible reason (§8.13);
    - the hero as principal + interest, with fees named in the meta line (§8.6);
@@ -54,9 +64,13 @@ label, and the theme menu should behave like a standard menu.
   and `yf1` in day-count mode.
 - **Component tests:** the strip for equal principal (remainder last and first),
   interest-only (N = 1 and N > 1), annuity, balloon and the exact basis.
+- **Unit test:** the currency option label is the code alone when the display name is
+  missing or equals the code.
 - **e2e:**
   - the strip's result equals the hero for equal principal and interest-only;
   - the theme menu keyboard and click behaviour;
+  - in ru and uk at 360 and 1280 px, no word in the repayment cards is split across
+    lines without a hyphen (compare the line boxes of each word with `Range`);
   - axe stays clean.
 
 ## Acceptance criteria
@@ -64,6 +78,8 @@ label, and the theme menu should behave like a standard menu.
 - [ ] For every repayment type the formula strip reproduces the hero figure.
 - [ ] Amount and currency form a labelled group; axe and the a11y checklist pass.
 - [ ] Theme menu behaves as in DESIGN §7.1 with mouse and keyboard.
+- [ ] No mid-word break without a hyphen in the repayment cards; no "CODE · CODE"
+      currency options.
 - [ ] `npm run check` and `npm run e2e` pass; no golden vector changes (the reference
       does not produce `explain`).
 
@@ -71,6 +87,8 @@ label, and the theme menu should behave like a standard menu.
 
 - Strings for the new strip parts are needed in all four languages (GLOSSARY §6 now
   also names `irrNominal`).
+- The GLOSSARY keeps "Дифференцированный" and "Диференційований" without soft hyphens; a
+  test that compares locale strings with the GLOSSARY ignores U+00AD.
 - Keep the change small; anything larger found on the way goes into the PR as a
   proposal.
 

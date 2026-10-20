@@ -345,6 +345,9 @@ never a different color.
 - The loan amount and its currency select are one group: a `fieldset` whose legend
   "Loan amount" is the visible label (§11); the select keeps the accessible name
   "Currency". Below 30rem the amount is 18 px so both fit side by side at 360 px.
+- Currency options read "USD · US dollar": the code and the localized name from
+  `Intl.DisplayNames`. When the browser has no name for a code (it returns the code, as
+  for CLF or ZWG in some versions), the option shows the code alone, not "CLF · CLF".
 
 ### 8.3 Segmented control
 
@@ -363,6 +366,11 @@ never a different color.
 secondary); radius `lg`, surface-2, 1 px border. Selected: 1 px `--color-accent` border,
 `--color-accent-subtle` background. Titles: Equal payments / Equal principal /
 Interest-only / Balloon (zh-CN: 等额本息 / 等额本金 / 先息后本 / 气球贷).
+
+A title never breaks inside a word without a hyphen. The cards are narrower than the ru
+and uk titles of equal principal at most widths, so those strings carry soft hyphens
+(U+00AD) at the syllable breaks: Диф-фе-рен-ци-ро-ван-ный, Ди-фе-рен-ці-йо-ва-ний. Soft
+hyphens work in every browser; `hyphens: auto` depends on the browser's dictionaries.
 
 ### 8.5 Disclosure
 
