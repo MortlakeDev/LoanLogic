@@ -1,0 +1,114 @@
+{
+  "schemaVersion": 1,
+  "id": "equal-principal-remainder-first-early-close",
+  "description": "Equal principal with the remainder first on 0.05 USD over 12 payments: q = R(0.05/12) = 0.00, so the first principal is the whole 0.05 and the loan closes at the first payment (EARLY_CLOSE, SPEC §5.1 applied literally).",
+  "source": "SPEC-finance §5.1, §5.3",
+  "kind": "loan",
+  "input": {
+    "currency": "USD",
+    "amount": "0.05",
+    "annualRatePct": "12",
+    "repayment": "equal-principal",
+    "frequency": "monthly",
+    "term": {
+      "payments": 12
+    },
+    "disbursementDate": "2026-01-15",
+    "rounding": {
+      "principalRemainder": "first"
+    }
+  },
+  "expected": {
+    "ok": true,
+    "warnings": [
+      {
+        "code": "EARLY_CLOSE"
+      }
+    ],
+    "summary": {
+      "amount": "0.05",
+      "principalFinanced": "0.05",
+      "netProceeds": "0.05",
+      "upfrontFeesPaid": "0.00",
+      "upfrontFeesFinanced": "0.00",
+      "amountFinancedForRates": "0.05",
+      "regularInstalment": null,
+      "principalPerPeriod": "0.00",
+      "firstPayment": "0.05",
+      "lastPayment": "0.05",
+      "maxPayment": "0.05",
+      "paymentsCount": 1,
+      "firstPaymentDate": "2026-02-15",
+      "payoffDate": "2026-02-15",
+      "totalPayments": "0.05",
+      "totalPaid": "0.05",
+      "totalInterest": "0.00",
+      "totalPrincipal": "0.05",
+      "totalFees": "0.00",
+      "totalInsurance": "0.00",
+      "totalPenalties": "0.00",
+      "costOfCredit": "0.00",
+      "balloon": null
+    },
+    "rates": {
+      "nominal": {
+        "value": "12.000000000000",
+        "display": "12.00",
+        "precision": 2
+      },
+      "effective": {
+        "value": "12.682503013197",
+        "display": "12.68",
+        "precision": 2
+      },
+      "irrNominal": {
+        "value": "0.000000000000",
+        "display": "0.00",
+        "precision": 2
+      },
+      "irrEffective": {
+        "value": "0.000000000000",
+        "display": "0.00",
+        "precision": 2
+      },
+      "xirr": {
+        "value": "0.000000000000",
+        "display": "0.00",
+        "precision": 2
+      },
+      "usRegZApr": {
+        "value": "0.000000000000",
+        "display": "0.000",
+        "precision": 3
+      },
+      "ukAprc": {
+        "value": "0.000000000000",
+        "display": "0.0",
+        "precision": 1
+      },
+      "euAprc": {
+        "value": "0.000000000000",
+        "display": "0.0",
+        "precision": 1
+      },
+      "cnAnnualized": {
+        "value": "0.000000000000",
+        "display": "0.00",
+        "precision": 2
+      },
+      "uaRealAnnual": {
+        "value": "0.000000000000",
+        "display": "0.00",
+        "precision": 2
+      },
+      "international": {
+        "value": "0.000000000000",
+        "display": "0.00",
+        "precision": 2
+      }
+    },
+    "rows": [
+      {"index": 1, "date": "2026-02-15", "days": 31, "opening": "0.05", "interestAccrued": "0.00", "interestPaid": "0.00", "principal": "0.05", "fees": "0.00", "insurance": "0.00", "payment": "0.05", "closing": "0.00", "cumulativeInterest": "0.00", "cumulativePrincipal": "0.05"}
+    ]
+  }
+}

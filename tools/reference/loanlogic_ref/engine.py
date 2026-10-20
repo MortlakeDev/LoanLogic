@@ -47,12 +47,18 @@ COMPOUNDING = tuple(FREQUENCIES) + ("continuous",)
 FEE_KINDS = ("upfront", "periodic", "insurance")
 UPFRONT_CALC = ("fixed", "percent")
 PERIODIC_CALC = ("fixed", "pct-original", "pct-balance")
+PERCENT_CALC = ("percent", "pct-original", "pct-balance")
 
 MAX_AMOUNT = Fraction(10**15)
 MIN_RATE_PCT = Fraction(-20)
 MAX_RATE_PCT = Fraction(1000)
 MAX_PAYMENTS = 1200
 MAX_TERM_YEARS = 100
+MAX_FIXED_FEE = Fraction(10**15)
+MAX_FEE_PCT = Fraction(100)
+# Percentages (the rate, percentage fees, a percentage balloon) are whole multiples of
+# 10^-10 percent (SPEC §13): exact evaluation stays fast for any input.
+PCT_DECIMALS = 10
 
 # Approximated (irrational) ledger values must lie at least this many minor units away
 # from a rounding boundary (SPEC §1.6); otherwise the input is unfit for a golden vector.
@@ -222,6 +228,8 @@ def validate(raw: dict[str, Any]) -> Loan:
     if rate_pct is not None:
         if rate_pct < MIN_RATE_PCT or rate_pct > MAX_RATE_PCT:
             errors.append(_error("RATE_RANGE", "annualRatePct"))
+        elif not _fits_minor_units(rate_pct, PCT_DECIMALS):
+            errors.append(_error("TOO_MANY_DECIMALS", "annualRatePct"))
         elif rate_pct < 0:
             warnings.append({"code": "RATE_NEGATIVE"})
         elif rate_pct > 100:
@@ -249,10 +257,16 @@ def validate(raw: dict[str, Any]) -> Loan:
     payments: int | None = None
     years = months = 0
     end: date | None = None
+    # Exactly one form: payments, years (with optional months) or endDate; months belong
+    # to the years form, so months alone or with another form is invalid (SPEC §13).
     modes = [
         key for key in ("payments", "years", "endDate") if isinstance(term, dict) and key in term
     ]
-    if not isinstance(term, dict) or len(modes) != 1:
+    if (
+        not isinstance(term, dict)
+        or len(modes) != 1
+        or ("months" in term and modes[0] != "years")
+    ):
         errors.append(_error("INPUT_INVALID", "term"))
     elif modes[0] == "payments":
         n = as_int(term["payments"])
@@ -290,12 +304,14 @@ def validate(raw: dict[str, Any]) -> Loan:
     elif accrual.get("mode") not in ("periodic", "daycount"):
         errors.append(_error("INPUT_INVALID", "accrual.mode"))
     elif accrual["mode"] == "periodic":
-        # Defaults to the payment frequency.
-        compounding = accrual.get("compounding")
-        if compounding is None:
+        # Defaults to the payment frequency when absent; a present null is a wrong type.
+        if "compounding" not in accrual:
             compounding = freq.id if freq is not None else None
-        elif compounding not in COMPOUNDING:
-            errors.append(_error("INPUT_INVALID", "accrual.compounding"))
+        else:
+            compounding = accrual["compounding"]
+            if compounding not in COMPOUNDING:
+                errors.append(_error("INPUT_INVALID", "accrual.compounding"))
+                compounding = None
     else:
         accrual_mode = "daycount"
         day_count = accrual.get("method")
@@ -345,16 +361,27 @@ def validate(raw: dict[str, Any]) -> Loan:
         if kind not in FEE_KINDS:
             errors.append(_error("INPUT_INVALID", f"{path}.kind"))
             kind = None
-        calc = fee.get("calc")
+        raw_calc = fee.get("calc")
+        calc = raw_calc
         if kind is not None and calc not in (UPFRONT_CALC if kind == "upfront" else PERIODIC_CALC):
             errors.append(_error("INPUT_INVALID", f"{path}.calc"))
             calc = None
+        # The value is checked against the calc as given, even when the calc does not fit
+        # the kind or the kind is invalid (SPEC §13).
         value = _decimal_field(errors, fee, "value", f"{path}.value")
         if value is not None:
             if value < 0:
                 errors.append(_error("FEE_RANGE", f"{path}.value"))
-            elif calc == "fixed" and digits is not None and not _fits_minor_units(value, digits):
-                errors.append(_error("TOO_MANY_DECIMALS", f"{path}.value"))
+            elif raw_calc == "fixed":
+                if value > MAX_FIXED_FEE:
+                    errors.append(_error("FEE_RANGE", f"{path}.value"))
+                elif digits is not None and not _fits_minor_units(value, digits):
+                    errors.append(_error("TOO_MANY_DECIMALS", f"{path}.value"))
+            elif raw_calc in PERCENT_CALC:
+                if value > MAX_FEE_PCT:
+                    errors.append(_error("FEE_RANGE", f"{path}.value"))
+                elif not _fits_minor_units(value, PCT_DECIMALS):
+                    errors.append(_error("TOO_MANY_DECIMALS", f"{path}.value"))
         financing = fee.get("financing", "paid") if kind == "upfront" else "paid"
         if financing not in ("paid", "financed"):
             errors.append(_error("INPUT_INVALID", f"{path}.financing"))
@@ -378,11 +405,16 @@ def validate(raw: dict[str, Any]) -> Loan:
                 errors.append(_error("INPUT_INVALID", "balloon.kind"))
                 balloon_kind = None
             balloon_value = _decimal_field(errors, balloon, "value", "balloon.value")
-            if (
-                balloon_value is not None
-                and balloon_kind == "amount"
-                and digits is not None
-                and not _fits_minor_units(balloon_value, digits)
+            if balloon_value is not None and (
+                (
+                    balloon_kind == "amount"
+                    and digits is not None
+                    and not _fits_minor_units(balloon_value, digits)
+                )
+                or (
+                    balloon_kind == "percent"
+                    and not _fits_minor_units(balloon_value, PCT_DECIMALS)
+                )
             ):
                 errors.append(_error("TOO_MANY_DECIMALS", "balloon.value"))
 
@@ -426,6 +458,9 @@ def validate(raw: dict[str, Any]) -> Loan:
         errors.append(_error("UNSUPPORTED", "accrual.paymentBasis"))
     unit = quantum(digits)
     upfront = _upfront(fees, amount, unit, fee_rounding)
+    if upfront.paid >= amount:
+        # The borrower would receive nothing (SPEC §6.1, §13).
+        errors.append(_error("FEE_RANGE", "fees"))
     principal = amount + upfront.financed
     residual = Fraction(0)
     if repayment == "balloon":
@@ -600,8 +635,9 @@ def _calculate(loan: Loan) -> dict[str, Any]:
     # Regular instalment (SPEC §5.2, §5.5) or principal per period (SPEC §5.3).
     instalment: Fraction | None = None
     principal_per_period: Fraction | None = None
+    exact_basis = loan.accrual_mode == "daycount" and loan.payment_basis == "exact"
     if loan.repayment in ("annuity", "balloon"):
-        if loan.accrual_mode == "daycount" and loan.payment_basis == "exact":
+        if exact_basis:
             growth_all = Fraction(1)
             tail_sum = Fraction(0)
             tail = Fraction(1)
@@ -652,7 +688,10 @@ def _calculate(loan: Loan) -> dict[str, Any]:
         if loan.repayment in ("annuity", "balloon"):
             assert instalment is not None
             principal_part = opening if last else instalment - interest
-            if principal_part < 0:
+            # The exact payment basis amortizes by construction: a period longer than the
+            # average (a 31-day month) may still cost more interest than A, and its
+            # principal is negative (SPEC §5.1).
+            if principal_part < 0 and not exact_basis:
                 raise InputError([_error("NEG_AMORTIZATION", None)])
         elif loan.repayment == "equal-principal":
             assert principal_per_period is not None

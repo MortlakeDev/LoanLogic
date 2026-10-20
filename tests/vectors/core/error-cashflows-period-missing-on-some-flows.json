@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 1,
+  "id": "error-cashflows-period-missing-on-some-flows",
+  "description": "flows[0] has a period and the second flow does not: the error is on flows[1].period only. The other period values are not checked (the -1 on flows[2] is not reported), nor is the missing frequency.",
+  "source": "SPEC-finance §13",
+  "kind": "cashflows",
+  "input": {
+    "flows": [
+      {"period": 0, "date": "2026-01-15", "amount": "1000.00"},
+      {"date": "2026-02-15", "amount": "-510.00"},
+      {"period": -1, "date": "2026-03-15", "amount": "-510.00"}
+    ]
+  },
+  "expected": {
+    "ok": false,
+    "errors": [
+      {
+        "code": "INPUT_INVALID",
+        "field": "flows[1].period"
+      }
+    ]
+  }
+}

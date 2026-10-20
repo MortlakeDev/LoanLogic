@@ -1,0 +1,58 @@
+{
+  "schemaVersion": 1,
+  "id": "cashflows-annualized-rate-out-of-range",
+  "description": "1.00 received and 3.00 repaid after 14 days (biweekly periods 0, 1): the periodic rate is 200 %, so irrNominal is 5 200 % and the Reg Z APR 200 % x 365/14 = 5 214.286 %; compounded over a year it is 3^26 - 1, about 2.5 x 10^14 %, beyond 10^9 %, so irrEffective, the APRC and the XIRR family fail with IRR_NO_CONVERGENCE.",
+  "source": "SPEC-finance §10",
+  "kind": "cashflows",
+  "input": {
+    "frequency": "biweekly",
+    "flows": [
+      {"period": 0, "date": "2026-01-15", "amount": "1.00"},
+      {"period": 1, "date": "2026-01-29", "amount": "-3.00"}
+    ]
+  },
+  "expected": {
+    "ok": true,
+    "rates": {
+      "irrNominal": {
+        "value": "5200.000000000000",
+        "display": "5200.00",
+        "precision": 2
+      },
+      "irrEffective": {
+        "ok": false,
+        "reason": "IRR_NO_CONVERGENCE"
+      },
+      "xirr": {
+        "ok": false,
+        "reason": "IRR_NO_CONVERGENCE"
+      },
+      "usRegZApr": {
+        "value": "5214.285714285714",
+        "display": "5214.286",
+        "precision": 3
+      },
+      "ukAprc": {
+        "ok": false,
+        "reason": "IRR_NO_CONVERGENCE"
+      },
+      "euAprc": {
+        "ok": false,
+        "reason": "IRR_NO_CONVERGENCE"
+      },
+      "cnAnnualized": {
+        "value": "5200.000000000000",
+        "display": "5200.00",
+        "precision": 2
+      },
+      "uaRealAnnual": {
+        "ok": false,
+        "reason": "IRR_NO_CONVERGENCE"
+      },
+      "international": {
+        "ok": false,
+        "reason": "IRR_NO_CONVERGENCE"
+      }
+    }
+  }
+}
