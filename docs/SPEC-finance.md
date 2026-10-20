@@ -1,6 +1,6 @@
 # LoanLogic — Financial Methodology Specification
 
-Status: v0.2.1 · Normative for the engine (`src/engine`). Keywords MUST / SHOULD / MAY are
+Status: v0.2.2 · Normative for the engine (`src/engine`). Keywords MUST / SHOULD / MAY are
 used as in RFC 2119. If the code and this document disagree, this document wins. If this
 document is ambiguous or looks wrong, the implementer stops and reports — financial
 rules are never invented in code.
@@ -20,7 +20,12 @@ included now so the core design does not block them. The engine's input contract
    IEEE-754 doubles on values converted from exact decimals. Results are displayed with
    method-specific precision (§9).
 3. **Determinism.** Same input → same output, independent of locale, time zone, device
-   and browser. The engine does not read `Intl` or any other environment data.
+   and browser. The engine does not read `Intl` or any other environment data. Ledger
+   amounts are identical everywhere. Rate values are doubles from `Math` functions whose
+   last bits may differ between JavaScript engines; they agree within the tolerance of
+   §9.4, so a displayed rate can differ only for a value within that tolerance of a
+   display boundary, and a decision taken at an edge (a range bound of §10, two roots in
+   one grid cell) can differ only for inputs at that edge. Golden vectors avoid both.
 4. **Explainability.** Every headline figure carries an `explain` payload: formula id,
    the inputs used and the key substituted values (§9.6).
 5. **No silent fallbacks.** If a requested option cannot be applied, the engine returns
@@ -85,7 +90,9 @@ policies respectively; `R` alone means `half-up` to the minor unit.
 | `unit-ceil` | round `A*` up to whole currency units |
 
 The policy applies to `A` (annuity, balloon); `q` is always rounded `half-up` to the minor
-unit. The final payment always absorbs the remaining balance (§5).
+unit. The final payment always absorbs the remaining balance (§5). A negative `A*` (§3.4)
+follows the same rules: the ceil policies round it towards +∞ (−75.4164… → −75.41,
+vector `balloon-negative-rate-negative-instalment`).
 
 ### 1.6 Exact evaluation
 
@@ -109,9 +116,11 @@ document defines. Implementations MUST produce that result.
   not exact for values such as `j/12`.
 - **Irrational values** — periodic interest and `A*` when `j ≠ 0` and `c/m` is not an
   integer or compounding is continuous — MUST be computed with at least 40 significant
-  digits. If such a value lies within 10^−15 minor units of a rounding boundary the
-  result is implementation-defined; golden vectors never contain such inputs. With
-  `j = 0`, `i = 0` exactly for every compounding (§3.2).
+  digits, a relative precision that holds for every such value whatever its size. Values
+  from a fractional power count as irrational even when the result happens to be
+  rational (`1.21^(1/2) − 1`). If such a value lies within 10^−15 minor units of a
+  rounding boundary the result is implementation-defined; golden vectors never contain
+  such inputs. With `j = 0`, `i = 0` exactly for every compounding (§3.2).
 
 ## 2. Time
 
@@ -207,8 +216,9 @@ The term is given in exactly one of three ways:
 - `j = 0` is valid (no interest; annuity `A* = P/N`).
 - `j < 0` is valid down to −20 % with warning `RATE_NEGATIVE`; negative interest is
   posted (rounded) and the loan still amortizes to zero. With a negative rate the
-  scheduled payment of an equal-principal or bullet loan can be negative (the lender
-  pays); this is allowed.
+  scheduled payment of an equal-principal or bullet loan, and the regular instalment `A`
+  of a balloon loan, can be negative (the lender pays); this is allowed. An annuity's
+  `A*` is always positive.
 - `j > 100 %` is valid up to 1 000 % with warning `RATE_HIGH`.
 
 ## 4. Day-count conventions
@@ -254,8 +264,18 @@ fraction:
   result carries warning `EARLY_CLOSE` (e.g. an instalment rounded up to whole units on
   a long loan).
 - **Negative amortization:** for annuity and balloon, if `p_k < 0` for some k < N (the
-  instalment does not cover the interest — e.g. ACT/360 interest on a long high-rate
-  loan with the nominal payment basis) → error `NEG_AMORTIZATION`.
+  balance grows: the instalment does not cover the interest, or with a negative rate a
+  negative instalment exceeds the negative interest) → error `NEG_AMORTIZATION` with
+  `params: { period }`, the first such k. Example: ACT/360 interest on a long high-rate
+  loan with the nominal payment basis, where the balance would keep growing and the last
+  payment absorb it — about 11.2 million on 100 000.00 at 30 % over 30 years (vector
+  `error-negative-amortization`). A balloon with a negative rate and day-count interest
+  can meet the second case in a short month; the periodic mode avoids it.
+- The exact payment basis (§5.2) is exempt: its `A*` amortizes the actual-day interest
+  exactly, but on a long or high-rate loan a period longer than average (a 31-day month)
+  can still cost more interest than `A`. That row's principal is negative — the
+  shortfall is added to the balance — and later rows repay it (vector
+  `daycount-exact-basis-negative-principal`, the loan above with the exact basis).
 
 ### 5.2 Annuity (equal instalments, 等额本息)
 
@@ -263,7 +283,9 @@ fraction:
   `A* = P·i / (1 − (1 + i)^−N)` for `i ≠ 0`; `A* = P / N` for `i = 0`.
 - `A = R_pay(A*)` (§1.5), computed exactly when `i` is rational (§1.6).
 - k < N: `p_k = A − I_k`. k = N: `p_N = B_{N−1}` (the last instalment absorbs
-  rounding drift; it is typically within a few minor units of `A`).
+  rounding drift; it is typically within a few minor units of `A`, but on long high-rate
+  loans the rounding of `A` compounds: 2 153.01 against `A = 2 534.91` in vector
+  `daycount-exact-basis-negative-principal`).
 - **Day-count mode — payment basis:**
   - `nominal` (default, common bank practice): `A` is computed with the periodic rate
     `i = j/m`; interest is charged by actual days (§3.3); the last instalment adjusts.
@@ -322,6 +344,8 @@ All examples are golden vectors in `tests/vectors/core` (§14).
 - `financing = paid` (default): paid by the borrower at `D0`; `P = amount`.
 - `financing = financed`: added to the loan; `P = amount + U`; the borrower receives
   `amount`.
+- The upfront fees paid at closing must be less than `amount`, so the borrower receives
+  something; otherwise `FEE_RANGE` on `fees` (§13). Financed fees do not count.
 
 ### 6.2 Periodic fees
 
@@ -409,6 +433,8 @@ interestCapitalized, principal, extraPrincipal, fees, insurance, penalty, paymen
 closing, cumulativeInterest, cumulativePrincipal, events[]`.
 
 - `days` = actual days from the previous schedule date (`D0` for the first row).
+- `annualRate` = the nominal rate of the period in percent, as entered (`"3.10"`);
+  `events` = the events applied in the period (`[]` in M1).
 - `fees` = sum of the periodic fee items of the period; `insurance` = sum of the
   insurance items. Per-item amounts MAY be exposed in addition.
 - `cumulativePrincipal` includes extra principal.
@@ -488,28 +514,42 @@ without voluntary events.
   at most one year ((b)(4)(ii)).
 - For each payment, count unit-periods from `D0` per (b)(5): monthly — full months
   measured back from the payment date, the remaining days ÷ 30 give the fraction `f_k`;
-  months are all equal, payments due on the last day of the month are measured month
-  end to month end, and payments due on the 29th or 30th use the last day of February
-  ((b)(3)(iv)); multi-month unit-periods — 30 days per full month back plus remaining
-  days, divided by 30 × months per unit; weekly / multi-week — days ÷ days per unit;
-  yearly — full years back, remainder in months ÷ 12 or days ÷ 365.
+  months are all equal, a series of payments due on the last day of each month is
+  measured month end to month end, and a series due on the 29th or 30th uses the last
+  day of February ((b)(3)(iv)) — rules for a series, so a single payment (below) counts
+  months back as in §2.1; multi-month unit-periods — 30 days per full month back plus
+  remaining days, divided by 30 × months per unit; weekly / multi-week — days ÷ days per
+  unit; yearly — full years back, remainder in months ÷ 12 or days ÷ 365.
 - Solve for the unit-period rate `i`:
   `A_f = Σ_k P_k / ((1 + f_k·i)(1 + i)^{t_k})`; `APR = i × unit-periods per year`.
-- Regular schedules with N ≥ 2 (M1) place every payment a whole number of unit-periods
-  after `D0` — dates clamped or moved to month ends by §2.1 included, by (b)(3)(iv) —
-  so `t_k = k`, `f_k = 0` and `APR = r × m`.
-- **Single payment** (N = 1, or two explicit flows), (b)(5)(v)–(vii). With `P` the
-  payment and `i = P / A_f − 1`:
+- Regular schedules (M1) to which the single-payment rule below does not apply place
+  every payment a whole number of unit-periods after `D0` — dates clamped or moved to
+  month ends by §2.1 included, by (b)(3)(iv) — so `t_k = k`, `f_k = 0` and
+  `APR = r × m`.
+- **Single payment** — a single advance and a single payment, (b)(4)(ii), (b)(5)(v)–(vii).
+  The rule applies when, after the rate cash flows (§9.1) on the same date are summed and
+  zero sums dropped, exactly two dates remain. A loan qualifies by those flows: N = 1, an
+  early close at the first payment (§5.1), or interim flows that are all zero (a 0 %
+  bullet loan whose periodic fees are not in the APR). Vectors
+  `cashflows-regz-single-payment-same-date-fee`, `regz-single-payment-after-early-close`,
+  `regz-single-payment-zero-interim-payments`. The two sums must have opposite signs
+  (else the metric fails); `A_f` is the earlier sum, `P` the later one with its sign
+  reversed, and the term runs between their dates. The unit-period rate — `i = P / A_f − 1`
+  under a year, the yearly `i` solved below otherwise — must lie in the solver range of
+  §10, else the metric fails (vector `cashflows-single-payment-out-of-range`):
   - term shorter than a year and a whole number `M` of months: `APR = i × 12 / M`
     ((b)(5)(vi) also allows 365 / days; LoanLogic uses 12 / M);
   - term shorter than a year otherwise: `APR = i × 365 / days`. Months are counted back
-    from the payment date as in §2.1: 31 January → 28 February 2026 is 28 days, not a
-    month, while 28 February → 31 March 2026 is one whole month (vectors
-    `regz-single-payment-month-end-days` and `regz-single-payment-month-end-clamp`);
+    from the payment date as in §2.1, not by the month-end rule of (b)(3)(iv), which is
+    for a series of payments: 31 January → 28 February 2026 is 28 days, not a month
+    (31 March → 30 April likewise 30 days), while 28 February → 31 March 2026 is one
+    whole month (vectors `regz-single-payment-month-end-days` and
+    `regz-single-payment-month-end-clamp`);
   - term of a year or more: the unit-period is a year; `t` = full years counted back
     from the payment date, `f` = the remaining months ÷ 12, or the remaining days ÷ 365
-    when the remainder is not a whole number of months; solve
-    `A_f (1 + f·i)(1 + i)^t = P` and `APR = i`.
+    when the remainder is not a whole number of months (`f` reaches 365/365 from
+    29 February 2024 to 28 February 2026); solve `A_f (1 + f·i)(1 + i)^t = P` and
+    `APR = i`.
   Example: 300.00 with a 45.00 finance charge added, repaid as 345.00 after 14 days:
   `APR = 15 % × 365/14 = 391.071 %`, not 15 % × 26 = 390.000 % (vector
   `payday-biweekly-single-payment`).
@@ -538,6 +578,8 @@ method id `ukAprc` for both).
   `cashflows-irregular-aprc-backward-counting`). From 2026-01-31, the date 2026-03-31
   is exactly 2 months and 2026-04-30 is 2 months + 28/365, because 30 April − 3 months
   = 30 January falls before the drawdown (vector `cashflows-aprc-month-end-clamp`).
+  Clamping can give several dates the same time: from 2026-01-31, the 28th, 29th and
+  30th of March are all 1 month + 28/365.
   MCOB 10.3.5 also allows 365.25-day
   years; LoanLogic does not use that option.
 - Displayed with one decimal place, half-up (CONC App 1.2.6 R(3)(f); MCOB 10A.2.3 R(4)).
@@ -594,8 +636,9 @@ Bank of Russia guidance.
 ### 9.4 Display precision and rounding
 
 - Rates are solved in double precision (§10), then rounded for display with the
-  method's precision using half-up (ties away from zero). Generic metrics: 2 dp by
-  default (user option 2–4).
+  method's precision using half-up (ties away from zero). Generic metrics other than
+  `nominal` (shown as entered, §9.2): 2 dp. A UI that offers another precision (PLAN H1)
+  rounds `value` itself with the same rule.
 - An engine value matches a golden vector when it lies within
   `max(1e−7, 1e−9 × |v|)` percentage points of the vector's value `v` (§14). Vectors
   keep every rate at least ten times that tolerance away from a display boundary, so a
@@ -631,13 +674,14 @@ formula shown from them reproduces the result (the UI shows `i` as `j ÷ m`, e.g
 
 | `formulaId` | `values` |
 |---|---|
-| `instalment.annuity` | `P`, `N`, `j`, `m` (and `i` when `c ≠ m` or in day-count mode with the exact basis), `Astar`, `A` |
+| `instalment.annuity` | `P`, `N`, `j`, `m` (and `i` when `c ≠ m`), `Astar`, `A` |
+| `instalment.annuity-exact-basis` | `P`, `N`, `j`, `dayCount` (method id), `Astar`, `A` — the exact payment basis has a rate per period, `r_k = j × YF_k`, and no single `i` |
 | `instalment.balloon` | as `instalment.annuity`, plus `Bal` |
 | `instalment.equal-principal` | `P`, `N`, `q` |
 | `instalment.bullet` | `P`, `N`, `I1` (interest of the first period) |
 | `rate.nominal` | `j` |
 | `rate.effective` | `j`, `c` (periodic), or `m` and `k` (day-count) |
-| `rate.periodic-irr` | `r` (periodic IRR), `m` — for `irrNominal`, `irrEffective`, `cnAnnualized`, and `usRegZApr` with N ≥ 2 |
+| `rate.periodic-irr` | `r` (periodic IRR), `m` — for `irrNominal`, `irrEffective`, `cnAnnualized`, and `usRegZApr` unless the single-payment rule applies |
 | `rate.regz-single-payment` | `Af`, `P`, `days`, `months`, `unitPeriodsPerYear`, `i` (and `t`, `f` for a term of a year or more) |
 | `rate.annual-irr` | `X`, `timeBasis` (`periods`, `counted-back` or `days-365`) — APRC and the XIRR family |
 
@@ -650,10 +694,10 @@ times are measured from the first flow.
 
 - Always: `xirr`, `uaRealAnnual`, `international` (days / 365).
 - With `frequency` and a `period` on every flow — each date must be the schedule date
-  `D0 + period` periods, with or without the end-of-month rule: `irrNominal`,
-  `irrEffective` and `cnAnnualized` from the periods; `usRegZApr` as for a loan (`r × m`,
-  or the single-payment rule of §9.3 (a) for exactly two flows); `ukAprc` and `euAprc`
-  from whole periods.
+  `D0 + period` periods, with or without the end-of-month rule (each date on its own):
+  `irrNominal`, `irrEffective` and `cnAnnualized` from the periods; `usRegZApr` as for a
+  loan (`r × m`, or the single-payment rule of §9.3 (a) when the flows summed per date
+  leave exactly two dates); `ukAprc` and `euAprc` from whole periods.
 - With `frequency` and no periods: `ukAprc` and `euAprc` with backward counting
   (§9.3 b); the frequency chooses months or weeks as the equal period. The periodic
   metrics are not computed (irregular Reg Z unit-periods come later).
@@ -682,13 +726,22 @@ times are measured from the first flow.
   only as an accelerator that falls back to bisection — stopping when the bracket is no
   wider than `1e−12 × max(1, |x|)`. A test on `|f|` MUST NOT be used to stop: it does
   not bound the error of the rate.
-- **Overflow.** For `x < 0` evaluate `f(x) × (1 + x)^{t_max}` instead of `f(x)`: same
-  sign, and `(1 + x)^−t` cannot overflow with 1 200 periods.
+- **Scaling.** With `t_min` and `t_max` the earliest and latest times whose summed flow
+  is not zero, evaluate `f(x) × (1 + x)^{t_max}` for `x < 0` and `f(x) × (1 + x)^{t_min}`
+  for `x ≥ 0` instead of `f(x)`: the same sign and roots, and the dominant term never
+  overflows or underflows. A refinement step whose value is exactly 0 is the root.
+- **Range of results.** A metric computed from a solved rate — `x × m`, `(1 + x)^m − 1`,
+  the single-payment APR of §9.3 (a) — fails like the solvers when its value lies outside
+  ±1e7 (±10⁹ %) or cannot be represented (vector `cashflows-annualized-rate-out-of-range`).
+  The APRC and XIRR are solved directly in `[−0.99, 1e7]`, so near the edges their
+  availability can differ from `irrEffective`'s (an APRC below −99 % fails where
+  `irrEffective` gives −99.9 %); this is accepted.
 - In IEEE double precision this procedure meets the tolerance of §9.4 on every golden
   vector with a margin of more than 300× (checked with an independent Brent
   implementation).
-- Failure → `{ ok: false, reason: 'IRR_NO_CONVERGENCE' }`. The UI shows "n/a" with the
-  reason. No other number is substituted.
+- Failure — no root in the range, or a result outside it →
+  `{ ok: false, reason: 'IRR_NO_CONVERGENCE' }`. The UI shows "n/a" with the reason. No
+  other number is substituted.
 
 ## 11. Analytics
 
@@ -791,52 +844,73 @@ Closing balance after the last payment before the date + interest accrued to the
 - Structured errors `{ code, field, params? }`, localized by the UI. `field` is the path
   of the offending input — `amount`, `term.payments`, `accrual.mode`, `fees[2].value`,
   `balloon.kind`, `rateMethods[1]`, `flows[3].date` — or `null` when no single input is
-  at fault. Raw exception text never reaches the user.
+  at fault (an input that is not an object: `INPUT_INVALID` on `null`). Raw exception
+  text never reaches the user. `params` is defined for `NEG_AMORTIZATION` only
+  (`{ period }`, the first period with a negative principal). A property present with
+  the value `null` has the wrong type; it is not missing.
 - **Phase 1 — fields.** Every field is checked on its own and all failures are reported
   together, at most one per field: the first that applies of type (missing or wrong
-  type, unknown id, malformed string), range, whole minor units. Minor units are
-  checked only when the currency is valid; a fee's `calc` only when its `kind` is
-  valid; a fee item reports every failing property. A JSON number with an integral value
-  (`12.0`) is an integer; booleans are not numbers.
+  type, unknown id, malformed string), range, whole minor units or the decimals of a
+  percentage. Minor units are checked only when the currency is valid; a fee's `calc`
+  only when its `kind` is valid. A fee's `value` is checked against its `calc` as given —
+  `fixed`: the money rules; `percent`, `pct-original`, `pct-balance`: the percentage
+  rules — even when that `calc` does not fit the `kind` or the `kind` is invalid. A fee
+  item reports every failing property. A JSON number with an integral value (`12.0`) is
+  an integer; booleans are not numbers. `term` holds exactly one of `payments`, `years`
+  and `endDate`, and `months` only with `years`; otherwise `INPUT_INVALID` on `term`.
 - **Phase 2 — combinations**, only when phase 1 found nothing, reported together:
   `TERM_TOO_SHORT` and `TERM_RANGE` on `term` (N from years and months or an end date);
   `DATE_INVALID` on `disbursementDate` when the schedule would end after 9999-12-31;
-  `UNSUPPORTED`; `BALLOON_RANGE`; `AMOUNT_TOO_SMALL_FOR_TERM`. The date and the
-  amount checks need a valid N.
+  `UNSUPPORTED`; `BALLOON_RANGE`; `AMOUNT_TOO_SMALL_FOR_TERM`; `FEE_RANGE` on `fees`
+  (§6.1). The date and the amount checks need a valid N.
 - **Phase 3 — schedule:** `NEG_AMORTIZATION`, reported alone.
-- Properties the input contract (§15) does not use for the chosen options are ignored
-  (e.g. `balloon` on an annuity, `financing` on a periodic fee).
+- Properties the input contract (§15) does not define for the chosen variant are
+  ignored: `balloon` unless `repayment` is `balloon`, `financing` on a periodic fee,
+  `compounding` in day-count mode, `method` and `paymentBasis` in periodic mode. Options
+  defined for every loan (`endOfMonth`, `rounding.*`) are always validated, even when
+  the repayment type does not use them.
 
 | Code | Field | Condition |
 |---|---|---|
 | `INPUT_INVALID` | the field | missing required value, wrong type, unknown id, malformed decimal string, duplicate or empty fee id; cash flows: see below |
 | `CURRENCY_INVALID` | `currency` | a string that is not in the ISO 4217 table (§1.2) |
 | `AMOUNT_RANGE` | `amount`, `flows[i].amount` | `amount ≤ 0` or `> 1e15`; a flow amount whose absolute value exceeds 1e15 |
-| `TOO_MANY_DECIMALS` | `amount`, `fees[i].value` (fixed), `balloon.value` (amount) | money not a whole number of minor units |
+| `TOO_MANY_DECIMALS` | `amount`, `annualRatePct`, `fees[i].value`, `balloon.value` | money not a whole number of minor units; a percentage (the rate, a percentage fee, a percentage balloon) that is not a multiple of 10^−10 ("6.1234567891" and "6.50000000000" are fine) |
 | `RATE_RANGE` | `annualRatePct` | `< −20` or `> 1000` |
 | `TERM_RANGE` | `term.payments`, `term.years`, `term.months`, `term` | outside the limits of §2.4 |
 | `TERM_TOO_SHORT` | `term` | the term gives `N < 1` |
 | `DATE_INVALID` | `disbursementDate`, `term.endDate`, `flows[i].date` | a string that is not an existing `YYYY-MM-DD` date (year ≥ 1); on `disbursementDate` also a schedule ending after 9999-12-31 |
 | `BALLOON_RANGE` | `balloon.value` | `0 < Bal < P` fails after rounding |
-| `FEE_RANGE` | `fees[i].value` | negative |
+| `FEE_RANGE` | `fees[i].value`, `fees` | negative; a fixed fee above 1e15; a percentage above 100; on `fees`: upfront fees paid at closing of at least `amount` (§6.1) |
 | `UNSUPPORTED` | `accrual.paymentBasis` | a balloon with the exact payment basis |
 | `AMOUNT_TOO_SMALL_FOR_TERM` | `amount` | equal principal, remainder first, `p_1 < 0` (§5.3) |
-| `NEG_AMORTIZATION` | `null` | §5.1 |
+| `NEG_AMORTIZATION` | `null` | §5.1; `params: { period }` |
 | `FIRST_PAYMENT_DATE`, `HOLIDAY_RANGE` | — | reserved for M3 |
 
 Cash flows (§9.7, §15) are `INPUT_INVALID` on: `flows` with fewer than two items;
-`flows[i]` that is not an object; `flows[i].date` earlier than the previous flow's date
-(when that one is valid);
-`flows[i].amount` that is not a decimal string; `flows[i].period` when some flows have
-a period and others not, or the period is not a non-negative integer, or the first is
-not 0, or it decreases; `frequency` when it is unknown, or missing while periods are
-given. Phase 2: `flows[n−1].date` equal to the first date; `flows[i].period` whose date
-is not the schedule date `D0 + period` periods.
+`flows[i]` that is not an object; `flows[i].date` earlier than the date of `flows[i−1]`
+(when that is an object with an existing date); `flows[i].amount` that is not a decimal
+string; `flows[i].period` when `flows[i]` is an object that disagrees with `flows[0]`
+about having a period (`flows[0]` has none when it is not an object; `"period": null`
+is a period) — the period values are then not checked — or, when every object flow has
+one, when it is not a non-negative integer, the first is not 0, or it decreases;
+`frequency` when it is unknown, or missing while every flow is an object with a period.
+Phase 2: `flows[n−1].date` equal to the first date; `flows[i].period` whose date is not
+the schedule date `D0 + period` periods. Vectors `error-cashflows-period-on-some-flows`,
+`error-cashflows-period-missing-on-some-flows`.
 
-Warnings (`{ code, params }`, never block the result): `RATE_NEGATIVE`, `RATE_HIGH`
-(§3.4), `EARLY_CLOSE` (§5.1), `IRR_MULTIPLE` (§10; also on the affected metrics as a
-plain code). `IRR_NO_CONVERGENCE` is the `reason` of a failed metric, not an input
-error.
+Warnings (`{ code, params }`, never block the result):
+
+| Code | `params` |
+|---|---|
+| `RATE_NEGATIVE`, `RATE_HIGH` (§3.4) | `annualRatePct`: the rate as entered |
+| `EARLY_CLOSE` (§5.1) | `paymentsCount`: the actual payments; `scheduled`: N |
+| `IRR_MULTIPLE` (§10) | `methods`: the ids of the affected metrics in the order of `rateMethods`, comma-separated (`"xirr,ukAprc"`); they also carry the plain code |
+
+Every `params` value is a string (`Record<string, string>`), numbers as decimal strings
+(`"242"`), as in the explain payloads (§9.6).
+
+`IRR_NO_CONVERGENCE` is the `reason` of a failed metric, not an input error.
 
 ## 14. Test vectors
 
@@ -855,7 +929,8 @@ error.
     (M1 rows omit `interestCapitalized`, `extraPrincipal` and `penalty`, which must be
     zero);
   - decimal strings are compared exactly as strings; `null` matches `null` or absent;
-  - `warnings` and `errors` are compared as sets of `{ code }` and `{ code, field }`;
+  - `warnings` and `errors` are compared as sets of `{ code }` and `{ code, field }`
+    (`params` are not compared);
   - rates: the vector's `value` (percent, a decimal string with 12 decimals) within
     `max(1e−7, 1e−9 × |value|)` percentage points of the engine's unrounded value;
     `display` and `precision` equal; metric `warnings` compared as sets (absent = none);
@@ -873,7 +948,8 @@ field names are normative because the golden vectors use them.
 
 ```ts
 /** Plain decimal string: optional "-", digits without leading zeros, optional ".digits".
- *  No "+", no exponent, no grouping: "6.5", "-0.5", "100000.00". */
+ *  No "+", no exponent, no grouping: "6.5", "-0.5", "100000.00". Money is a whole number
+ *  of minor units; a percentage is a multiple of 10^-10 (§13). */
 type DecimalString = string;
 type FrequencyId = 'weekly' | 'biweekly' | 'monthly' | 'quarterly' | 'semiannual' | 'annual';
 type DayCountId = '30u-360' | '30-360-isda' | '30e-360' | 'act-360' | 'act-365f' | 'act-act-isda';
@@ -903,7 +979,7 @@ interface LoanInput {
     principalRemainder?: 'last' | 'first'; // default 'last'
   };
   fees?: FeeInput[];
-  rateMethods?: RateMethodId[];        // default: all
+  rateMethods?: RateMethodId[];        // default: all; [] computes none; duplicates are ignored
 }
 
 type FeeInput =
@@ -953,6 +1029,29 @@ interface CashFlowInput {
 - Microsoft Support — XIRR function (example).
 
 ## 17. Change history
+
+**v0.2.2 (2026-10-20)** — answers to the questions raised in T02 (PR #4); 14 new vectors,
+no existing vector changes:
+
+- §9.3 (a), §9.7: the Reg Z single-payment rule applies when the flows summed per date
+  leave exactly two dates (a same-date fee, zero interim payments, a loan closed at its
+  first payment); its unit-period rate is held to the solver range. The month-end rule
+  of (b)(3)(iv) is stated for a series of payments only.
+- §10: a metric computed from a solved rate fails outside ±10⁹ %; the scaling covers both
+  signs of `x` and uses the earliest and latest times with a non-zero sum.
+- §5.1: the exact payment basis is exempt from `NEG_AMORTIZATION`; a row may then have a
+  negative principal. `NEG_AMORTIZATION` carries `{ period }`.
+- §6.1, §13: upfront fees paid at closing must be less than the amount; fixed fees up to
+  1e15 and percentage fees up to 100; percentages are multiples of 10^−10.
+- §13: cash-flow periods follow `flows[0]`; precedence, `term` forms, a present `null`,
+  fee values checked against the given `calc`, and ignored properties stated; warning
+  `params` defined as strings (not compared by vectors, §14).
+- §1.5, §3.4: a negative balloon instalment is allowed; the ceil policies round it
+  towards +∞.
+- §8.1: `annualRate` and `events` defined; §9.4: generic metrics always 2 dp; §9.6:
+  formula id `instalment.annuity-exact-basis`.
+- §0, §1.6: rate values may differ in their last bits between JavaScript engines; the 40
+  digits are a relative precision.
 
 **v0.2.1 (2026-10-19)** — clarification asked during T02; no existing vector changes:
 

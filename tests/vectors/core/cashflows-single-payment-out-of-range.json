@@ -1,0 +1,55 @@
+{
+  "schemaVersion": 1,
+  "id": "cashflows-single-payment-out-of-range",
+  "description": "100.00 received and 0.50 repaid a month later: the unit-period rate of -99.5 % lies outside the solver range (-99 % to 10^9 %), so the single-payment APR fails with IRR_NO_CONVERGENCE like every solved metric (the closed form alone would give -1 194 %).",
+  "source": "SPEC-finance §9.3 a, §10",
+  "kind": "cashflows",
+  "input": {
+    "frequency": "monthly",
+    "flows": [
+      {"period": 0, "date": "2026-01-15", "amount": "100.00"},
+      {"period": 1, "date": "2026-02-15", "amount": "-0.50"}
+    ]
+  },
+  "expected": {
+    "ok": true,
+    "rates": {
+      "irrNominal": {
+        "ok": false,
+        "reason": "IRR_NO_CONVERGENCE"
+      },
+      "irrEffective": {
+        "ok": false,
+        "reason": "IRR_NO_CONVERGENCE"
+      },
+      "xirr": {
+        "ok": false,
+        "reason": "IRR_NO_CONVERGENCE"
+      },
+      "usRegZApr": {
+        "ok": false,
+        "reason": "IRR_NO_CONVERGENCE"
+      },
+      "ukAprc": {
+        "ok": false,
+        "reason": "IRR_NO_CONVERGENCE"
+      },
+      "euAprc": {
+        "ok": false,
+        "reason": "IRR_NO_CONVERGENCE"
+      },
+      "cnAnnualized": {
+        "ok": false,
+        "reason": "IRR_NO_CONVERGENCE"
+      },
+      "uaRealAnnual": {
+        "ok": false,
+        "reason": "IRR_NO_CONVERGENCE"
+      },
+      "international": {
+        "ok": false,
+        "reason": "IRR_NO_CONVERGENCE"
+      }
+    }
+  }
+}

@@ -1,0 +1,124 @@
+{
+  "schemaVersion": 1,
+  "id": "regz-single-payment-after-early-close",
+  "description": "0.40 USD plus a financed 0.05 fee at 12 % over two biweekly payments, the instalment rounded up to whole dollars (1.00): the loan closes at the first payment of 0.45 (EARLY_CLOSE), so the Reg Z APR applies the single-payment rule to the actual payments: (0.45/0.40 - 1) x 365/14 = 325.893 %.",
+  "source": "Regulation Z, Appendix J (b)(4)(ii), (b)(5)(vii); SPEC-finance §5.1, §9.3 a",
+  "kind": "loan",
+  "input": {
+    "currency": "USD",
+    "amount": "0.40",
+    "annualRatePct": "12",
+    "repayment": "annuity",
+    "frequency": "biweekly",
+    "term": {
+      "payments": 2
+    },
+    "disbursementDate": "2026-03-02",
+    "rounding": {
+      "payment": "unit-ceil"
+    },
+    "fees": [
+      {
+        "id": "fee",
+        "kind": "upfront",
+        "calc": "fixed",
+        "value": "0.05",
+        "financing": "financed",
+        "inApr": true
+      }
+    ]
+  },
+  "expected": {
+    "ok": true,
+    "warnings": [
+      {
+        "code": "EARLY_CLOSE"
+      }
+    ],
+    "summary": {
+      "amount": "0.40",
+      "principalFinanced": "0.45",
+      "netProceeds": "0.40",
+      "upfrontFeesPaid": "0.00",
+      "upfrontFeesFinanced": "0.05",
+      "amountFinancedForRates": "0.40",
+      "regularInstalment": "1.00",
+      "principalPerPeriod": null,
+      "firstPayment": "0.45",
+      "lastPayment": "0.45",
+      "maxPayment": "0.45",
+      "paymentsCount": 1,
+      "firstPaymentDate": "2026-03-16",
+      "payoffDate": "2026-03-16",
+      "totalPayments": "0.45",
+      "totalPaid": "0.45",
+      "totalInterest": "0.00",
+      "totalPrincipal": "0.45",
+      "totalFees": "0.05",
+      "totalInsurance": "0.00",
+      "totalPenalties": "0.00",
+      "costOfCredit": "0.05",
+      "balloon": null
+    },
+    "rates": {
+      "nominal": {
+        "value": "12.000000000000",
+        "display": "12.00",
+        "precision": 2
+      },
+      "effective": {
+        "value": "12.718562203926",
+        "display": "12.72",
+        "precision": 2
+      },
+      "irrNominal": {
+        "value": "325.000000000000",
+        "display": "325.00",
+        "precision": 2
+      },
+      "irrEffective": {
+        "value": "2037.792669954317",
+        "display": "2037.79",
+        "precision": 2
+      },
+      "xirr": {
+        "value": "2055.853946728602",
+        "display": "2055.85",
+        "precision": 2
+      },
+      "usRegZApr": {
+        "value": "325.892857142857",
+        "display": "325.893",
+        "precision": 3
+      },
+      "ukAprc": {
+        "value": "2037.792669954317",
+        "display": "2037.8",
+        "precision": 1
+      },
+      "euAprc": {
+        "value": "2037.792669954317",
+        "display": "2037.8",
+        "precision": 1
+      },
+      "cnAnnualized": {
+        "value": "325.000000000000",
+        "display": "325.00",
+        "precision": 2
+      },
+      "uaRealAnnual": {
+        "value": "2055.853946728602",
+        "display": "2055.85",
+        "precision": 2
+      },
+      "international": {
+        "value": "2055.853946728602",
+        "display": "2055.85",
+        "precision": 2
+      }
+    },
+    "rows": [
+      {"index": 1, "date": "2026-03-16", "days": 14, "opening": "0.45", "interestAccrued": "0.00", "interestPaid": "0.00", "principal": "0.45", "fees": "0.00", "insurance": "0.00", "payment": "0.45", "closing": "0.00", "cumulativeInterest": "0.00", "cumulativePrincipal": "0.45"}
+    ]
+  }
+}

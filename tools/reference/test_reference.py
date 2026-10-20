@@ -28,6 +28,7 @@ from loanlogic_ref.dates import FREQUENCIES, add_months  # noqa: E402
 from loanlogic_ref.daycount import year_fraction  # noqa: E402
 from loanlogic_ref.numbers import NearTieError, format_fixed, round_to  # noqa: E402
 from loanlogic_ref.rates import (  # noqa: E402
+    SolverError,
     compute_cashflow_rates,
     display_string,
     percent_string,
@@ -282,6 +283,41 @@ class SolverTest(unittest.TestCase):
         contract = ((1 + 10 / 52) ** 52 - 1) * 100  # 937 880.88 %, before payment rounding
         self.assertAlmostEqual(float(result["rates"]["ukAprc"]["value"]), contract, delta=1)
 
+    def test_single_payment_rate_is_held_to_the_range(self) -> None:
+        # 0.50 repaid on 100.00: the unit-period rate -99.5 % is below -99 % (SPEC §10).
+        with self.assertRaises(SolverError):
+            regz_single_payment_apr(
+                date(2026, 1, 15), date(2026, 2, 15), Fraction(100), Fraction(-1, 2)
+            )
+        flows = {
+            "frequency": "monthly",
+            "flows": [
+                {"period": 0, "date": "2026-01-15", "amount": "100.00"},
+                {"period": 1, "date": "2026-02-15", "amount": "-0.50"},
+            ],
+        }
+        rates = compute_cashflow_rates(flows)["rates"]
+        self.assertEqual(rates["usRegZApr"], {"ok": False, "reason": "IRR_NO_CONVERGENCE"})
+        # -99 % itself is inside the range.
+        apr = regz_single_payment_apr(
+            date(2026, 1, 15), date(2026, 2, 15), Fraction(100), Fraction(-1)
+        )
+        self.assertEqual(apr, Decimal("-11.88"))
+
+    def test_annualized_rates_beyond_1e9_percent_fail(self) -> None:
+        flows = {
+            "frequency": "biweekly",
+            "flows": [
+                {"period": 0, "date": "2026-01-15", "amount": "1.00"},
+                {"period": 1, "date": "2026-01-29", "amount": "-3.00"},
+            ],
+        }
+        rates = compute_cashflow_rates(flows)["rates"]
+        self.assertEqual(rates["irrNominal"]["display"], "5200.00")
+        self.assertEqual(rates["usRegZApr"]["display"], "5214.286")
+        for name in ("irrEffective", "ukAprc", "xirr"):
+            self.assertEqual(rates[name], {"ok": False, "reason": "IRR_NO_CONVERGENCE"}, name)
+
 
 class RegZSinglePaymentTest(unittest.TestCase):
     def test_payday_term_in_days(self) -> None:
@@ -335,6 +371,54 @@ class RegZSinglePaymentTest(unittest.TestCase):
         )
         self.assertEqual(result["rates"]["usRegZApr"]["display"], "391.071")
         self.assertEqual(result["rates"]["irrNominal"]["display"], "390.00")
+
+    def test_same_date_flows_are_one_advance(self) -> None:
+        flows = {
+            "frequency": "biweekly",
+            "flows": [
+                {"period": 0, "date": "2026-03-02", "amount": "1000.00"},
+                {"period": 0, "date": "2026-03-02", "amount": "-50.00"},
+                {"period": 1, "date": "2026-03-16", "amount": "-1100.00"},
+            ],
+        }
+        rates = compute_cashflow_rates(flows)["rates"]
+        self.assertEqual(rates["usRegZApr"]["display"], "411.654")  # 1100/950 - 1, x 365/14
+
+    def test_zero_payments_are_no_payments(self) -> None:
+        fee = {"id": "f", "kind": "upfront", "calc": "fixed", "value": "30.00"}
+        loan = usd_loan(
+            amount="1000.00",
+            annualRatePct="0",
+            repayment="bullet",
+            term={"payments": 6},
+            fees=[fee],
+        )
+        rates = calculate_loan(loan)["rates"]
+        self.assertEqual(rates["usRegZApr"]["display"], "6.186")  # (1000/970 - 1) x 12/6
+        # With interest the interim payments are real: APR = r x 12 again.
+        rates = calculate_loan(dict(loan, annualRatePct="1"))["rates"]
+        self.assertEqual(rates["usRegZApr"]["value"][:10], rates["irrNominal"]["value"][:10])
+
+    def test_actual_payments_decide_after_an_early_close(self) -> None:
+        fee = {
+            "id": "f",
+            "kind": "upfront",
+            "calc": "fixed",
+            "value": "0.05",
+            "financing": "financed",
+        }
+        result = calculate_loan(
+            usd_loan(
+                amount="0.40",
+                annualRatePct="12",
+                frequency="biweekly",
+                term={"payments": 2},
+                rounding={"payment": "unit-ceil"},
+                fees=[fee],
+            )
+        )
+        self.assertEqual(result["summary"]["paymentsCount"], 1)
+        self.assertEqual(result["rates"]["usRegZApr"]["display"], "325.893")
 
 
 class AprcTimeTest(unittest.TestCase):
@@ -475,6 +559,108 @@ class ValidationTest(unittest.TestCase):
         self.assertTrue(result["ok"])
         self.assertEqual(result["summary"]["payoffDate"], "9999-12-15")
 
+    def test_term_has_exactly_one_form(self) -> None:
+        for term in (
+            {"payments": 12, "months": 3},
+            {"endDate": "2027-01-15", "months": 3},
+            {"months": 3},
+            {"payments": 12, "years": 1},
+            {},
+        ):
+            with self.subTest(term=term):
+                self.assertEqual(
+                    codes(calculate_loan(usd_loan(term=term))), {("INPUT_INVALID", "term")}
+                )
+        self.assertTrue(calculate_loan(usd_loan(term={"years": 1, "months": 3}))["ok"])
+
+    def test_a_present_null_is_a_wrong_type(self) -> None:
+        result = calculate_loan(usd_loan(accrual={"mode": "periodic", "compounding": None}))
+        self.assertEqual(codes(result), {("INPUT_INVALID", "accrual.compounding")})
+        self.assertTrue(calculate_loan(usd_loan(accrual={"mode": "periodic"}))["ok"])
+
+    def test_percentages_have_at_most_ten_decimals(self) -> None:
+        for text, expected in (
+            ("6.1234567891", set()),
+            ("6.12345678910", set()),  # the value has 10 decimals
+            ("6.12345678912", {("TOO_MANY_DECIMALS", "annualRatePct")}),
+            ("1000.00000000001", {("RATE_RANGE", "annualRatePct")}),  # range comes first
+        ):
+            with self.subTest(rate=text):
+                result = calculate_loan(usd_loan(annualRatePct=text, rateMethods=[]))
+                self.assertEqual(codes(result) if not result["ok"] else set(), expected)
+        balloon = usd_loan(
+            repayment="balloon",
+            balloon={"kind": "percent", "value": "30.00000000001"},
+            rateMethods=[],
+        )
+        self.assertEqual(
+            codes(calculate_loan(balloon)), {("TOO_MANY_DECIMALS", "balloon.value")}
+        )
+
+    def test_fee_bounds(self) -> None:
+        def fee(kind: str, calc: str, value: str) -> dict:
+            return {"id": "f", "kind": kind, "calc": calc, "value": value}
+
+        for item, expected in (
+            (fee("periodic", "fixed", "1000000000000000.00"), set()),
+            (fee("periodic", "fixed", "1000000000000000.01"), {("FEE_RANGE", "fees[0].value")}),
+            (fee("insurance", "pct-balance", "100"), set()),
+            (fee("periodic", "pct-original", "100.0000000001"), {("FEE_RANGE", "fees[0].value")}),
+            (fee("upfront", "percent", "0.00000000001"), {("TOO_MANY_DECIMALS", "fees[0].value")}),
+            # The value is checked against the calc as given, even when it does not fit
+            # the kind: a percentage rule on a periodic "percent" fee.
+            (
+                fee("periodic", "percent", "150"),
+                {("INPUT_INVALID", "fees[0].calc"), ("FEE_RANGE", "fees[0].value")},
+            ),
+            (
+                fee("upfront", "pct-original", "1.00000000001"),
+                {("INPUT_INVALID", "fees[0].calc"), ("TOO_MANY_DECIMALS", "fees[0].value")},
+            ),
+        ):
+            with self.subTest(fee=item):
+                result = calculate_loan(usd_loan(fees=[item], rateMethods=[]))
+                self.assertEqual(codes(result) if not result["ok"] else set(), expected)
+
+    def test_upfront_fees_paid_must_leave_proceeds(self) -> None:
+        def paid(value: str) -> dict:
+            return {"id": "f", "kind": "upfront", "calc": "fixed", "value": value}
+
+        loan = usd_loan(amount="1000.00", rateMethods=[])
+        self.assertEqual(
+            codes(calculate_loan(dict(loan, fees=[paid("1000.00")]))), {("FEE_RANGE", "fees")}
+        )
+        self.assertTrue(calculate_loan(dict(loan, fees=[paid("999.99")]))["ok"])
+        financed = dict(paid("5000.00"), financing="financed")
+        self.assertTrue(calculate_loan(dict(loan, fees=[financed]))["ok"])
+
+    def test_cash_flow_periods_follow_the_first_flow(self) -> None:
+        a = {"date": "2026-01-15", "amount": "1000.00"}
+        b = {"date": "2026-02-15", "amount": "-510.00"}
+        c = {"date": "2026-03-15", "amount": "-510.00"}
+        for flows, expected in (
+            ([a, b, dict(c, period=2)], {("INPUT_INVALID", "flows[2].period")}),
+            (
+                [dict(a, period=0), b, dict(c, period=-1)],
+                {("INPUT_INVALID", "flows[1].period")},  # values are not checked then
+            ),
+            (
+                [dict(a, period=0), dict(b, period=1), dict(c, period=2)],
+                {("INPUT_INVALID", "frequency")},
+            ),
+            (
+                ["x", dict(b, period=1), dict(c, period=2)],
+                {
+                    ("INPUT_INVALID", "flows[0]"),
+                    ("INPUT_INVALID", "flows[1].period"),
+                    ("INPUT_INVALID", "flows[2].period"),
+                },
+            ),
+        ):
+            with self.subTest(flows=flows):
+                result = compute_cashflow_rates({"flows": flows})
+                self.assertEqual(codes(result), expected)
+
     def test_cash_flow_periods_must_match_dates(self) -> None:
         flows = {
             "frequency": "monthly",
@@ -532,6 +718,20 @@ class SummaryRulesTest(unittest.TestCase):
             float(result["rates"]["effective"]["value"]) / 100, expected, places=13
         )
 
+    def test_exact_basis_allows_negative_principal(self) -> None:
+        # SPEC §5.1: the exact basis amortizes by construction; the nominal basis does not.
+        loan = usd_loan(
+            annualRatePct="30",
+            term={"payments": 360},
+            accrual={"mode": "daycount", "method": "act-360", "paymentBasis": "exact"},
+        )
+        result = calculate_loan(loan)
+        principals = [Fraction(row["principal"]) for row in result["rows"]]
+        self.assertLess(min(principals), 0)
+        self.assertEqual(result["rows"][-1]["closing"], "0.00")
+        nominal = dict(loan, accrual={"mode": "daycount", "method": "act-360"})
+        self.assertEqual(codes(calculate_loan(nominal)), {("NEG_AMORTIZATION", None)})
+
     def test_thirty_360_us_depends_on_the_dates(self) -> None:
         loan = usd_loan(
             disbursementDate="2026-01-31",
@@ -545,6 +745,19 @@ class SummaryRulesTest(unittest.TestCase):
 
 
 class FormattingTest(unittest.TestCase):
+    def test_nominal_keeps_the_entered_decimals(self) -> None:
+        long_zeros = "6.5" + "0" * 40  # a multiple of 10^-10, however long the string
+        for text, display in (
+            ("6.1234567891", "6.1234567891"),
+            ("6.5", "6.50"),
+            ("7", "7.00"),
+            ("-0.0", "0.00"),
+            (long_zeros, long_zeros),
+        ):
+            with self.subTest(rate=text):
+                result = calculate_loan(usd_loan(annualRatePct=text, rateMethods=["nominal"]))
+                self.assertEqual(result["rates"]["nominal"]["display"], display)
+
     def test_percent_strings(self) -> None:
         self.assertEqual(percent_string(Decimal("-1e-40")), "0.000000000000")
         self.assertEqual(percent_string(Decimal("6.5")), "6.500000000000")

@@ -26,7 +26,7 @@ from .dates import (
     parse_iso,
     schedule_date,
 )
-from .numbers import NearTieError, is_decimal_string, parse_decimal, to_decimal
+from .numbers import NearTieError, decimal_places, is_decimal_string, parse_decimal, to_decimal
 
 SOLVER_PRECISION = 80
 SOLVER_TOLERANCE = Decimal("1e-45")
@@ -46,6 +46,9 @@ UPPER = Decimal(10_000_000)
 # Enumeration grid: uniform steps on [LOWER, UNIFORM_TO], then geometric up to UPPER.
 GRID_STEP = Decimal("0.0005")
 GRID_GROWTH = Decimal("1.05")
+# A metric annualized from a solved rate (x × m, (1 + x)^m − 1, the single-payment APR)
+# must stay within the range too: |value| ≤ 1e7, i.e. 1e9 % (SPEC §10).
+MAX_RATE_PERCENT = UPPER * 100
 MAX_FLOW_AMOUNT = Fraction(10**15)
 
 # Display precision per method (SPEC §9.3, §9.4). `nominal` is handled separately.
@@ -350,12 +353,16 @@ def regz_single_payment_apr(
     months = _full_months_back(start, when, when.day)
     whole_months = months > 0 and _back(when, months, when.day) == start
     if months < 12:
+        # The rate of the one unit-period is held to the solver range (SPEC §9.3 a, §10).
+        i = ratio - 1
+        if not Fraction(LOWER) <= i <= Fraction(UPPER):
+            raise SolverError("the unit-period rate is outside the solver range")
         per_year = (
             Fraction(12, months) if whole_months else Fraction(365, days_between(start, when))
         )
         with localcontext() as ctx:
             ctx.prec = SOLVER_PRECISION
-            return to_decimal((ratio - 1) * per_year, SOLVER_PRECISION)
+            return to_decimal(i * per_year, SOLVER_PRECISION)
     years = months // 12
     point = _back(when, 12 * years, when.day)
     assert point is not None
@@ -430,6 +437,24 @@ def failed(reason: str) -> dict[str, object]:
     return {"ok": False, "reason": reason}
 
 
+def annualized(
+    value: Decimal, precision: int, warnings: list[str] | None = None
+) -> dict[str, object]:
+    """A metric annualized from a solved rate; it fails like the solvers when its value
+    lies outside ±1e9 % (SPEC §10)."""
+    if abs(value) > MAX_RATE_PERCENT:
+        return failed("IRR_NO_CONVERGENCE")
+    return metric(value, precision, warnings)
+
+
+def summed_by_date(flows: Sequence[Flow]) -> list[tuple[date, Fraction]]:
+    """The flows summed per date in date order, zero sums dropped."""
+    totals: dict[date, Fraction] = {}
+    for fl in flows:
+        totals[fl.when] = totals.get(fl.when, Fraction(0)) + fl.amount
+    return [(when, amount) for when, amount in sorted(totals.items()) if amount != 0]
+
+
 def _with_precision(func: Callable[[], Decimal]) -> Decimal:
     with localcontext() as ctx:
         ctx.prec = SOLVER_PRECISION
@@ -458,22 +483,24 @@ def _periodic_metrics(
                 ("cnAnnualized", r * m * 100),
             ):
                 if name in names:
-                    out[name] = metric(value, DISPLAY_PRECISION[name], solved.warnings)
+                    out[name] = annualized(value, DISPLAY_PRECISION[name], solved.warnings)
         elif names - {"usRegZApr"}:
             for name in names - {"usRegZApr"}:
                 out[name] = failed("IRR_NO_CONVERGENCE")
         if "usRegZApr" in names:
-            if len(flows) == 2:
-                # Single advance, single payment: the unit-period is the term (§9.3 a).
+            summed = summed_by_date(flows)
+            if len(summed) == 2:
+                # Single advance, single payment: two dates with a non-zero sum (same-date
+                # flows summed, zero payments are no payments); the unit-period is the term
+                # (SPEC §9.3 a). A loan qualifies by its actual payments (early close).
+                (start, inflow), (when, payment) = summed
                 try:
-                    apr = regz_single_payment_apr(
-                        flows[0].when, flows[1].when, flows[0].amount, flows[1].amount
-                    )
-                    out["usRegZApr"] = metric(apr * 100, 3)
+                    apr = regz_single_payment_apr(start, when, inflow, payment)
+                    out["usRegZApr"] = annualized(apr * 100, 3)
                 except SolverError:
                     out["usRegZApr"] = failed("IRR_NO_CONVERGENCE")
             elif solved is not None:
-                out["usRegZApr"] = metric(solved.value * m * 100, 3, solved.warnings)
+                out["usRegZApr"] = annualized(solved.value * m * 100, 3, solved.warnings)
             else:
                 out["usRegZApr"] = failed("IRR_NO_CONVERGENCE")
 
@@ -515,8 +542,17 @@ def compute_rates(
     wanted = set(methods)
 
     if "nominal" in wanted:
-        places = len(nominal_pct_text.split(".", 1)[1]) if "." in nominal_pct_text else 0
-        out["nominal"] = metric(to_decimal(nominal_rate * 100, SOLVER_PRECISION), max(2, places))
+        # The contract rate as entered, padded to at least 2 decimals: it is never rounded,
+        # so it needs no display guard (SPEC §9.2), and zero has no sign (§9.6).
+        places = decimal_places(nominal_pct_text)
+        text = nominal_pct_text.lstrip("-") if nominal_rate == 0 else nominal_pct_text
+        if places < 2:
+            text = (text if places else text + ".") + "0" * (2 - places)
+        out["nominal"] = {
+            "value": percent_string(to_decimal(nominal_rate * 100, SOLVER_PRECISION)),
+            "display": text,
+            "precision": max(2, places),
+        }
     if "effective" in wanted:
         out["effective"] = metric(_with_precision(effective_rate) * 100, 2)
 
@@ -566,8 +602,15 @@ def _validate_flows(
     if not isinstance(raw_flows, list) or len(raw_flows) < 2:
         error("INPUT_INVALID", "flows")
         return [], freq, errors
-    with_period = any(isinstance(item, dict) and "period" in item for item in raw_flows)
-    if with_period and "frequency" not in raw:
+    # Periods are given on every flow or on none, as flows[0] decides (a flow that is not
+    # an object has none): a flow that disagrees is the error. The period values are
+    # checked only when every object flow agrees, and a missing frequency is an error only
+    # when every flow has a period (SPEC §13).
+    objects = [item if isinstance(item, dict) else None for item in raw_flows]
+    with_period = objects[0] is not None and "period" in objects[0]
+    agree = all(item is None or ("period" in item) == with_period for item in objects)
+    check_periods = with_period and agree
+    if all(item is not None and "period" in item for item in objects) and "frequency" not in raw:
         error("INPUT_INVALID", "frequency")
     flows: list[Flow] = []
     previous_date: date | None = None
@@ -596,7 +639,10 @@ def _validate_flows(
             if abs(amount) > MAX_FLOW_AMOUNT:
                 error("AMOUNT_RANGE", f"{path}.amount")
         period = -1
-        if with_period:
+        if ("period" in item) != with_period:
+            error("INPUT_INVALID", f"{path}.period")
+            previous_period = None
+        elif check_periods:
             value = as_int(item.get("period"))
             if (
                 value is None

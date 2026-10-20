@@ -44,7 +44,7 @@ learned in earlier tasks.
 
 | ID | Deliverable | Status |
 |---|---|---|
-| R1 | Reference implementation `tools/reference` + core vectors `tests/vectors/core`; SPEC v0.2 (revised after three independent reviews; v0.2.1 clarification) | delivered 2026-10-19 |
+| R1 | Reference implementation `tools/reference` + core vectors `tests/vectors/core`; SPEC v0.2 (revised after three independent reviews; v0.2.1 and v0.2.2 answer the T02 questions) | delivered 2026-10-19, updated 2026-10-20 |
 | R2 | `docs/DESIGN.md` (lime accent, Onest / JetBrains Mono, Unbounded wordmark), `docs/GLOSSARY.md` | delivered 2026-10-19 |
 | R3 | Event vectors (prepayments, rate changes, holidays, odd first period) | before T06 |
 | R4 | Analytics vectors (comparison, refinance, goal seek, affordability, deposits) | before T08–T13 |
