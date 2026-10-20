@@ -23,6 +23,7 @@
   :root {
     --duration-fast: 0ms;
     --duration-normal: 0ms;
+    --duration-slow: 0ms;
   }
 
   *,

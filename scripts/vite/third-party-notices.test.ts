@@ -133,8 +133,8 @@ describe('thirdPartyNotices', () => {
   });
 
   it('accepts OFL-1.1 for a listed font package only', () => {
-    const font = writePackage('node_modules/@fontsource-variable/inter', {
-      name: '@fontsource-variable/inter',
+    const font = writePackage('node_modules/@fontsource-variable/onest', {
+      name: '@fontsource-variable/onest',
       version: '5.0.0',
       license: 'OFL-1.1',
     });

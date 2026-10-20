@@ -12,8 +12,8 @@ import { appendFileSync, existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { gzipSync } from 'node:zlib';
 
-/** Initial-JS budget in KiB (gzip): 60 at the foundation stage (T01); PLAN §5.6 caps v1 at 150. */
-const BUDGET_KIB = 60;
+/** Initial-JS budget in KiB (gzip): PLAN §5.6 caps v1 at 150 (the T03 brief's budget; T01 had 60). */
+const BUDGET_KIB = 150;
 
 const distDir = path.resolve('dist');
 const indexPath = path.join(distDir, 'index.html');

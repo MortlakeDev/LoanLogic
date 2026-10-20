@@ -203,7 +203,11 @@ describe('license policy', () => {
   it('allows OFL-1.1 only for the listed font packages (CLAUDE.md: OFL for fonts)', () => {
     expect(RUNTIME_LICENSES).not.toContain('OFL-1.1');
     expect(FONT_LICENSES).toEqual(['OFL-1.1']);
-    expect(FONT_PACKAGES).toContain('@fontsource-variable/inter');
+    // DESIGN §4.1: Onest for the interface, JetBrains Mono for figures; Inter is gone.
+    expect(FONT_PACKAGES).toEqual([
+      '@fontsource-variable/onest',
+      '@fontsource-variable/jetbrains-mono',
+    ]);
     for (const font of FONT_PACKAGES) {
       expect(isLicenseAllowed('OFL-1.1', runtimeLicensesFor(font))).toBe(true);
       expect(isLicenseAllowed('MIT', runtimeLicensesFor(font))).toBe(true);

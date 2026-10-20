@@ -45,7 +45,7 @@ const SELECTORS = {
   light: ":root[data-theme='light']",
 } as const;
 
-/** Semantic tokens the T01 brief requires in each theme. */
+/** Semantic tokens of DESIGN §3.1 required in each theme. */
 const REQUIRED_THEME_TOKENS = [
   '--color-bg',
   '--color-surface-1',
@@ -59,12 +59,20 @@ const REQUIRED_THEME_TOKENS = [
   '--color-accent',
   '--color-accent-hover',
   '--color-accent-subtle',
+  '--color-accent-line',
   '--color-on-accent',
+  '--color-button-primary-bg',
+  '--color-button-primary-fg',
   '--color-success',
   '--color-warning',
   '--color-danger',
   '--color-info',
   '--color-focus-ring',
+  '--color-chart-principal',
+  '--color-chart-interest',
+  '--color-chart-fees',
+  '--color-chart-grid',
+  '--color-chart-axis',
   '--shadow-1',
   '--shadow-2',
   '--shadow-3',
@@ -215,6 +223,20 @@ const CONTRAST_RULES: readonly ContrastRule[] = [
   ...rules(['--color-accent'], SURFACES, TEXT, 'link text'),
   ...rules(['--color-accent-hover'], SURFACES, TEXT, 'hovered link text'),
   ...rules(['--color-on-accent'], ['--color-accent'], TEXT, 'text on accent fills'),
+  ...rules(
+    ['--color-button-primary-fg'],
+    ['--color-button-primary-bg'],
+    TEXT,
+    'primary button text',
+  ),
+  ...rules(['--color-accent'], ['--color-accent-subtle'], TEXT, 'accent text on a selected card'),
+  ...rules(
+    ['--color-chart-principal', '--color-chart-interest', '--color-chart-fees'],
+    ['--color-surface-1'],
+    NON_TEXT,
+    'chart series',
+  ),
+  ...rules(['--color-chart-axis'], ['--color-surface-1'], TEXT, 'chart axis labels'),
   ...rules(['--color-text-primary'], ['--color-accent-subtle'], TEXT, 'selected segment text'),
   ...rules(['--color-border-strong'], SURFACES, NON_TEXT, 'control outlines'),
   ...rules(['--color-focus-ring'], SURFACES, NON_TEXT, 'focus ring'),
@@ -299,7 +321,18 @@ describe('tokens.css structure', () => {
 
   it('defines the non-colour scales', () => {
     const primitives = block('primitives');
-    for (const token of ['--font-sans', '--focus-ring-width']) {
+    for (const token of [
+      '--font-sans',
+      '--font-mono',
+      '--focus-ring-width',
+      '--font-size-amount',
+      '--font-size-rate',
+      '--font-size-hero',
+      '--size-control',
+      '--size-control-lg',
+      '--size-target',
+      '--duration-slow',
+    ]) {
       expect(primitives.get(token), `${token} is missing or empty`).toBeTruthy();
     }
     for (const prefix of ['--font-size-', '--space-', '--radius-']) {

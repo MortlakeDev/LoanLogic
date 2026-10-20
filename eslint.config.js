@@ -4,6 +4,7 @@
 import js from '@eslint/js';
 import prettier from 'eslint-config-prettier';
 import { defineConfig, globalIgnores } from 'eslint/config';
+import compat from 'eslint-plugin-compat';
 import jsxA11y from 'eslint-plugin-jsx-a11y';
 import globals from 'globals';
 import tseslint from 'typescript-eslint';
@@ -87,6 +88,15 @@ export default defineConfig([
     name: 'loanlogic/browser',
     files: ['src/**/*.{ts,tsx}'],
     languageOptions: { globals: globals.browser },
+  },
+
+  {
+    // Web APIs must exist in every supported browser (DESIGN §12, `browserslist` in
+    // package.json). Tests run in Node and jsdom, so they are not checked.
+    name: 'loanlogic/compat',
+    files: ['src/**/*.{ts,tsx}'],
+    ignores: ['src/**/*.test.{ts,tsx}', 'src/**/__tests__/**'],
+    ...compat.configs['flat/recommended'],
   },
 
   {

@@ -10,6 +10,9 @@ import { thirdPartyNotices } from './scripts/vite/third-party-notices.ts';
 import { APP_NAME } from './src/config.ts';
 import { LANGUAGES } from './src/i18n/languages.ts';
 
+/** The supported browsers of DESIGN §12, for both JavaScript and CSS output. */
+const BROWSER_TARGETS = ['chrome111', 'edge111', 'firefox116', 'safari16.4'];
+
 /** Base path of the multi-file build; GitHub Pages serves the site under /LoanLogic/. */
 const DEFAULT_BASE = '/LoanLogic/';
 const NOTICES_FILE = 'THIRD-PARTY-NOTICES.txt';
@@ -37,7 +40,8 @@ export default defineConfig(({ mode }) => {
     build: {
       outDir: single ? 'dist-single' : 'dist',
       emptyOutDir: true,
-      target: 'es2022',
+      target: BROWSER_TARGETS,
+      cssTarget: BROWSER_TARGETS,
       // The polyfill would ship Vite runtime code for a feature every target browser has.
       modulePreload: { polyfill: false },
       reportCompressedSize: true,
