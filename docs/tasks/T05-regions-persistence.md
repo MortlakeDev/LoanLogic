@@ -1,8 +1,8 @@
 # T05 — Region profiles, presets, URL & local persistence
 
-- **Milestone:** M2 · **Status:** brief ready; starts after T03 is merged (can run in
-  parallel with T04)
-- **Depends on:** T03 · **Blocks:** T08, T11, T16, T17
+- **Milestone:** M2 · **Status:** ready; starts after T03a is merged (can run in parallel
+  with T04)
+- **Depends on:** T03 ✓, T03a · **Blocks:** T08, T11, T16, T17
 - **Branch:** `task/T05-regions-persistence`
 
 ## Goal
