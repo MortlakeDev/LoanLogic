@@ -5,7 +5,7 @@ import { describe, expect, it } from 'vitest';
 import { type LocalDate, parseIsoDate } from '../date';
 import { parseDecimal } from '../rational';
 import type { CashFlow, RateFailure, RateMetric } from '../types';
-import { regZSinglePayment } from './us-regz';
+import { regZSinglePayment, singlePaymentFlows } from './us-regz';
 
 function date(text: string): LocalDate {
   const parsed = parseIsoDate(text);
@@ -176,5 +176,72 @@ describe('regZSinglePayment (SPEC §9.3 a)', () => {
     expect(() => regZSinglePayment(flows('2026-01-15', '100', '2026-01-15', '-101'))).toThrow(
       RangeError,
     );
+  });
+});
+
+describe('singlePaymentFlows (SPEC v0.2.2 §9.3 a)', () => {
+  const at = (day: string, amount: string): CashFlow => ({
+    date: date(day),
+    amount: parseDecimal(amount),
+  });
+
+  it('sums the flows per date and keeps exactly two non-zero dates', () => {
+    const pair = singlePaymentFlows([
+      at('2026-01-01', '-10'),
+      at('2026-01-01', '310'),
+      at('2026-01-15', '-345'),
+    ]);
+    expect(pair?.map((flow) => [flow.date, flow.amount])).toEqual([
+      [date('2026-01-01'), parseDecimal('300')],
+      [date('2026-01-15'), parseDecimal('-345')],
+    ]);
+  });
+
+  it('drops dates whose flows sum to zero (zero interim payments, an offsetting fee)', () => {
+    expect(
+      singlePaymentFlows([
+        at('2026-01-01', '1000'),
+        at('2026-02-01', '0.00'),
+        at('2026-03-01', '25'),
+        at('2026-03-01', '-25'),
+        at('2026-04-01', '-1100'),
+      ])?.map((flow) => flow.date),
+    ).toEqual([date('2026-01-01'), date('2026-04-01')]);
+  });
+
+  it('returns null unless exactly two dates remain', () => {
+    expect(singlePaymentFlows([at('2026-01-01', '1000'), at('2026-01-01', '-1000')])).toBeNull();
+    expect(
+      singlePaymentFlows([
+        at('2026-01-01', '1000'),
+        at('2026-02-01', '-500'),
+        at('2026-03-01', '-520'),
+      ]),
+    ).toBeNull();
+    expect(singlePaymentFlows([])).toBeNull();
+  });
+});
+
+describe('regZSinglePayment: ranges (SPEC v0.2.2 §9.3 a, §10)', () => {
+  const failure = { ok: false, reason: 'IRR_NO_CONVERGENCE' };
+
+  it('fails when the unit-period rate is below −99 % or above 1e7', () => {
+    // 100 → 0.50 after a month: i = −99.5 %, outside [−0.99, 1e7].
+    expect(regZSinglePayment(flows('2026-01-15', '100', '2026-02-15', '-0.50'))).toEqual(failure);
+    // Exactly −99 % is inside: APR = −0.99 × 12 = −1 188 %.
+    expect(
+      metric(regZSinglePayment(flows('2026-01-15', '100', '2026-02-15', '-1'))).value,
+    ).toBeCloseTo(-1188, 9);
+    // i = 1e7 + 1 after a month is outside; 1e7 is the edge.
+    expect(regZSinglePayment(flows('2026-01-15', '1', '2026-02-15', '-10000002'))).toEqual(failure);
+  });
+
+  it('fails when the APR leaves ±10⁹ % although the unit-period rate is in range', () => {
+    // i = 1e6 over one day: APR = 1e6 × 365 = 3.65e8 = 3.65e10 % > 1e9 %.
+    expect(regZSinglePayment(flows('2026-01-15', '1', '2026-01-16', '-1000001'))).toEqual(failure);
+    // i = 2 000 over 3 days: APR = 2 000 × 365/3 ≈ 2.4e7 % — within range.
+    expect(
+      metric(regZSinglePayment(flows('2026-01-15', '1', '2026-01-18', '-2001'))).value,
+    ).toBeCloseTo((2000 * 365 * 100) / 3, 4);
   });
 });

@@ -5,7 +5,7 @@
  * Rate metrics (SPEC §9.2–§9.4, §9.6): computes the requested methods from borrower-view
  * cash flows and, for `nominal` and `effective`, the contract rate. Methods that share an
  * equation share one solve: the periodic IRR (`irrNominal`, `irrEffective`,
- * `cnAnnualized`, `usRegZApr` with more than two flows), the XIRR (`xirr`,
+ * `cnAnnualized`, `usRegZApr` unless the single-payment rule applies), the XIRR (`xirr`,
  * `uaRealAnnual`, `international`) and the APRC (`ukAprc`, `euAprc`).
  */
 
@@ -26,7 +26,7 @@ import { nominalMetric } from './nominal';
 import { periodicIrrMetric, solvePeriodicIrr } from './periodic-irr';
 import { annualRateMetric } from './solve';
 import type { ContractRate, RateOutcome, RateRequest } from './types';
-import { regZSinglePayment } from './us-regz';
+import { regZSinglePayment, singlePaymentFlows } from './us-regz';
 import { solveXirr } from './xirr';
 
 export { type ContractRate, type RateOutcome, type RateRequest } from './types';
@@ -90,10 +90,12 @@ function computeMethod(
     }
     case 'usRegZApr': {
       const m = requirePeriods(request, method);
-      // A single advance and a single payment: the term is the unit-period (§9.3 a).
-      return request.flows.length === 2
-        ? regZSinglePayment(request.flows)
-        : periodicIrrMetric(method, solves.periodic(), m);
+      // A single advance and a single payment — two dates once the flows are summed per
+      // date — use the term as the unit-period (§9.3 a).
+      const single = singlePaymentFlows(request.flows);
+      return single === null
+        ? periodicIrrMetric(method, solves.periodic(), m)
+        : regZSinglePayment(single);
     }
     case 'ukAprc':
     case 'euAprc':

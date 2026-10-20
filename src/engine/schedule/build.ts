@@ -165,13 +165,17 @@ function rateModel(terms: LoanTerms, principal: bigint): RateModel {
     instalmentRate: exact(div(rate, fromInteger(periodsPerYear(frequency)))),
     exactBasisRates:
       accrual.paymentBasis === 'exact' ? accruing.map(({ fraction }) => mul(rate, fraction)) : null,
-    // SPEC §9.6 lists i "in day-count mode with the exact basis", but r_k = j × YF_k differs
-    // from period to period; i is left out until the SPEC says what to show (open question).
+    // Day-count mode never shows i: the nominal basis implies j / m, and the exact basis has
+    // a rate per period, r_k = j × YF_k (its own formula id, SPEC §9.6).
     explainedRate: null,
   };
 }
 
-/** The `instalment.annuity` / `instalment.balloon` explanation (SPEC §9.6). */
+/**
+ * The `instalment.annuity` / `instalment.balloon` explanation (SPEC §9.6), or
+ * `instalment.annuity-exact-basis` for the day-count exact payment basis, which has no
+ * single periodic rate: `P`, `N`, `j`, `dayCount` (the method id), `Astar`, `A`.
+ */
 function levelExplain(
   terms: LoanTerms,
   principal: bigint,
@@ -180,6 +184,19 @@ function levelExplain(
   residual: bigint | null,
 ): Explain {
   const money = (value: bigint): string => formatMinor(value, terms.minorUnits);
+  if (rates.exactBasisRates !== null && terms.accrual.mode === 'daycount') {
+    return {
+      formulaId: 'instalment.annuity-exact-basis',
+      values: {
+        P: money(principal),
+        N: String(terms.payments),
+        j: toExplainString(terms.rate),
+        dayCount: terms.accrual.method,
+        Astar: instalment.exact,
+        A: money(instalment.amount),
+      },
+    };
+  }
   return {
     formulaId: residual === null ? 'instalment.annuity' : 'instalment.balloon',
     values: {
@@ -214,7 +231,9 @@ function repaymentPlan(
           : exactBasisInstalment(principal, rates.exactBasisRates, mu, policy);
       return {
         scheduledPrincipal: (_period, interest) => instalment.amount - interest,
-        forbidsNegativePrincipal: true,
+        // The exact basis is exempt (SPEC §5.1): its A* amortizes the actual-day interest,
+        // so a longer-than-average period may add its shortfall to the balance.
+        forbidsNegativePrincipal: rates.exactBasisRates === null,
         regularInstalment: instalment.amount,
         principalPerPeriod: null,
         balloon: noBalloon,

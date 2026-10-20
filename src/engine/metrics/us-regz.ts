@@ -10,6 +10,8 @@ import { type LocalDate, addMonths, compareDates, daysBetween, sameDate } from '
 import {
   type Rational,
   ONE,
+  add,
+  compare,
   div,
   fromInteger,
   mul,
@@ -22,11 +24,48 @@ import {
 } from '../rational';
 import { solveSingleRoot } from '../solvers';
 import type { CashFlow, RateFailure, RateMetric } from '../types';
-import { METHOD_PRECISION, NO_CONVERGENCE, buildMetric, numberToExplainString } from './display';
+import {
+  METHOD_PRECISION,
+  NO_CONVERGENCE,
+  buildMetric,
+  numberToExplainString,
+  withinResultRange,
+} from './display';
 
 const MONTHS_PER_YEAR = 12;
 const DAYS_PER_YEAR = 365n;
 const HUNDRED = fromInteger(100);
+/** The solver range of SPEC §10, which the unit-period rate must lie in (§9.3 a). */
+const UNIT_RATE_MIN = rational(-99n, 100n);
+const UNIT_RATE_MAX = fromInteger(10_000_000);
+
+/**
+ * The flows the single-payment rule looks at (SPEC §9.3 a, §9.7): the rate cash flows
+ * summed per date, with zero sums dropped. The rule applies exactly when two dates
+ * remain — N = 1, an early close at the first payment, interim flows that are all zero,
+ * or a fee on the date of the advance.
+ *
+ * @param flows Flows in non-decreasing date order (borrower view, exact amounts).
+ * @returns The two dated sums, or `null` when not exactly two dates remain.
+ */
+export function singlePaymentFlows(
+  flows: readonly CashFlow[],
+): readonly [CashFlow, CashFlow] | null {
+  const sums: CashFlow[] = [];
+  for (const flow of flows) {
+    const last = sums.at(-1);
+    if (last !== undefined && sameDate(last.date, flow.date)) {
+      sums[sums.length - 1] = { date: last.date, amount: add(last.amount, flow.amount) };
+    } else {
+      sums.push({ date: flow.date, amount: flow.amount });
+    }
+  }
+  const nonZero = sums.filter((sum) => sign(sum.amount) !== 0);
+  const [advance, payment] = nonZero;
+  return nonZero.length === 2 && advance !== undefined && payment !== undefined
+    ? [advance, payment]
+    : null;
+}
 
 /**
  * The `M` in `from..to` with `addMonths(end, −(offset + M)) = start`, or `null`. Months
@@ -58,8 +97,9 @@ function fullYearsBack(start: LocalDate, end: LocalDate): number {
 }
 
 /**
- * `usRegZApr` for exactly two flows, a single advance and a single payment (SPEC §9.3 a).
- * With `A_f` the first flow, `P` the negated second flow and `i = P / A_f − 1`:
+ * `usRegZApr` of a single advance and a single payment (SPEC §9.3 a): the two dated sums
+ * of `singlePaymentFlows`. With `A_f` the earlier sum, `P` the later one negated and
+ * `i = P / A_f − 1`:
  *
  * - term shorter than a year and `addMonths(T, −M) = D0` for some `M` in 1…11:
  *   `APR = i × 12 / M`;
@@ -69,16 +109,20 @@ function fullYearsBack(start: LocalDate, end: LocalDate): number {
  *   `addMonths(T, −(12t + M)) = D0` for some `M` in 0…11, else `f = days(D0, L) / 365`
  *   with `L = addMonths(T, −12t)`; `APR = i` solving `A_f (1 + f·i)(1 + i)^t = P`.
  *
- * Short terms are exact (one conversion to a double); the year-or-more equation is
- * solved in doubles to the bracket width of SPEC §10. Explanation
+ * The two sums must have opposite signs, the unit-period rate (`i` under a year, the
+ * solved yearly `i` otherwise) must lie in `[−0.99, 1e7]` and the APR within ±10⁹ %
+ * (SPEC §10); otherwise the metric fails. Short terms are exact (one conversion to a
+ * double); the year-or-more equation is solved in doubles to the bracket width of §10. Explanation
  * `rate.regz-single-payment` with `Af`, `P`, `days`, `months`, `unitPeriodsPerYear`, `i`
  * and, for a year or more, `t` and `f`. `days` and `months` describe the part that is
  * not whole years: the term (short terms) or the remainder from `D0` to `L`; `months` is
  * "0" when that part is not a whole number of months.
  *
- * @param flows Exactly two flows: the advance at `D0` and the payment at `T > D0`.
+ * @param flows The two dated sums of `singlePaymentFlows`: the advance at `D0` and the
+ *   payment at `T > D0`.
  * @returns The APR in percent (3 decimals), or `IRR_NO_CONVERGENCE` when the two
- *   amounts do not have opposite signs or the equation has no root in `[−0.99, 1e7]`.
+ *   amounts do not have opposite signs, the unit-period rate lies outside
+ *   `[−0.99, 1e7]` or the APR outside ±10⁹ %.
  * @throws RangeError unless there are exactly two flows with the second one later.
  */
 export function regZSinglePayment(flows: readonly CashFlow[]): RateMetric | RateFailure {
@@ -102,12 +146,19 @@ export function regZSinglePayment(flows: readonly CashFlow[]): RateMetric | Rate
   const years = fullYearsBack(advance.date, payment.date);
 
   if (years === 0) {
+    if (compare(growth, UNIT_RATE_MIN) < 0 || compare(growth, UNIT_RATE_MAX) > 0) {
+      return NO_CONVERGENCE;
+    }
     const months = wholeMonthsBack(advance.date, payment.date, 0, 1, MONTHS_PER_YEAR - 1);
     const unitsPerYear =
       months === null
         ? rational(DAYS_PER_YEAR, BigInt(days))
         : rational(BigInt(MONTHS_PER_YEAR), BigInt(months));
-    return buildMetric(toNumber(mul(mul(growth, unitsPerYear), HUNDRED)), precision, {
+    const apr = toNumber(mul(mul(growth, unitsPerYear), HUNDRED));
+    if (!withinResultRange(apr)) {
+      return NO_CONVERGENCE;
+    }
+    return buildMetric(apr, precision, {
       formulaId: 'rate.regz-single-payment',
       values: {
         ...amounts,

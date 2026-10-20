@@ -72,16 +72,17 @@ describe('periodicIrrMetric (SPEC §9.2, §9.3)', () => {
     });
   });
 
-  it('fails with the solve, and when (1 + r)^m exceeds the range of doubles', () => {
+  it('fails with the solve, and outside the result range of ±10⁹ % (SPEC §10)', () => {
     const failure = { ok: false, reason: 'IRR_NO_CONVERGENCE' };
+    const solved = (root: number) => ({ ok: true as const, root, multiple: false });
     expect(periodicIrrMetric('irrNominal', { ok: false }, 12)).toEqual(failure);
-    expect(periodicIrrMetric('irrEffective', { ok: true, root: 1e7, multiple: false }, 52)).toEqual(
-      failure,
-    );
-    expect(
-      periodicIrrMetric('irrNominal', { ok: true, root: 1e7, multiple: false }, 52),
-    ).toMatchObject({
-      value: 5.2e10,
-    });
+    // (1 + r)^m beyond the range of doubles, and r × m beyond 1e7.
+    expect(periodicIrrMetric('irrEffective', solved(1e7), 52)).toEqual(failure);
+    expect(periodicIrrMetric('irrNominal', solved(1e7), 52)).toEqual(failure);
+    expect(periodicIrrMetric('cnAnnualized', solved(2e6), 12)).toEqual(failure);
+    // Exactly at the bound is still a value: r × m = 1e7 = 10⁹ %.
+    expect(periodicIrrMetric('usRegZApr', solved(1e7 / 4), 4)).toMatchObject({ value: 1e9 });
+    // irrEffective near −100 % is within range: (1 − 0.99)^12 − 1 ≈ −100 %.
+    expect(periodicIrrMetric('irrEffective', solved(-0.99), 12)).toMatchObject({ precision: 2 });
   });
 });

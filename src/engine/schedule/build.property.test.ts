@@ -198,8 +198,10 @@ function expectDefinedError(terms: LoanTerms, error: EngineError): void {
   }
   // Phase 3: only an annuity or balloon instalment can fall short of the interest, in a
   // period before the last; an annuity never does without a positive rate (I_k ≤ 0 ≤ A).
+  // The exact payment basis is exempt (SPEC v0.2.2 §5.1).
   expect(error).toMatchObject({ code: 'NEG_AMORTIZATION', field: null });
   expect(['annuity', 'balloon']).toContain(terms.repayment);
+  expect(terms.accrual.mode === 'daycount' && terms.accrual.paymentBasis === 'exact').toBe(false);
   const period = Number(error.params?.period);
   expect(period).toBeGreaterThanOrEqual(1);
   expect(period).toBeLessThan(terms.payments);
@@ -245,14 +247,19 @@ describe('buildSchedule properties', () => {
         switch (terms.repayment) {
           case 'annuity':
           case 'balloon': {
-            // Every period but the last pays exactly A of interest + principal, and no
-            // principal is negative (that would be NEG_AMORTIZATION).
+            // Every period but the last pays exactly A of interest + principal. No principal
+            // is negative (that would be NEG_AMORTIZATION), except with the exact payment
+            // basis, which adds a long period's shortfall to the balance (SPEC §5.1).
             const instalment = schedule.regularInstalment;
             expect(instalment).not.toBeNull();
             for (const row of regular) {
               expect(row.interest + row.principal).toBe(instalment);
             }
-            expect(schedule.rows.every((row) => row.principal >= 0n)).toBe(true);
+            const exactBasis =
+              terms.accrual.mode === 'daycount' && terms.accrual.paymentBasis === 'exact';
+            if (!exactBasis) {
+              expect(schedule.rows.every((row) => row.principal >= 0n)).toBe(true);
+            }
             expect(schedule.principalPerPeriod).toBeNull();
             if (terms.repayment === 'balloon' && last !== undefined && instalment !== null) {
               expect(schedule.balloon).toBe(

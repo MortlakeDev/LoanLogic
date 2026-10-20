@@ -10,7 +10,13 @@
 import { fromInteger } from '../rational';
 import type { SolveResult } from '../solvers';
 import type { CashFlow, RateFailure, RateMetric } from '../types';
-import { METHOD_PRECISION, NO_CONVERGENCE, buildMetric, numberToExplainString } from './display';
+import {
+  METHOD_PRECISION,
+  NO_CONVERGENCE,
+  buildMetric,
+  numberToExplainString,
+  withinResultRange,
+} from './display';
 import { type TimedFlow, solveTimedFlows } from './solve';
 
 /** The metrics built from the periodic IRR. */
@@ -43,7 +49,8 @@ export function solvePeriodicIrr(flows: readonly CashFlow[]): SolveResult {
 /**
  * One metric of the periodic IRR (SPEC §9.2, §9.3): `r·m` for `irrNominal`,
  * `cnAnnualized` and `usRegZApr`, `(1 + r)^m − 1` for `irrEffective`; in percent.
- * Explanation `rate.periodic-irr` with `r` and `m`. A failed solve fails the metric.
+ * Explanation `rate.periodic-irr` with `r` and `m`. A failed solve fails the metric, and
+ * so does a value outside ±10⁹ % (SPEC §10 "Range of results").
  *
  * @param method Which metric.
  * @param result The periodic solve.
@@ -60,6 +67,10 @@ export function periodicIrrMetric(
   const r = result.root;
   // expm1/log1p keep the digits of a small r; (1 + r)^m − 1 would cancel them.
   const value = method === 'irrEffective' ? Math.expm1(m * Math.log1p(r)) * 100 : r * m * 100;
+  // A value computed from a solved rate fails outside ±10⁹ % (SPEC §10).
+  if (!withinResultRange(value)) {
+    return NO_CONVERGENCE;
+  }
   return buildMetric(
     value,
     METHOD_PRECISION[method],

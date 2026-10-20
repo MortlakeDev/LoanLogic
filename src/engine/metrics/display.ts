@@ -76,6 +76,17 @@ export function numberToExplainString(value: number): string {
   return new EngineDecimal(value === 0 ? 0 : value).toFixed();
 }
 
+/**
+ * Largest magnitude of a metric computed from a solved rate, in percent: ±1e7 as a
+ * fraction, ±10⁹ % (SPEC §10 "Range of results").
+ */
+export const RESULT_LIMIT_PERCENT = 1e9;
+
+/** Whether a metric value in percent lies within the result range of SPEC §10. */
+export function withinResultRange(valuePercent: number): boolean {
+  return Number.isFinite(valuePercent) && Math.abs(valuePercent) <= RESULT_LIMIT_PERCENT;
+}
+
 /** The failure of a metric that has no root or did not converge (SPEC §10). */
 export const NO_CONVERGENCE: RateFailure = Object.freeze({
   ok: false,

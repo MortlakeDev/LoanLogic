@@ -226,10 +226,14 @@ describe('computeCashFlowRates', () => {
       [flow(0, '0'), flow(1100, '1000'), flow(1101, '-1100')],
     ]) {
       const rates = computeCashFlowRates({ frequency: 'weekly', hasPeriods: true, flows });
-      for (const method of ['irrNominal', 'usRegZApr', 'cnAnnualized'] as const) {
+      for (const method of ['irrNominal', 'cnAnnualized'] as const) {
         const rate = rates[method];
         expect(rate !== undefined && !isFailure(rate) && rate.value).toBeCloseTo(520, 8);
       }
+      // Summed per date with the zero sum dropped, two dates remain: the US APR uses the
+      // single-payment rule, 10 % × 365/7 (SPEC v0.2.2 §9.3 a).
+      const apr = rates.usRegZApr;
+      expect(apr !== undefined && !isFailure(apr) && apr.value).toBeCloseTo((10 * 365) / 7, 8);
       const effective = rates.irrEffective;
       expect(effective !== undefined && !isFailure(effective) && effective.value / 100).toBeCloseTo(
         1.1 ** 52 - 1,

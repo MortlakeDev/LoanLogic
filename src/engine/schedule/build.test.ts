@@ -332,12 +332,18 @@ describe('buildSchedule: day-count mode (SPEC §3.3, §5.2)', () => {
     // Vector daycount-act365f-exact-basis.
     expect(s.regularInstalment).toBe(217_023n);
     expect(s.rows[119]?.payment).toBe(217_058n);
-    expect(s.explain.formulaId).toBe('instalment.annuity');
-    expect(s.explain.values).toMatchObject({ P: '200000.00', N: '120', j: '0.0549', A: '2170.23' });
+    // The exact basis has a rate per period, r_k = j × YF_k, so its explanation names the
+    // day count instead of m and i (SPEC v0.2.2 §9.6).
+    expect(s.explain.formulaId).toBe('instalment.annuity-exact-basis');
+    expect(s.explain.values).toMatchObject({
+      P: '200000.00',
+      N: '120',
+      j: '0.0549',
+      dayCount: 'act-365f',
+      A: '2170.23',
+    });
     expect(s.explain.values.Astar?.startsWith('2170.2')).toBe(true);
-    // No single periodic rate exists with r_k = j × YF_k; i is omitted until the SPEC says
-    // what §9.6 shows for the exact basis (open question in the T02 PR).
-    expect(s.explain.values).not.toHaveProperty('i');
+    expect(Object.keys(s.explain.values).sort()).toEqual(['A', 'Astar', 'N', 'P', 'dayCount', 'j']);
   });
 
   it('applies the 30/360 US February rules on an end-of-month schedule', () => {

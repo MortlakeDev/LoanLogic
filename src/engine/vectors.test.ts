@@ -194,7 +194,7 @@ function checkLoan(vector: Vector, result: LoanResult): void {
 
 describe('golden vectors (tests/vectors/core)', () => {
   it('finds the vector files', () => {
-    expect(VECTORS.length).toBeGreaterThanOrEqual(89);
+    expect(VECTORS.length).toBeGreaterThanOrEqual(106);
     expect(new Set(VECTORS.map((vector) => vector.id)).size).toBe(VECTORS.length);
     expect(VECTORS.every((vector) => vector.schemaVersion === 1)).toBe(true);
   });
