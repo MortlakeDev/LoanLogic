@@ -7,9 +7,11 @@
  *
  * - Phase 1 checks every field on its own and reports all failures together, at most one
  *   per field: the first that applies of type (missing, wrong type, unknown id, malformed
- *   string) → range → whole minor units.
+ *   string) → range → whole minor units or the decimals of a percentage (multiples of
+ *   10^−10).
  * - Phase 2 runs only when phase 1 found nothing and checks the combinations (the term's
- *   `N`, the last schedule date, the balloon, the equal-principal remainder).
+ *   `N`, the last schedule date, the balloon, the equal-principal remainder, and the
+ *   upfront fees paid at closing against the amount).
  * - Phase 3 (`NEG_AMORTIZATION`) belongs to the schedule builder.
  *
  * Properties that the chosen options do not use are ignored and never validated:
@@ -744,9 +746,12 @@ function checkCombinations(fields: LoanFields): LoanValidation {
  * - Not a plain object (null, an array, a primitive) → `[{ INPUT_INVALID, field: null }]`.
  * - Phase 1 errors are all reported together, at most one per field, with exact field
  *   paths (`amount`, `term.payments`, `accrual.mode`, `fees[1].id`, `rateMethods[1]`).
+ *   Percentages that are not multiples of 10^−10 give `TOO_MANY_DECIMALS`; a fixed fee
+ *   above 1e15 or a percentage fee above 100 gives `FEE_RANGE` on `fees[i].value`.
  * - Phase 2 runs only after a clean phase 1: `TERM_TOO_SHORT` / `TERM_RANGE` on `term`,
  *   `DATE_INVALID` on `disbursementDate` (schedule past 9999-12-31), `UNSUPPORTED` on
- *   `accrual.paymentBasis`, `BALLOON_RANGE` on `balloon.value`,
+ *   `accrual.paymentBasis`, `FEE_RANGE` on `fees` (upfront fees paid at closing of at
+ *   least the amount, SPEC §6.1), `BALLOON_RANGE` on `balloon.value`,
  *   `AMOUNT_TOO_SMALL_FOR_TERM` on `amount`.
  *
  * On success `terms` holds money in minor units (`bigint`), `annualRatePct` as entered,
