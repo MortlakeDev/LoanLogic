@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 1,
+  "id": "error-cashflows-period-on-some-flows",
+  "description": "Only the last flow has a period. flows[0] has none, so the flow that disagrees is the error; the missing frequency is not reported, because not every flow has a period.",
+  "source": "SPEC-finance §13",
+  "kind": "cashflows",
+  "input": {
+    "flows": [
+      {"date": "2026-01-15", "amount": "1000.00"},
+      {"date": "2026-02-15", "amount": "-510.00"},
+      {"period": 2, "date": "2026-03-15", "amount": "-510.00"}
+    ]
+  },
+  "expected": {
+    "ok": false,
+    "errors": [
+      {
+        "code": "INPUT_INVALID",
+        "field": "flows[2].period"
+      }
+    ]
+  }
+}

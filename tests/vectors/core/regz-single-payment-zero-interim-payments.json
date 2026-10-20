@@ -1,0 +1,122 @@
+{
+  "schemaVersion": 1,
+  "id": "regz-single-payment-zero-interim-payments",
+  "description": "0 % interest-only loan of 1 000.00 USD with a 30.00 fee paid at closing, repaid in one sum after 6 months: the five interim payments are 0.00, so Reg Z sees a single advance and a single payment: APR = (1 000/970 - 1) x 12/6 = 6.186 % (the monthly IRR x 12 would be 6.107 %).",
+  "source": "Regulation Z, Appendix J (b)(4)(ii), (b)(5)(vi); SPEC-finance §9.3 a",
+  "kind": "loan",
+  "input": {
+    "currency": "USD",
+    "amount": "1000.00",
+    "annualRatePct": "0",
+    "repayment": "bullet",
+    "frequency": "monthly",
+    "term": {
+      "payments": 6
+    },
+    "disbursementDate": "2026-01-15",
+    "fees": [
+      {
+        "id": "origination",
+        "kind": "upfront",
+        "calc": "fixed",
+        "value": "30.00",
+        "financing": "paid",
+        "inApr": true
+      }
+    ]
+  },
+  "expected": {
+    "ok": true,
+    "warnings": [],
+    "summary": {
+      "amount": "1000.00",
+      "principalFinanced": "1000.00",
+      "netProceeds": "970.00",
+      "upfrontFeesPaid": "30.00",
+      "upfrontFeesFinanced": "0.00",
+      "amountFinancedForRates": "970.00",
+      "regularInstalment": null,
+      "principalPerPeriod": null,
+      "firstPayment": "0.00",
+      "lastPayment": "1000.00",
+      "maxPayment": "1000.00",
+      "paymentsCount": 6,
+      "firstPaymentDate": "2026-02-15",
+      "payoffDate": "2026-07-15",
+      "totalPayments": "1000.00",
+      "totalPaid": "1030.00",
+      "totalInterest": "0.00",
+      "totalPrincipal": "1000.00",
+      "totalFees": "30.00",
+      "totalInsurance": "0.00",
+      "totalPenalties": "0.00",
+      "costOfCredit": "30.00",
+      "balloon": null
+    },
+    "rates": {
+      "nominal": {
+        "value": "0.000000000000",
+        "display": "0.00",
+        "precision": 2
+      },
+      "effective": {
+        "value": "0.000000000000",
+        "display": "0.00",
+        "precision": 2
+      },
+      "irrNominal": {
+        "value": "6.107330417874",
+        "display": "6.11",
+        "precision": 2
+      },
+      "irrEffective": {
+        "value": "6.281220108407",
+        "display": "6.28",
+        "precision": 2
+      },
+      "xirr": {
+        "value": "6.334889595113",
+        "display": "6.33",
+        "precision": 2
+      },
+      "usRegZApr": {
+        "value": "6.185567010309",
+        "display": "6.186",
+        "precision": 3
+      },
+      "ukAprc": {
+        "value": "6.281220108407",
+        "display": "6.3",
+        "precision": 1
+      },
+      "euAprc": {
+        "value": "6.281220108407",
+        "display": "6.3",
+        "precision": 1
+      },
+      "cnAnnualized": {
+        "value": "6.107330417874",
+        "display": "6.11",
+        "precision": 2
+      },
+      "uaRealAnnual": {
+        "value": "6.334889595113",
+        "display": "6.33",
+        "precision": 2
+      },
+      "international": {
+        "value": "6.334889595113",
+        "display": "6.33",
+        "precision": 2
+      }
+    },
+    "rows": [
+      {"index": 1, "date": "2026-02-15", "days": 31, "opening": "1000.00", "interestAccrued": "0.00", "interestPaid": "0.00", "principal": "0.00", "fees": "0.00", "insurance": "0.00", "payment": "0.00", "closing": "1000.00", "cumulativeInterest": "0.00", "cumulativePrincipal": "0.00"},
+      {"index": 2, "date": "2026-03-15", "days": 28, "opening": "1000.00", "interestAccrued": "0.00", "interestPaid": "0.00", "principal": "0.00", "fees": "0.00", "insurance": "0.00", "payment": "0.00", "closing": "1000.00", "cumulativeInterest": "0.00", "cumulativePrincipal": "0.00"},
+      {"index": 3, "date": "2026-04-15", "days": 31, "opening": "1000.00", "interestAccrued": "0.00", "interestPaid": "0.00", "principal": "0.00", "fees": "0.00", "insurance": "0.00", "payment": "0.00", "closing": "1000.00", "cumulativeInterest": "0.00", "cumulativePrincipal": "0.00"},
+      {"index": 4, "date": "2026-05-15", "days": 30, "opening": "1000.00", "interestAccrued": "0.00", "interestPaid": "0.00", "principal": "0.00", "fees": "0.00", "insurance": "0.00", "payment": "0.00", "closing": "1000.00", "cumulativeInterest": "0.00", "cumulativePrincipal": "0.00"},
+      {"index": 5, "date": "2026-06-15", "days": 31, "opening": "1000.00", "interestAccrued": "0.00", "interestPaid": "0.00", "principal": "0.00", "fees": "0.00", "insurance": "0.00", "payment": "0.00", "closing": "1000.00", "cumulativeInterest": "0.00", "cumulativePrincipal": "0.00"},
+      {"index": 6, "date": "2026-07-15", "days": 30, "opening": "1000.00", "interestAccrued": "0.00", "interestPaid": "0.00", "principal": "1000.00", "fees": "0.00", "insurance": "0.00", "payment": "1000.00", "closing": "0.00", "cumulativeInterest": "0.00", "cumulativePrincipal": "1000.00"}
+    ]
+  }
+}

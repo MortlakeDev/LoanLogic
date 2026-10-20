@@ -1,0 +1,55 @@
+{
+  "schemaVersion": 1,
+  "id": "cashflows-nominal-rate-out-of-range",
+  "description": "1.00 received and 200 000.00 repaid a week later: the weekly rate 19 999 900 % is inside the solver range, but irrNominal (x 52) and the Reg Z APR (x 365/7) exceed 10^9 %, so every metric fails with IRR_NO_CONVERGENCE.",
+  "source": "SPEC-finance §10",
+  "kind": "cashflows",
+  "input": {
+    "frequency": "weekly",
+    "flows": [
+      {"period": 0, "date": "2026-01-15", "amount": "1.00"},
+      {"period": 1, "date": "2026-01-22", "amount": "-200000.00"}
+    ]
+  },
+  "expected": {
+    "ok": true,
+    "rates": {
+      "irrNominal": {
+        "ok": false,
+        "reason": "IRR_NO_CONVERGENCE"
+      },
+      "irrEffective": {
+        "ok": false,
+        "reason": "IRR_NO_CONVERGENCE"
+      },
+      "xirr": {
+        "ok": false,
+        "reason": "IRR_NO_CONVERGENCE"
+      },
+      "usRegZApr": {
+        "ok": false,
+        "reason": "IRR_NO_CONVERGENCE"
+      },
+      "ukAprc": {
+        "ok": false,
+        "reason": "IRR_NO_CONVERGENCE"
+      },
+      "euAprc": {
+        "ok": false,
+        "reason": "IRR_NO_CONVERGENCE"
+      },
+      "cnAnnualized": {
+        "ok": false,
+        "reason": "IRR_NO_CONVERGENCE"
+      },
+      "uaRealAnnual": {
+        "ok": false,
+        "reason": "IRR_NO_CONVERGENCE"
+      },
+      "international": {
+        "ok": false,
+        "reason": "IRR_NO_CONVERGENCE"
+      }
+    }
+  }
+}

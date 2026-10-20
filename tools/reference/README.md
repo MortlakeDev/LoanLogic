@@ -6,9 +6,11 @@ and maintained by the architect (deliverable **R1**, see [`docs/PLAN.md`](../../
 §7) and is deliberately separate from `src/engine`: the engine is checked against an
 implementation it shares no code, language or numeric library with.
 
-Status: **R1 delivered** — SPEC v0.2 §1–§6, §8–§10, §13–§15 (the M1 scope of T02),
+Status: **R1 delivered** — SPEC v0.2.2 §1–§6, §8–§10, §13–§15 (the M1 scope of T02),
 revised after three independent reviews that recomputed the vectors with their own
-code.
+code, and after the questions raised while implementing T02. It produces what the
+vectors compare (§14): not the `explain` payloads, the `params` of errors and warnings,
+or the row fields `annualRate` and `events`.
 
 ## Why it can be trusted
 

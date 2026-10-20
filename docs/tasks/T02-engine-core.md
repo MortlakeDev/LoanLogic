@@ -1,12 +1,12 @@
 # T02 — Engine core: money, dates, day-count, schedules, fees, rate metrics
 
-- **Milestone:** M1 · **Status:** ready (R1 delivered: reference implementation + 89 core vectors)
+- **Milestone:** M1 · **Status:** ready (R1 delivered: reference implementation + core vectors)
 - **Depends on:** T01, R1 · **Blocks:** T03 and all later engine work
 - **Branch:** `task/T02-engine-core`
 
 ## Goal
 
-Implement `docs/SPEC-finance.md` **v0.2** §0–§6, §8, §9 (generic metrics, regional
+Implement `docs/SPEC-finance.md` **v0.2.2** §0–§6, §8, §9 (generic metrics, regional
 methods a–f, result shape, explicit cash flows), §10, §13 and the input contract of §15
 as a pure, fully tested TypeScript library in `src/engine`. It must reproduce every
 golden vector in `tests/vectors/core` within the rules of §14.
@@ -38,7 +38,7 @@ the engine to match a vector without understanding the rule.
 | `schedule/annuity.ts`, `equal-principal.ts`, `bullet.ts`, `balloon.ts` | §5 (periodic and day-count modes, payment basis, early close, negative amortization) |
 | `fees.ts` | upfront (paid / financed), periodic, insurance, `inApr` (§6) |
 | `ledger.ts` | row and summary types, summary builder (§8.2), invariant checker I1–I9 (§8.3) |
-| `solvers.ts` | sign-change rules, bracket expansion, grid enumeration of several roots, Brent refinement with the bracket-width stop, scaled evaluation for negative rates (§10) |
+| `solvers.ts` | sign-change rules, bracket expansion, grid enumeration of several roots, Brent refinement with the bracket-width stop, scaled evaluation (§10) |
 | `metrics/*.ts` | `nominal`, `effective`, `irrNominal`, `irrEffective`, `xirr`, `usRegZApr` (incl. the single-payment rule), `ukAprc`, `euAprc` (whole periods and backward counting), `cnAnnualized`, `uaRealAnnual`, `international` (§9.2–§9.3) |
 | `cashflows.ts` | `computeRateMetrics` for explicit cash flows (§9.7) |
 | `validate.ts` | runtime validation in three phases → structured errors with exact field paths, warnings (§13) |
@@ -63,7 +63,7 @@ function computeRateMetrics(input: unknown):   // validated as CashFlowInput (§
   §8.1–§8.2; all money as decimal strings at minor units ("0.00", never "-0.00").
 - `RateMetric` per §9.6: `value` (percent, number), `display` (string), `precision`,
   `warnings?` (plain codes), `explain`; `RateFailure = { ok: false; reason }`.
-  `EngineWarning = { code, params? }`, `EngineError = { code, field, params? }`.
+  `EngineWarning = { code, params }` (params of §13), `EngineError = { code, field, params? }`.
 - Validate at runtime as if the input were untrusted, in the phases of §13: vectors
   contain malformed values (`"1,000.00"`, unknown ids, wrong types, nested paths such as
   `fees[1].id` and `rateMethods[1]`) that must produce exactly the listed errors.
@@ -90,14 +90,48 @@ function computeRateMetrics(input: unknown):   // validated as CashFlowInput (§
 - Single-payment loans use the Reg Z term unit-period (`payday-biweekly-single-payment`:
   391.071 %, not 390.000 %); the APRC of irregular dates counts back from each date
   (`cashflows-irregular-aprc-backward-counting`).
+- Months counted back from a date follow §2.1: clamp the day, start from the later date
+  for every count, no end-of-month rule (`regz-single-payment-month-end-*`,
+  `cashflows-aprc-month-end-clamp`).
 - Values are compared within `max(1e−7, 1e−9 × |v|)` pp (§14); IEEE doubles suffice.
+
+## SPEC v0.2.2 — answers to the PR questions
+
+The SPEC questions of the PR are answered in v0.2.2 (§17 lists the changes). What the
+engine has to change:
+
+1. **Single payment** (§9.3 a, §9.7): the rule applies when the rate cash flows summed
+   per date leave exactly two dates — explicit flows and loans alike (a same-date fee,
+   zero interim flows, an early close at the first payment). The unit-period rate —
+   `i = P / A_f − 1` under a year, the yearly `i` solved otherwise — must lie in
+   `[−0.99, 1e7]`, else `IRR_NO_CONVERGENCE`.
+2. **Range of results** (§10): a metric computed from a solved rate (`x × m`,
+   `(1 + x)^m − 1`, the single-payment APR) whose value lies outside ±10⁹ % fails with
+   `IRR_NO_CONVERGENCE`.
+3. **Validation** (§13): percentages (`annualRatePct`, percentage fees, a percentage
+   balloon) that are not multiples of 10^−10 → `TOO_MANY_DECIMALS`; a fixed fee above
+   1e15 or a percentage fee above 100 → `FEE_RANGE`, with the fee's `calc` as given (as
+   the minor-units check already does); upfront fees paid at closing of at least
+   `amount` → `FEE_RANGE` on `fees` (phase 2).
+4. **Exact payment basis** (§5.1): no `NEG_AMORTIZATION`; such rows have a negative
+   principal. Its explanation uses `instalment.annuity-exact-basis` (§9.6).
+5. Confirmed as implemented, no change: `params` as strings (§13), the cash-flow period
+   rule (`flows[0]` decides), the scaling of §10, early close at k = 1 for equal principal
+   with `q = 0`, and the other interpretations listed in the PR.
+
+14 new vectors cover these rules (`tests/vectors/core/README.md` lists them all). Eight
+fail on the engine of PR #4 before these changes: `cashflows-regz-single-payment-same-date-fee`,
+`regz-single-payment-zero-interim-payments`, `cashflows-single-payment-out-of-range`,
+`cashflows-nominal-rate-out-of-range`, `cashflows-annualized-rate-out-of-range`,
+`error-fee-and-rate-bounds`, `error-upfront-fees-exceed-amount` and
+`daycount-exact-basis-negative-principal`.
 
 ## Tests
 
 - **Golden vectors:** a harness (e.g. `src/engine/vectors.test.ts`) loads every
   `tests/vectors/core/*.json`, runs `calculateLoan` (`kind: "loan"`) or
   `computeRateMetrics` (`kind: "cashflows"`) and compares per SPEC §14 — one test per
-  vector, named by its id. All 89 must pass.
+  vector, named by its id. All of them must pass.
 - **Unit tests** for every module, including: rate 0; negative rate; N = 1; amount 1e15;
   JPY (0 decimals), KWD (3) and CLF (4); every ISO 4217 code of §1.2's required list;
   leap years; end-of-month anchors (Jan 31 → Feb 29 → Mar 31 → Apr 30, Feb 28 with and
@@ -123,7 +157,7 @@ function computeRateMetrics(input: unknown):   // validated as CashFlowInput (§
 
 ## Acceptance criteria
 
-- [ ] All 89 core vectors pass; all tests pass; coverage ≥ 95 % lines and branches in
+- [ ] All core vectors pass; all tests pass; coverage ≥ 95 % lines and branches in
       `src/engine`.
 - [ ] The engine imports nothing but decimal.js; no `number` money in the ledger; no
       `Date` arithmetic; no `Intl`.

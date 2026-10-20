@@ -1,0 +1,65 @@
+{
+  "schemaVersion": 1,
+  "id": "cashflows-regz-single-payment-same-date-fee",
+  "description": "An advance of 1 000.00 and a 50.00 fee on the same date, then one payment of 1 100.00 after 14 days (biweekly periods 0, 0, 1). Summed per date this is a single advance of 950.00 and a single payment, so the Reg Z APR uses the term as the unit-period: (1 100/950 - 1) x 365/14 = 411.654 % (r x 26 would be 410.526 %).",
+  "source": "Regulation Z, Appendix J (b)(4)(ii), (b)(5)(vii); SPEC-finance §9.3 a, §9.7",
+  "kind": "cashflows",
+  "input": {
+    "frequency": "biweekly",
+    "flows": [
+      {"period": 0, "date": "2026-03-02", "amount": "1000.00"},
+      {"period": 0, "date": "2026-03-02", "amount": "-50.00"},
+      {"period": 1, "date": "2026-03-16", "amount": "-1100.00"}
+    ]
+  },
+  "expected": {
+    "ok": true,
+    "rates": {
+      "irrNominal": {
+        "value": "410.526315789474",
+        "display": "410.53",
+        "precision": 2
+      },
+      "irrEffective": {
+        "value": "4422.682250053828",
+        "display": "4422.68",
+        "precision": 2
+      },
+      "xirr": {
+        "value": "4470.291153996121",
+        "display": "4470.29",
+        "precision": 2
+      },
+      "usRegZApr": {
+        "value": "411.654135338346",
+        "display": "411.654",
+        "precision": 3
+      },
+      "ukAprc": {
+        "value": "4422.682250053828",
+        "display": "4422.7",
+        "precision": 1
+      },
+      "euAprc": {
+        "value": "4422.682250053828",
+        "display": "4422.7",
+        "precision": 1
+      },
+      "cnAnnualized": {
+        "value": "410.526315789474",
+        "display": "410.53",
+        "precision": 2
+      },
+      "uaRealAnnual": {
+        "value": "4470.291153996121",
+        "display": "4470.29",
+        "precision": 2
+      },
+      "international": {
+        "value": "4470.291153996121",
+        "display": "4470.29",
+        "precision": 2
+      }
+    }
+  }
+}

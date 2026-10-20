@@ -1,0 +1,71 @@
+{
+  "schemaVersion": 1,
+  "id": "error-fee-and-rate-bounds",
+  "description": "Bounds of fees and percentages, all reported together: a rate with 11 decimals, a fixed fee above 10^15, a percentage fee above 100 %, a percentage fee with 11 decimals and a balloon percentage with 11 decimals.",
+  "source": "SPEC-finance §13",
+  "kind": "loan",
+  "input": {
+    "currency": "USD",
+    "amount": "10000.00",
+    "annualRatePct": "7.12345678912",
+    "repayment": "balloon",
+    "balloon": {
+      "kind": "percent",
+      "value": "30.00000000001"
+    },
+    "frequency": "monthly",
+    "term": {
+      "payments": 12
+    },
+    "disbursementDate": "2026-01-15",
+    "fees": [
+      {
+        "id": "arrangement",
+        "kind": "upfront",
+        "calc": "fixed",
+        "value": "1000000000000000.01",
+        "financing": "financed",
+        "inApr": true
+      },
+      {
+        "id": "servicing",
+        "kind": "periodic",
+        "calc": "pct-original",
+        "value": "100.5",
+        "inApr": true
+      },
+      {
+        "id": "credit-insurance",
+        "kind": "insurance",
+        "calc": "pct-balance",
+        "value": "0.01234567891",
+        "inApr": true
+      }
+    ]
+  },
+  "expected": {
+    "ok": false,
+    "errors": [
+      {
+        "code": "TOO_MANY_DECIMALS",
+        "field": "annualRatePct"
+      },
+      {
+        "code": "FEE_RANGE",
+        "field": "fees[0].value"
+      },
+      {
+        "code": "FEE_RANGE",
+        "field": "fees[1].value"
+      },
+      {
+        "code": "TOO_MANY_DECIMALS",
+        "field": "fees[2].value"
+      },
+      {
+        "code": "TOO_MANY_DECIMALS",
+        "field": "balloon.value"
+      }
+    ]
+  }
+}

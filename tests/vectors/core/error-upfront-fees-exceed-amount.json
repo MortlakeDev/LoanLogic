@@ -1,0 +1,53 @@
+{
+  "schemaVersion": 1,
+  "id": "error-upfront-fees-exceed-amount",
+  "description": "Upfront fees paid at closing (600.00 plus 40 % = 1 000.00) take the whole 1 000.00 amount, so the borrower would receive nothing: FEE_RANGE on fees. The financed fee does not count.",
+  "source": "SPEC-finance §6.1, §13",
+  "kind": "loan",
+  "input": {
+    "currency": "USD",
+    "amount": "1000.00",
+    "annualRatePct": "10",
+    "repayment": "annuity",
+    "frequency": "monthly",
+    "term": {
+      "payments": 12
+    },
+    "disbursementDate": "2026-01-15",
+    "fees": [
+      {
+        "id": "arrangement",
+        "kind": "upfront",
+        "calc": "fixed",
+        "value": "600.00",
+        "financing": "paid",
+        "inApr": true
+      },
+      {
+        "id": "broker",
+        "kind": "upfront",
+        "calc": "percent",
+        "value": "40",
+        "financing": "paid",
+        "inApr": false
+      },
+      {
+        "id": "insurance-premium",
+        "kind": "upfront",
+        "calc": "fixed",
+        "value": "5000.00",
+        "financing": "financed",
+        "inApr": true
+      }
+    ]
+  },
+  "expected": {
+    "ok": false,
+    "errors": [
+      {
+        "code": "FEE_RANGE",
+        "field": "fees"
+      }
+    ]
+  }
+}
