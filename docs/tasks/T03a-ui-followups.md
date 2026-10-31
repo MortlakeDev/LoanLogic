@@ -1,6 +1,6 @@
 # T03a — UI follow-ups from the T03 review
 
-- **Milestone:** M2 · **Status:** in review (PR #11)
+- **Milestone:** M2 · **Status:** done (PR #11)
 - **Depends on:** T03 ✓ · **Blocks:** T04, T05 (they start after this small task)
 - **Branch:** `task/T03a-ui-followups`
 
@@ -113,10 +113,10 @@ the live site are fixed too.
 
 ## Completion notes
 
-**Status:** in review, [PR #11](https://github.com/MortlakeDev/LoanLogic/pull/11)
-(branch `task/T03a-ui-followups`). The architect accepted the first round with one
-change, scope item 7 (SPEC v0.2.4); `main` with #9, #10 and #12 is merged into the
-branch, so the PR shows only T03a's changes.
+**Status:** done, merged in [PR #11](https://github.com/MortlakeDev/LoanLogic/pull/11)
+on 2026-11-01 (branch `task/T03a-ui-followups`). The architect accepted the first round
+with one change, scope item 7 (SPEC v0.2.4); `main` with #9, #10 and #12 was merged into
+the branch before item 7.
 
 **Acceptance criteria (local evidence, 2026-11-01, Windows, Node 24.19):**
 

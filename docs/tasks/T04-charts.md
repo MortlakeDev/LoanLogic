@@ -1,7 +1,7 @@
 # T04 — Charts (theme-aware SVG)
 
-- **Milestone:** M2 · **Status:** ready; starts after T03a (small UI follow-ups) is merged
-- **Depends on:** T03 ✓, T03a · **Blocks:** T14 (the print report uses the same charts)
+- **Milestone:** M2 · **Status:** ready
+- **Depends on:** T03 ✓, T03a ✓ · **Blocks:** T14 (the print report uses the same charts)
 - **Branch:** `task/T04-charts`
 
 ## Goal
@@ -74,6 +74,9 @@ chart tokens, identical in quality on screen and in print.
   for geometry only.
 - If a chart needs data the engine does not expose, propose the addition in the PR
   rather than recomputing it in the UI.
+- Housekeeping from the T03a review: restore the `\u00AD` escapes in
+  `repayment.equalPrincipal` of `ru.json` and `uk.json`. Commit `baf86b7` wrote them as
+  literal soft hyphens, which most editors do not show. The strings stay the same.
 
 ## Completion notes
 
