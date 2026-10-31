@@ -94,7 +94,7 @@ the live site are fixed too.
 
 ## Completion notes
 
-**Status:** in review, [PR #__PR__](https://github.com/MortlakeDev/LoanLogic/pull/__PR__)
+**Status:** in review, [PR #11](https://github.com/MortlakeDev/LoanLogic/pull/11)
 (branch `task/T03a-ui-followups`). The branch includes PR #9 (SPEC v0.2.3, DESIGN, this
 brief), which was not merged into `main` when the task started; once #9 is merged the
 PR shows only T03a's changes.
