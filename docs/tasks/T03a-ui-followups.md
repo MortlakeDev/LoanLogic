@@ -1,6 +1,6 @@
 # T03a — UI follow-ups from the T03 review
 
-- **Milestone:** M2 · **Status:** ready
+- **Milestone:** M2 · **Status:** in review (PR #11)
 - **Depends on:** T03 ✓ · **Blocks:** T04, T05 (they start after this small task)
 - **Branch:** `task/T03a-ui-followups`
 
@@ -155,4 +155,12 @@ by hand would differ. Options: carry `YF₁` exactly (for example as the day cou
 basis divisor), or accept that operands are display values (DESIGN §8.6 says so for
 irrational ones).
 
-**Open items:** none beyond the SPEC question.
+**Open items (for the architect):**
+
+1. The SPEC question above (`yf1` at a rounding tie).
+2. Decision 3: should the day-count equal-principal and interest-only strips also name
+   the day-count method next to `YF₁`? DESIGN §8.6 specifies `YF₁` but does not say.
+3. DESIGN §8.6 says irrational operands are shown with 10 significant digits; the strips
+   round every computed operand with more than 11 significant digits, which also covers
+   non-terminating rational values such as `yf1` = 1/12 for a monthly 30/360 period (the
+   payload cannot tell the two apart). The wording could say "non-terminating".
