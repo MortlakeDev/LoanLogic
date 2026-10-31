@@ -110,16 +110,16 @@ Financial engine, real inputs, charts and exports (later tasks).
 
 ## Acceptance criteria
 
-- [ ] `npm ci && npm run check && npm run e2e` pass locally and in CI.
-- [ ] The shell renders in all four languages; switching updates text and `<html lang>`
+- [x] `npm ci && npm run check && npm run e2e` pass locally and in CI.
+- [x] The shell renders in all four languages; switching updates text and `<html lang>`
       without reload; the choice persists across reloads.
-- [ ] Theme System / Dark / Light works and persists; no flash of the wrong theme.
-- [ ] axe reports no serious or critical violations in either theme.
-- [ ] No horizontal scroll at 360 px; two columns at ≥ 1024 px.
-- [ ] `dist-single/LoanLogic.html` opens offline from `file://` and shows the shell.
-- [ ] Initial JS ≤ 60 KB gzip at this stage (report the number in the PR).
-- [ ] README, CONTRIBUTING, templates, `.coderabbit.yaml`, SPDX and license checks present.
-- [ ] Author is "Mortlake" everywhere; no code or text copied from outside the repository.
+- [x] Theme System / Dark / Light works and persists; no flash of the wrong theme.
+- [x] axe reports no serious or critical violations in either theme.
+- [x] No horizontal scroll at 360 px; two columns at ≥ 1024 px.
+- [x] `dist-single/LoanLogic.html` opens offline from `file://` and shows the shell.
+- [x] Initial JS ≤ 60 KB gzip at this stage (report the number in the PR).
+- [x] README, CONTRIBUTING, templates, `.coderabbit.yaml`, SPDX and license checks present.
+- [x] Author is "Mortlake" everywhere; no code or text copied from outside the repository.
 
 ## Notes
 

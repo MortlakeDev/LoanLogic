@@ -92,14 +92,14 @@ the live site are fixed too.
 
 ## Acceptance criteria
 
-- [ ] For every repayment type the formula strip reproduces the hero figure.
-- [ ] Amount and currency form a labelled group; axe and the a11y checklist pass.
-- [ ] Theme menu behaves as in DESIGN §7.1 with mouse and keyboard.
-- [ ] No mid-word break without a hyphen in the repayment cards; no "CODE · CODE"
+- [x] For every repayment type the formula strip reproduces the hero figure.
+- [x] Amount and currency form a labelled group; axe and the a11y checklist pass.
+- [x] Theme menu behaves as in DESIGN §7.1 with mouse and keyboard.
+- [x] No mid-word break without a hyphen in the repayment cards; no "CODE · CODE"
       currency options.
-- [ ] Day-count strips show `YF₁` as day counts, so a hand calculation from the strip
+- [x] Day-count strips show `YF₁` as day counts, so a hand calculation from the strip
       gives the posted `I₁`, ties included.
-- [ ] `npm run check` and `npm run e2e` pass; no golden vector changes (the reference
+- [x] `npm run check` and `npm run e2e` pass; no golden vector changes (the reference
       does not produce `explain`).
 
 ## Notes
@@ -114,7 +114,7 @@ the live site are fixed too.
 ## Completion notes
 
 **Status:** done, merged in [PR #11](https://github.com/MortlakeDev/LoanLogic/pull/11)
-on 2026-11-01 (branch `task/T03a-ui-followups`). The architect accepted the first round
+on 2026-10-31 UTC (branch `task/T03a-ui-followups`). The architect accepted the first round
 with one change, scope item 7 (SPEC v0.2.4); `main` with #9, #10 and #12 was merged into
 the branch before item 7.
 

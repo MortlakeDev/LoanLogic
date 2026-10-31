@@ -157,14 +157,14 @@ fail on the engine of PR #4 before these changes: `cashflows-regz-single-payment
 
 ## Acceptance criteria
 
-- [ ] All core vectors pass; all tests pass; coverage ≥ 95 % lines and branches in
+- [x] All core vectors pass; all tests pass; coverage ≥ 95 % lines and branches in
       `src/engine`.
-- [ ] The engine imports nothing but decimal.js; no `number` money in the ledger; no
+- [x] The engine imports nothing but decimal.js; no `number` money in the ledger; no
       `Date` arithmetic; no `Intl`.
-- [ ] TSDoc on the public API with units.
-- [ ] Every SPEC ambiguity found is listed in the PR with a proposed resolution
+- [x] TSDoc on the public API with units.
+- [x] Every SPEC ambiguity found is listed in the PR with a proposed resolution
       (nothing decided silently).
-- [ ] CI runs the reference checks; `.py` files are covered by the SPDX check.
+- [x] CI runs the reference checks; `.py` files are covered by the SPDX check.
 
 ## Notes
 
