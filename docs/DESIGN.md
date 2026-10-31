@@ -386,9 +386,10 @@ open with `--duration-normal`.
   16 px pitch).
 - The hero is the engine's instalment: `A` for annuity and balloon, `first` for equal
   principal and interest-only. It is the principal and interest of one payment, so for
-  interest-only it is the interest alone (`I₁`, principal 0), or `P + I₁` with a single
-  payment. Periodic fees and insurance are not part of it; when payments carry them, the
-  meta line adds "first payment $… with periodic fees" (or "with insurance").
+  interest-only it is the interest alone (`I₁`, principal 0), or `P + I₁` when the loan
+  has one payment (`N = 1`). Periodic fees and insurance are not part of it; when payments
+  carry them, the meta line adds "first payment $… with periodic fees" (or "with
+  insurance").
 - Meta line: "360 payments · final payment $2,300.28 · paid off Nov 1, 2056".
 - Formula strip: surface-2 box, mono xs–sm, built from the engine's `explain` values
   (SPEC §9.6) so that it reproduces the result. The strip's result is the engine's own
@@ -414,7 +415,7 @@ open with `--duration-normal`.
   - `instalment.equal-principal`: `q = R(P ÷ N)` (half-up to the minor unit, SPEC
     §5.3), then `first = p₁ + I₁`, where `p₁ = q`, or `p₁ = P − (N − 1)·q` when the
     remainder comes first.
-  - `instalment.bullet`: `first = I₁`, or `first = P + I₁` with a single payment.
+  - `instalment.bullet`: `first = I₁`, or `first = P + I₁` when `N = 1`.
 
 ### 8.7 Regional rate card
 
