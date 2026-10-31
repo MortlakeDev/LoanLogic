@@ -25,9 +25,9 @@ the live site are fixed too.
      otherwise at least 12 significant digits.
 2. **Formula strips and the Explain sheet (DESIGN §8.6, §8.12).** DESIGN §8.6 lists one
    branch per payload; the new parts are:
-   - The interest of the first period: `I₁ = P × j ÷ m` when `c = m`, `I₁ = P × i`
-     when `c ≠ m` (the payload then carries `i`), and `I₁ = P × j × YF₁` in day-count
-     mode (`yf1`).
+   - The interest of the first period, as posted: `I₁ = R(P × j ÷ m)` when `c = m`,
+     `I₁ = R(P × i)` when `c ≠ m` (the payload then carries `i`), and
+     `I₁ = R(P × j × YF₁)` in day-count mode (`YF₁` from `yf1Parts`, item 7).
    - Equal principal: `q = R(P ÷ N)`, then `first payment = p₁ + I₁`.
    - Interest-only: `I₁`, plus `P` with a single payment.
    - The last number of every strip equals the hero, for every repayment type,
@@ -76,9 +76,10 @@ the live site are fixed too.
 - **Unit test:** the currency option label is the code alone when the display name is
   missing or equals the code.
 - **`yf1Parts` (v0.2.4):** engine tests for every day-count method, ACT/ACT ISDA inside
-  one year and across a year end, and a property test that the parts sum to `yf1`
-  exactly. A strip regression test for the tie: USD 1 001.00 at 6 %, interest-only,
-  monthly, 30E/360, disbursed 2026-01-15 shows `YF₁ = 30 ÷ 360` and ends with 5.01.
+  one year and across a year end, and a property test that `yf1` is the serialization of
+  the parts' exact sum (SPEC §9.6). A strip regression test for the tie: USD 1 001.00 at
+  6 %, interest-only, monthly, 30E/360, disbursed 2026-01-15 shows `YF₁ = 30 ÷ 360` and
+  ends with 5.01.
 - **e2e:**
   - the strip's result equals the hero for equal principal and interest-only;
   - the theme menu keyboard and click behaviour;

@@ -417,8 +417,9 @@ open with `--duration-normal`.
     §5.1): `I₁ = R(P × j × YF₁)` in day-count mode, with `YF₁` written from the payload's
     `yf1Parts` as day counts (`YF₁ = 30 ÷ 360`, or `61 ÷ 365 + 121 ÷ 366` for ACT/ACT
     across a year end); in periodic mode `I₁ = R(P × i)` when the payload carries `i`,
-    else `I₁ = R(P × j ÷ m)`. The day-count method is named in the Explain sheet, not in
-    the strip.
+    else `I₁ = R(P × j ÷ m)`. This strip needs no method name, since `30 ÷ 360` is
+    exact; the Explain sheet names the method. (The exact-basis strip above does name
+    it: its `YF_k` changes from period to period, so there are no day counts to show.)
   - `instalment.equal-principal`: `q = R(P ÷ N)` (half-up to the minor unit, SPEC
     §5.3), then `first = p₁ + I₁`, where `p₁ = q`, or `p₁ = P − (N − 1)·q` when the
     remainder comes first.

@@ -680,7 +680,8 @@ methods the numerator of the §4 formula, `360(Y2−Y1) + 30(M2−M1) + (D2−D1
 day adjustments; actual days otherwise) and `B` is 360, 365 or 366. ACT/ACT
 ISDA splits a period at each year end, so its parts are joined with `+`, one per
 calendar year with days in the period: 1 Nov 2003 → 1 May 2004 is `61/365+121/366`.
-The parts sum to `yf1` exactly.
+The parts sum exactly to the rational `YF₁`; `yf1` is that rational serialized as above
+(exact when it terminates, so for `30/360` it is the rounded `0.083333333333333333333`).
 
 | `formulaId` | `values` |
 |---|---|
@@ -1047,8 +1048,8 @@ interface CashFlowInput {
   counts (`30/360`, `61/365+121/366`). `yf1` alone does not always terminate (30/360 gives
   `1/12`), so at an exact rounding tie a strip built from a rounded `yf1` could not
   reproduce the posted interest: USD 1 001.00 at 6 %, 30E/360, gives exactly 5.005 and
-  posts 5.01, while `1001 × 0.06 × 0.0833333333…` rounds to 5.00. With `30 ÷ 360` the
-  strip is exact.
+  posts 5.01, while the serialized `yf1` gives `1001 × 0.06 × 0.083333333333333333333`
+  = 5.00499…, which rounds to 5.00. With `30 ÷ 360` the strip is exact.
 
 **v0.2.3 (2026-10-20)** — asked during T03 (PR #8); no vector changes:
 
