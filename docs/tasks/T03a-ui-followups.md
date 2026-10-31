@@ -76,12 +76,13 @@ the live site are fixed too.
 - **Unit test:** the currency option label is the code alone when the display name is
   missing or equals the code.
 - **`yf1Parts` (v0.2.4):** engine tests for every day-count method, ACT/ACT ISDA inside
-  one year and across a year end, and a property test that parses `yf1` and compares it
-  with the parts' exact sum: equal when the sum terminates, otherwise equal to the sum
-  rounded half-up to 20 significant digits, as the engine serializes it (SPEC §9.6, at
-  least 12). A strip regression test for
-  the tie: USD 1 001.00 at 6 %, interest-only, monthly, N = 12, 30E/360, disbursed
-  2026-01-15 shows `YF₁ = 30 ÷ 360` and ends with 5.01.
+  one year and across a year end, for both `instalment.equal-principal` and
+  `instalment.bullet`. A property test over both formula ids checks that `yf1Parts` is
+  present and well formed, then parses `yf1` and compares it with the parts' exact sum:
+  equal when the sum terminates, otherwise equal to the sum rounded half-up to 20
+  significant digits, as the engine serializes it (SPEC §9.6, at least 12). A strip
+  regression test for the tie: USD 1 001.00 at 6 %, interest-only, monthly, N = 12,
+  30E/360, disbursed 2026-01-15 shows `YF₁ = 30 ÷ 360` and ends with 5.01.
 - **e2e:**
   - the strip's result equals the hero for equal principal and interest-only;
   - the theme menu keyboard and click behaviour;
