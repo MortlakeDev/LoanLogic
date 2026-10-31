@@ -8,6 +8,7 @@ import { setLanguage } from '../state/i18n';
 import { defaultForm, type FeeDraft, type LoanForm, okResult, resetForm } from '../state/loan';
 import {
   COMMON_CURRENCIES,
+  currencyOptionLabel,
   feeCalcOf,
   feeSummary,
   hasCustomSettings,
@@ -52,6 +53,19 @@ describe('currencies', () => {
   it('lists every code of the engine once, the common ones first', () => {
     expect([...COMMON_CURRENCIES, ...OTHER_CURRENCIES].sort()).toEqual([...CURRENCY_CODES]);
     expect(OTHER_CURRENCIES).toEqual([...OTHER_CURRENCIES].sort());
+  });
+});
+
+describe('currencyOptionLabel', () => {
+  it('is the code and the name when there is a name', () => {
+    expect(currencyOptionLabel('USD', () => 'US dollar')).toBe('USD · US dollar');
+    expect(currencyOptionLabel('USD')).toBe('USD · US Dollar');
+  });
+
+  it('is the code alone when the name is missing or is the code itself', () => {
+    expect(currencyOptionLabel('CLF', () => undefined)).toBe('CLF');
+    expect(currencyOptionLabel('CLF', () => '')).toBe('CLF');
+    expect(currencyOptionLabel('ZWG', () => 'ZWG')).toBe('ZWG');
   });
 });
 

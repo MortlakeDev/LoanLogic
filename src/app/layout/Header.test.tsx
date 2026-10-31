@@ -49,24 +49,26 @@ describe('Header', () => {
     expect(screen.getByRole('banner').contains(menu)).toBe(true);
   });
 
-  it('keeps ids and radio names unique with the theme menu and the menu sheet open', () => {
+  it('keeps ids unique with the theme menu and the menu sheet open', () => {
     render(<Header />);
     fireEvent.click(screen.getByRole('button', { name: 'Theme' }));
     fireEvent.click(screen.getByRole('button', { name: 'Menu' }));
 
-    // Focus moved into the sheet, which closes the theme menu; its radios stay in the DOM.
+    // Focus moved into the sheet, which closes the theme menu; its items stay in the DOM.
     expect(screen.getByRole('button', { name: 'Theme' }).getAttribute('aria-expanded')).toBe(
       'false',
     );
+    expect(document.querySelectorAll('[role="menuitemradio"]')).toHaveLength(3);
     const ids = [...document.querySelectorAll('[id]')].map((element) => element.id);
     expect(new Set(ids).size).toBe(ids.length);
-    expect(document.querySelectorAll('fieldset')).toHaveLength(2);
+    // The header menu has no radios; the sheet keeps its own radio group.
+    expect(document.querySelectorAll('fieldset')).toHaveLength(1);
     const names = new Set(
       [...document.querySelectorAll<HTMLInputElement>('input[type="radio"]')].map(
         (radio) => radio.name,
       ),
     );
-    expect(names).toEqual(new Set(['theme', 'menu-theme']));
+    expect(names).toEqual(new Set(['menu-theme']));
     expect(document.querySelectorAll('select')).toHaveLength(2);
   });
 

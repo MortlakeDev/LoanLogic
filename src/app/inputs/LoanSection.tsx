@@ -46,14 +46,17 @@ export function LoanSection(): JSX.Element {
   );
 }
 
+/**
+ * The amount and its currency as one group (DESIGN §8.2, §11): the legend is the visible
+ * label of both. A legend names the group, not the input inside it, so the amount is
+ * named by the legend too (`aria-labelledby`); the select keeps its own name, "Currency".
+ */
 function AmountField(): JSX.Element {
   return (
-    <Field
-      label={t('inputs.amount')}
-      inputId="field-amount"
-      fields={['amount', 'currency']}
-      class="amount"
-    >
+    <fieldset class="field amount">
+      <legend id="field-amount-legend" class="field__label">
+        {t('inputs.amount')}
+      </legend>
       <div class="amount__row">
         <NumberInput
           id="field-amount"
@@ -66,10 +69,13 @@ function AmountField(): JSX.Element {
           }}
           prefix={currencySymbol()}
           fractionDigits={currencyDigits.value}
+          ariaLabelledBy="field-amount-legend"
         />
         <CurrencySelect />
       </div>
-    </Field>
+      <FieldError field="amount" />
+      <FieldError field="currency" />
+    </fieldset>
   );
 }
 

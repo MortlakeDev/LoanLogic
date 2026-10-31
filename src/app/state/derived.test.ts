@@ -522,7 +522,7 @@ describe('instalmentOf', () => {
 describe('heroAmounts', () => {
   it('puts the annuity, its last payment and nothing else on the instalment basis', () => {
     const result = calculate();
-    expect(heroAmounts(result.summary, result.rows, 2)).toEqual({
+    expect(heroAmounts(result, 2)).toEqual({
       payment: '2299.25',
       last: '2300.28',
       firstPaid: null,
@@ -532,12 +532,12 @@ describe('heroAmounts', () => {
   it('shows the first payment as paid when payments carry periodic fees', () => {
     const result = shortLoan();
     const last = rowAt(result.rows, result.rows.length - 1);
-    expect(heroAmounts(result.summary, result.rows, 2)).toEqual({
+    expect(heroAmounts(result, 2)).toEqual({
       payment: '8560.75',
       last: exactSum([last.principal, last.interestPaid]).toFixed(2),
       firstPaid: '8570.75',
     });
-    expect(heroAmounts(result.summary, result.rows, 2).last).toBe('8560.73');
+    expect(heroAmounts(result, 2).last).toBe('8560.73');
     expect(result.summary.lastPayment).toBe('8570.73');
   });
 
@@ -548,25 +548,71 @@ describe('heroAmounts', () => {
     });
     const first = rowAt(result.rows, 0);
     const last = rowAt(result.rows, result.rows.length - 1);
-    expect(heroAmounts(result.summary, result.rows, 2)).toEqual({
+    expect(heroAmounts(result, 2)).toEqual({
       payment: exactSum([first.principal, first.interestPaid]).toFixed(2),
       last: exactSum([last.principal, last.interestPaid]).toFixed(2),
       firstPaid: first.payment,
     });
-    expect(heroAmounts(result.summary, result.rows, 2).payment).toBe('8750.00');
+    expect(heroAmounts(result, 2).payment).toBe('8750.00');
+  });
+
+  it("shows the engine's first payment of equal principal, the strip's result", () => {
+    for (const principalRemainder of ['last', 'first'] as const) {
+      const result = calculate({ repayment: 'equal-principal', principalRemainder });
+      const { payment } = heroAmounts(result, 2);
+      expect(payment).toBe(result.explain.values.first);
+      const row = rowAt(result.rows, 0);
+      expect(payment).toBe(exactSum([row.principal, row.interestPaid]).toFixed(2));
+    }
+    // 350,000.00 − 359 × 972.22 = 973.02 comes first: 973.02 + 2,005.21.
+    expect(
+      heroAmounts(calculate({ repayment: 'equal-principal', principalRemainder: 'first' }), 2)
+        .payment,
+    ).toBe('2978.23');
   });
 
   it('takes the first interest payment of an interest-only loan', () => {
     const result = calculate({ repayment: 'bullet', fees: [] });
-    expect(heroAmounts(result.summary, result.rows, 2)).toEqual({
+    expect(heroAmounts(result, 2)).toEqual({
       payment: '2005.21',
       last: exactSum([result.summary.amount, rowAt(result.rows, 359).interestPaid]).toFixed(2),
+      firstPaid: null,
+    });
+    expect(result.explain.values.first).toBe('2005.21');
+  });
+
+  it('takes P + I1 of an interest-only loan with a single payment', () => {
+    const result = calculate({ repayment: 'bullet', termMode: 'payments', termPayments: '1' });
+    expect(result.explain.values.first).toBe('352005.21');
+    expect(heroAmounts(result, 2)).toEqual({
+      payment: '352005.21',
+      last: '352005.21',
       firstPaid: null,
     });
   });
 
   it('refuses a schedule without payments', () => {
-    expect(() => heroAmounts(calculate().summary, [], 2)).toThrow(RangeError);
+    expect(() => heroAmounts({ ...calculate(), rows: [] }, 2)).toThrow(RangeError);
+  });
+
+  it('refuses an equal-principal or interest-only explanation without its first payment', () => {
+    for (const repayment of ['equal-principal', 'bullet'] as const) {
+      const result = calculate({ repayment });
+      const values = Object.fromEntries(
+        Object.entries(result.explain.values).filter(([name]) => name !== 'first'),
+      );
+      // The row's principal + interest is not used in its place: a missing value is a bug.
+      expect(() => heroAmounts({ ...result, explain: { ...result.explain, values } }, 2)).toThrow(
+        RangeError,
+      );
+    }
+  });
+
+  it('refuses a level instalment loan without its instalment', () => {
+    const result = calculate();
+    expect(() =>
+      heroAmounts({ ...result, summary: { ...result.summary, regularInstalment: null } }, 2),
+    ).toThrow(RangeError);
   });
 });
 

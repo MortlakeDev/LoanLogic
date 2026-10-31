@@ -15,9 +15,11 @@ import {
   readStorage,
   STORAGE_KEYS,
   themeButton,
-  themeGroup,
+  themeItem,
+  themeMenu,
   themeRadio,
   type TabKey,
+  type ThemePreference,
 } from './helpers.ts';
 
 // A light system scheme makes arrow-key changes to Dark visible.
@@ -185,7 +187,7 @@ test.describe('keyboard navigation', () => {
     await expectVisibleFocus(themeButton(page), 'theme button');
   });
 
-  test('the theme menu opens from the keyboard, arrow keys change the theme, Esc closes it', async ({
+  test('the theme menu: arrow keys only move focus, Enter applies and closes, Esc closes', async ({
     page,
   }) => {
     const linkKey = await linkTabKey(page);
@@ -195,33 +197,76 @@ test.describe('keyboard navigation', () => {
     const button = themeButton(page);
     await expect(button).toHaveAttribute('aria-expanded', 'false');
 
+    // ArrowUp opens the menu at the last item; Esc closes it and returns focus.
+    await page.keyboard.press('ArrowUp');
+    await expect(button).toHaveAttribute('aria-expanded', 'true');
+    await expectVisibleFocus(themeItem(page, 'light'), 'Light item after ArrowUp');
+    await page.keyboard.press('Escape');
+    await expect(themeMenu(page)).toBeHidden();
+    await expectVisibleFocus(button, 'theme button after Escape');
+    await expect(themeItem(page, 'system')).toHaveCount(0);
+
+    // Enter opens it at the checked item.
     await page.keyboard.press('Enter');
     await expect(button).toHaveAttribute('aria-expanded', 'true');
-    // Opening moves focus to the checked option.
-    await expectVisibleFocus(themeRadio(page, 'system'), 'System radio');
+    await expectVisibleFocus(themeItem(page, 'system'), 'System item');
 
-    await page.keyboard.press('ArrowDown');
-    await expect(themeRadio(page, 'dark')).toBeChecked();
-    await expect(themeRadio(page, 'dark')).toBeFocused();
-    await expectTheme(page, 'dark');
-
-    await page.keyboard.press('ArrowDown');
-    await expect(themeRadio(page, 'light')).toBeChecked();
+    // The arrow keys (wrapping), Home and End move focus and change nothing.
+    const moves: [string, ThemePreference][] = [
+      ['ArrowDown', 'dark'],
+      ['ArrowDown', 'light'],
+      ['ArrowDown', 'system'],
+      ['ArrowUp', 'light'],
+      ['Home', 'system'],
+      ['End', 'light'],
+      ['ArrowUp', 'dark'],
+    ];
+    for (const [key, preference] of moves) {
+      await page.keyboard.press(key);
+      await expectVisibleFocus(themeItem(page, preference), `${preference} item after ${key}`);
+    }
+    await expect(themeItem(page, 'system')).toBeChecked();
+    await expect(themeItem(page, 'dark')).not.toBeChecked();
     await expectTheme(page, 'light');
-    expect(await readStorage(page, STORAGE_KEYS.theme)).toBe(JSON.stringify('light'));
+    expect(await readStorage(page, STORAGE_KEYS.theme)).toBeNull();
 
-    await page.keyboard.press('ArrowUp');
-    await expect(themeRadio(page, 'dark')).toBeChecked();
+    // Enter applies the focused item, closes the menu and returns focus to the button.
+    await page.keyboard.press('Enter');
+    await expect(button).toHaveAttribute('aria-expanded', 'false');
+    await expect(themeMenu(page)).toBeHidden();
+    await expectVisibleFocus(button, 'theme button after Enter');
     await expectTheme(page, 'dark');
     expect(await readStorage(page, STORAGE_KEYS.theme)).toBe(JSON.stringify('dark'));
 
-    // The menu stays open while browsing; Esc closes it and returns focus to the button.
-    await expect(themeGroup(page)).toBeVisible();
+    // ArrowDown opens it at the new choice; Esc closes it without a change.
+    await page.keyboard.press('ArrowDown');
+    await expectVisibleFocus(themeItem(page, 'dark'), 'Dark item after ArrowDown');
+    await expect(themeItem(page, 'dark')).toBeChecked();
+    await page.keyboard.press('ArrowDown');
     await page.keyboard.press('Escape');
-    await expect(button).toHaveAttribute('aria-expanded', 'false');
-    await expect(themeGroup(page)).toBeHidden();
-    await expectVisibleFocus(button, 'theme button after Escape');
+    await expect(themeMenu(page)).toBeHidden();
+    await expectVisibleFocus(button, 'theme button after the second Escape');
     await expectTheme(page, 'dark');
+  });
+
+  test('Space opens the theme menu and applies the focused item', async ({ page }) => {
+    const linkKey = await linkTabKey(page);
+    await gotoApp(page);
+    await tabToThemeButton(page, linkKey);
+    const button = themeButton(page);
+
+    await page.keyboard.press('Space');
+    await expect(button).toHaveAttribute('aria-expanded', 'true');
+    await expectVisibleFocus(themeItem(page, 'system'), 'System item');
+    await page.keyboard.press('ArrowDown');
+    await page.keyboard.press('Space');
+
+    // The Space that applied the item does not open the menu again from the button.
+    await expect(button).toHaveAttribute('aria-expanded', 'false');
+    await expect(themeMenu(page)).toBeHidden();
+    await expectVisibleFocus(button, 'theme button after Space');
+    await expectTheme(page, 'dark');
+    expect(await readStorage(page, STORAGE_KEYS.theme)).toBe(JSON.stringify('dark'));
   });
 
   test('Tab leaves the open theme menu in one step and closes it', async ({ page }) => {
@@ -229,27 +274,28 @@ test.describe('keyboard navigation', () => {
     await gotoApp(page);
     await tabToThemeButton(page, linkKey);
     await page.keyboard.press('Space');
-    await expect(themeRadio(page, 'system')).toBeFocused();
+    await expect(themeItem(page, 'system')).toBeFocused();
 
     await page.keyboard.press(linkKey ?? 'Tab');
     await expect(themeButton(page)).toHaveAttribute('aria-expanded', 'false');
-    await expect(themeGroup(page)).toBeHidden();
+    await expect(themeMenu(page)).toBeHidden();
     await expect.poll(() => focusIsInMain(page), { message: 'focus should be in main' }).toBe(true);
+    await expectTheme(page, 'light');
   });
 
-  test('the focus ring follows arrow-key moves in the theme menu', async ({ page }) => {
+  test('Shift+Tab from the open theme menu closes it on the button', async ({ page }) => {
     const linkKey = await linkTabKey(page);
     await gotoApp(page);
     await tabToThemeButton(page, linkKey);
     await page.keyboard.press('Enter');
-    await expectVisibleFocus(themeRadio(page, 'system'), 'System radio');
+    await page.keyboard.press('ArrowDown');
+    await expect(themeItem(page, 'dark')).toBeFocused();
 
-    await page.keyboard.press('ArrowRight');
-    await expectVisibleFocus(themeRadio(page, 'dark'), 'Dark radio after ArrowRight');
-    await page.keyboard.press('ArrowRight');
-    await expectVisibleFocus(themeRadio(page, 'light'), 'Light radio after ArrowRight');
-    await page.keyboard.press('ArrowLeft');
-    await expectVisibleFocus(themeRadio(page, 'dark'), 'Dark radio after ArrowLeft');
+    await page.keyboard.press(`Shift+${linkKey ?? 'Tab'}`);
+    await expect(themeButton(page)).toHaveAttribute('aria-expanded', 'false');
+    await expect(themeMenu(page)).toBeHidden();
+    await expectVisibleFocus(themeButton(page), 'theme button after Shift+Tab');
+    await expectTheme(page, 'light');
   });
 });
 

@@ -55,6 +55,7 @@
 }
 
 /* The rendered legend of a fieldset sits outside its grid, so the grid gap misses it. */
+.amount > legend,
 .term > legend,
 .advanced__rounding > legend {
   margin-bottom: var(--space-2);

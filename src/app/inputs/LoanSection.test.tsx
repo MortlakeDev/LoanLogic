@@ -2,11 +2,12 @@
 // Copyright (C) 2026 Mortlake
 // @vitest-environment jsdom
 
-import { cleanup, fireEvent, screen } from '@testing-library/preact';
+import { cleanup, fireEvent, screen, waitFor } from '@testing-library/preact';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { setLanguage, t } from '../state/i18n';
 import { money } from '../state/display';
 import { form, inputErrors, loanInput, okResult, updateForm } from '../state/loan';
+import { focusField } from '../state/ui';
 import {
   byId,
   change,
@@ -89,6 +90,67 @@ describe('amount and currency', () => {
       setLanguage('ru');
     });
     expect(input('field-amount').value).toBe('350 000,00');
+  });
+
+  it('is one group whose visible legend names the amount; the select is "Currency"', () => {
+    renderPanel();
+    const group = screen.getByRole('group', { name: 'Loan amount' });
+    expect(group).toBeInstanceOf(HTMLFieldSetElement);
+    const legend = group.querySelector(':scope > legend');
+    expect(legend?.textContent).toBe('Loan amount');
+    // Visible like every other field label, not a hidden accessible-only legend.
+    expect(legend?.className).toBe('field__label');
+    // The legend replaces the label: no second "Loan amount" on screen.
+    expect(document.querySelector('label[for="field-amount"]')).toBeNull();
+    expect(screen.getByRole('textbox', { name: 'Loan amount' })).toBe(input('field-amount'));
+    // Named by the visible legend itself, so the name follows it in every language.
+    expect(input('field-amount').getAttribute('aria-labelledby')).toBe(legend?.id);
+    expect(screen.getByRole('combobox', { name: 'Currency' })).toBe(select('field-currency'));
+    expect(group.contains(input('field-amount'))).toBe(true);
+    expect(group.contains(select('field-currency'))).toBe(true);
+  });
+
+  it('follows the UI language in the legend and the names', () => {
+    renderPanel();
+    change(() => {
+      setLanguage('uk');
+    });
+    const group = screen.getByRole('group', { name: t('inputs.amount') });
+    expect(group.querySelector(':scope > legend')?.textContent).toBe(t('inputs.amount'));
+    expect(screen.getByRole('textbox', { name: t('inputs.amount') })).toBe(input('field-amount'));
+    expect(screen.getByRole('combobox', { name: t('inputs.currency') })).toBe(
+      select('field-currency'),
+    );
+  });
+
+  it('keeps the errors of the amount and of the currency on their controls', () => {
+    change(() => {
+      updateForm({ currency: 'ZZZ' });
+    });
+    renderPanel();
+    const group = screen.getByRole('group', { name: 'Loan amount' });
+    const currency = select('field-currency');
+    expect(currency.getAttribute('aria-invalid')).toBe('true');
+    expect(descriptionOf(currency)).toBe(t('errors.currencyInvalid'));
+    expect(group.contains(document.getElementById('field-currency-error'))).toBe(true);
+
+    const amount = input('field-amount');
+    typeInto(amount, '12abc');
+    expect(amount.getAttribute('aria-invalid')).toBe('true');
+    expect(amount.getAttribute('aria-describedby')).toBe('field-amount-error');
+    expect(group.contains(document.getElementById('field-amount-error'))).toBe(true);
+  });
+
+  it('is where focusField sends the amount and the currency', async () => {
+    renderPanel();
+    focusField('amount');
+    await waitFor(() => {
+      expect(document.activeElement).toBe(input('field-amount'));
+    });
+    focusField('currency');
+    await waitFor(() => {
+      expect(document.activeElement).toBe(select('field-currency'));
+    });
   });
 
   it('shows an amount that does not parse as a localized error', () => {
@@ -228,6 +290,21 @@ describe('frequency and repayment', () => {
     expect(loanInput.value.repayment).toBe('equal-principal');
     expect(document.getElementById('field-balloon-value')).toBeNull();
   });
+
+  it.each([
+    ['ru', ['Диф', 'фе', 'рен', 'ци', 'ро', 'ван', 'ный']],
+    ['uk', ['Ди', 'фе', 'рен', 'ці', 'йо', 'ва', 'ний']],
+  ] as const)(
+    'hyphenates the %s title of equal principal at its syllables (DESIGN §8.4)',
+    (language, syllables) => {
+      setLanguage(language);
+      renderPanel();
+      const radio = document.querySelector('input[name="repayment"][value="equal-principal"]');
+      const title = radio?.closest('.choice')?.querySelector('.choice__title')?.textContent;
+      // Soft hyphens (U+00AD) show only where the line breaks; the word is the GLOSSARY term.
+      expect(title?.split('\u00AD')).toEqual(syllables);
+    },
+  );
 
   it('reveals the balloon residual as a percentage or an amount', () => {
     renderPanel();

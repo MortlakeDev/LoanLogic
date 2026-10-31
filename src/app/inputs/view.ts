@@ -46,9 +46,22 @@ export const OTHER_CURRENCIES: readonly string[] = CURRENCY_CODES.filter(
   (code) => !COMMON_CURRENCIES.includes(code),
 );
 
-/** A currency option: "USD · US dollar" in the UI language. */
-export function currencyOptionLabel(code: string): string {
-  return t('inputs.currencyOption', { code, name: formatCurrencyName(code, formatLocale.value) });
+/**
+ * A currency option: "USD · US dollar" in the UI language, or the code alone when there is
+ * no name for it (DESIGN §8.2). `Intl.DisplayNames` answers with the code itself for codes
+ * its data lacks (CLF, ZWG in some browsers), which would read "CLF · CLF".
+ *
+ * @param nameOf The currency's name in the UI language; `Intl.DisplayNames` by default.
+ */
+export function currencyOptionLabel(
+  code: string,
+  nameOf: (code: string) => string | undefined = (item) =>
+    formatCurrencyName(item, formatLocale.value),
+): string {
+  const name = nameOf(code);
+  return name === undefined || name === '' || name === code
+    ? code
+    : t('inputs.currencyOption', { code, name });
 }
 
 /**

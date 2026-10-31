@@ -10,7 +10,7 @@
  * call these instead of doing arithmetic on money.
  */
 
-import type { FeeAmount, FrequencyId, LedgerRow, LoanSummary } from '../../engine';
+import type { Explain, FeeAmount, FrequencyId, LedgerRow, LoanSummary } from '../../engine';
 
 const PERIODS_PER_YEAR: Readonly<Record<FrequencyId, number>> = {
   weekly: 52,
@@ -257,7 +257,10 @@ export function instalmentOf(row: LedgerRow, minorUnits: number): string {
  * unlike amounts ("payment $8,560.75 · final payment $8,570.73" for one loan).
  */
 export interface HeroAmounts {
-  /** `A` for annuity and balloon, else the first payment's principal + interest. */
+  /**
+   * The engine's instalment: `A` for annuity and balloon, the explanation's `first` (the
+   * first payment's principal + interest) for equal principal and interest-only.
+   */
   readonly payment: string;
   /** The last payment's principal + interest. */
   readonly last: string;
@@ -268,16 +271,50 @@ export interface HeroAmounts {
   readonly firstPaid: string | null;
 }
 
+/** The parts of a computed loan the hero reads. */
+export interface HeroSource {
+  readonly summary: LoanSummary;
+  readonly rows: readonly LedgerRow[];
+  readonly explain: Explain;
+}
+
+/**
+ * Formula ids whose instalment is the first payment, `first` in the explanation (SPEC
+ * §9.6): their payments change, so they have no regular instalment.
+ */
+const FIRST_PAYMENT_FORMULAS: ReadonlySet<string> = new Set([
+  'instalment.equal-principal',
+  'instalment.bullet',
+]);
+
+/**
+ * The instalment the hero shows. It is read from the engine, never recomputed here, so
+ * it always equals the result of the formula strip, which shows the same value.
+ *
+ * @throws RangeError when the engine's value is missing: a bug, not a case to fill in.
+ */
+function heroInstalment(summary: LoanSummary, explain: Explain): string {
+  if (FIRST_PAYMENT_FORMULAS.has(explain.formulaId)) {
+    const first = Object.hasOwn(explain.values, 'first') ? explain.values.first : undefined;
+    if (first === undefined) {
+      throw new RangeError(`The ${explain.formulaId} explanation has no "first"`);
+    }
+    return first;
+  }
+  if (summary.regularInstalment === null) {
+    throw new RangeError(`A ${explain.formulaId} loan without a regular instalment`);
+  }
+  return summary.regularInstalment;
+}
+
 /**
  * The hero's amounts of a computed loan.
  *
- * @throws RangeError without rows: a computed loan always has at least one payment.
+ * @throws RangeError without rows (a computed loan always has at least one payment), or
+ *   when the engine's instalment is missing (`heroInstalment`).
  */
-export function heroAmounts(
-  summary: LoanSummary,
-  rows: readonly LedgerRow[],
-  minorUnits: number,
-): HeroAmounts {
+export function heroAmounts(loan: HeroSource, minorUnits: number): HeroAmounts {
+  const { summary, rows } = loan;
   const first = rows[0];
   const last = rows[rows.length - 1];
   if (first === undefined || last === undefined) {
@@ -287,7 +324,7 @@ export function heroAmounts(
     (row) => toMinor(row.fees, minorUnits) !== 0n || toMinor(row.insurance, minorUnits) !== 0n,
   );
   return {
-    payment: summary.regularInstalment ?? instalmentOf(first, minorUnits),
+    payment: heroInstalment(summary, loan.explain),
     last: instalmentOf(last, minorUnits),
     firstPaid: charged ? first.payment : null,
   };

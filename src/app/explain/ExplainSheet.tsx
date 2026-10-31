@@ -97,10 +97,16 @@ function FormulaSections(props: { readonly model: FormulaModel }): JSX.Element {
           {model.values.map((entry) => (
             <div key={entry.name} class="explain__value">
               <dt>
-                {entry.label === null ? null : `${t(entry.label)} `}
-                <span class="explain__symbol num">
-                  <Formula parts={entry.symbol} />
-                </span>
+                {entry.label === null ? null : t(entry.label)}
+                {/* A value named in words (the first payment) has no symbol. */}
+                {entry.symbol.length === 0 ? null : (
+                  <>
+                    {entry.label === null ? null : ' '}
+                    <span class="explain__symbol num">
+                      <Formula parts={entry.symbol} />
+                    </span>
+                  </>
+                )}
               </dt>
               <dd class="num">
                 <Formula parts={entry.value} />

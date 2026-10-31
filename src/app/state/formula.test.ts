@@ -2,7 +2,13 @@
 // Copyright (C) 2026 Mortlake
 
 import { describe, expect, it } from 'vitest';
-import { type LoanResult, type RateMethodId, type RateMetric, calculateLoan } from '../../engine';
+import {
+  type Explain,
+  type LoanResult,
+  type RateMethodId,
+  type RateMetric,
+  calculateLoan,
+} from '../../engine';
 import {
   type FormulaModel,
   type FormulaText,
@@ -63,6 +69,8 @@ const values = (model: FormulaModel): Record<string, string> =>
   Object.fromEntries(model.values.map((entry) => [entry.name, plain(entry.value)]));
 
 const ANNUITY = 'A = P·i ÷ (1 − (1 + i)^(−N))';
+/** The strip's word for the first payment, as `plain` writes a message. */
+const FIRST = '[explain.stripFirst]';
 
 describe('instalmentFormula', () => {
   it('reproduces the design scenario with i shown as j ÷ m', () => {
@@ -199,30 +207,258 @@ describe('instalmentFormula', () => {
     );
   });
 
-  it('shows the principal per payment of equal principal', () => {
+  it('builds the first payment of equal principal from q = R(P ÷ N) and I₁ = P × j ÷ m', () => {
     const model = instalmentFormula(loan({ repayment: 'equal-principal' }).explain, 'en-US', 2);
-    expect(strip(model)).toBe('q = P ÷ N, P = 350,000.00, N = 360 → 972.22');
-    expect(model.result?.raw).toBe('972.22');
+    expect(model.id).toBe('instalment.equal-principal');
+    expect(strip(model)).toBe(
+      `${FIRST} = p_(1) + I_(1), p_(1) = q = R(P ÷ N) = 972.22, I_(1) = P × j ÷ m = 2,005.21, ` +
+        'P = 350,000.00, N = 360, j = 0.06875, m = 12 → 2,977.43',
+    );
+    expect(lines(model)).toEqual([
+      `${FIRST} = p_(1) + I_(1)`,
+      'q = R(P ÷ N)',
+      'p_(1) = q',
+      'I_(1) = P × j ÷ m',
+    ]);
+    expect(values(model)).toEqual({
+      P: '350,000.00',
+      N: '360',
+      j: '0.06875',
+      m: '12',
+      q: '972.22',
+      p1: '972.22',
+      I1: '2,005.21',
+      first: '2,977.43',
+    });
+    expect(model.values.map((entry) => entry.label)).toEqual([
+      'explain.symP',
+      'explain.symN',
+      'explain.symJ',
+      'explain.symM',
+      'explain.symQ',
+      'explain.symP1',
+      'explain.symI1',
+      'explain.symFirst',
+    ]);
+    // The first payment is named in words, so it has no symbol of its own.
+    expect(model.values.find((entry) => entry.name === 'first')?.symbol).toEqual([]);
+    expect(plain(model.values.find((entry) => entry.name === 'p1')?.symbol ?? [])).toBe('p_(1)');
+    // The engine's own first payment, not p₁ + I₁ added up here.
+    expect(model.result).toEqual({ raw: '2977.43', text: '2,977.43', symbol: null });
     expect(model.note).toBe('explain.instalmentEqualPrincipal');
   });
 
-  it('shows the first interest payment of an interest-only loan', () => {
+  it('shows p₁ = P − (N − 1)·q when the rounding remainder comes first', () => {
+    const result = loan({ repayment: 'equal-principal', principalRemainder: 'first' });
+    const model = instalmentFormula(result.explain, 'en-US', 2);
+    // 350,000.00 − 359 × 972.22 = 973.02.
+    expect(strip(model)).toBe(
+      `${FIRST} = p_(1) + I_(1), q = R(P ÷ N) = 972.22, p_(1) = P − (N − 1)·q = 973.02, ` +
+        'I_(1) = P × j ÷ m = 2,005.21, P = 350,000.00, N = 360, j = 0.06875, m = 12 → 2,978.23',
+    );
+    expect(lines(model)[2]).toBe('p_(1) = P − (N − 1)·q');
+    expect(model.result?.raw).toBe(result.explain.values.first);
+  });
+
+  it('shows p₁ = q when the remainder comes first but P divides evenly', () => {
+    const result = loan({
+      repayment: 'equal-principal',
+      principalRemainder: 'first',
+      amount: '360000.00',
+    });
+    expect(result.explain.values).toMatchObject({ q: '1000.00', p1: '1000.00' });
+    const model = instalmentFormula(result.explain, 'en-US', 2);
+    expect(lines(model)[2]).toBe('p_(1) = q');
+  });
+
+  it('shows I₁ = P × i when compounding differs from the payments', () => {
+    const model = instalmentFormula(
+      loan({ repayment: 'equal-principal', compounding: 'quarterly' }).explain,
+      'en-US',
+      2,
+    );
+    expect(strip(model)).toBe(
+      `${FIRST} = p_(1) + I_(1), p_(1) = q = R(P ÷ N) = 972.22, I_(1) = P × i = 1,993.83, ` +
+        'P = 350,000.00, N = 360, i = 0.005696653187 → 2,966.05',
+    );
+    expect(lines(model)[3]).toBe('I_(1) = P × i');
+    expect(values(model)).toMatchObject({ j: '0.06875', m: '12', i: '0.005696653187' });
+
+    // An exact i keeps all its digits: quarterly payments, monthly compounding.
+    const exact = instalmentFormula(
+      loan({
+        repayment: 'equal-principal',
+        annualRatePct: '6.12',
+        frequency: 'quarterly',
+        compounding: 'monthly',
+      }).explain,
+      'en-US',
+      2,
+    );
+    expect(strip(exact)).toBe(
+      `${FIRST} = p_(1) + I_(1), p_(1) = q = R(P ÷ N) = 2,916.67, I_(1) = P × i = 5,382.36, ` +
+        'P = 350,000.00, N = 120, i = 0.015378162651 → 8,299.03',
+    );
+  });
+
+  it('shows I₁ = P × j × YF₁ in day-count mode, without i or m', () => {
+    const result = loan({
+      repayment: 'equal-principal',
+      accrualMode: 'daycount',
+      dayCount: 'act-365f',
+    });
+    expect(result.explain.values.yf1).toBe('0.082191780821917808219');
+    const model = instalmentFormula(result.explain, 'en-US', 2);
+    // 30 days ÷ 365, shown with 10 significant digits.
+    expect(strip(model)).toBe(
+      `${FIRST} = p_(1) + I_(1), p_(1) = q = R(P ÷ N) = 972.22, ` +
+        'I_(1) = P × j × YF_(1) = 1,977.74, P = 350,000.00, N = 360, j = 0.06875, ' +
+        'YF_(1) = 0.08219178082 → 2,949.96',
+    );
+    expect(lines(model)[3]).toBe('I_(1) = P × j × YF_(1)');
+    expect(values(model)).toEqual({
+      P: '350,000.00',
+      N: '360',
+      j: '0.06875',
+      dayCount: '[act-365f]',
+      yf1: '0.08219178082',
+      q: '972.22',
+      p1: '972.22',
+      I1: '1,977.74',
+      first: '2,949.96',
+    });
+    const yf1 = model.values.find((entry) => entry.name === 'yf1');
+    expect(yf1?.label).toBe('explain.symYf1');
+    expect(plain(yf1?.symbol ?? [])).toBe('YF_(1)');
+  });
+
+  it('shows an exact year fraction with all its digits', () => {
+    // 30E/360 over a quarter: 90 ÷ 360 = 0.25.
+    const result = loan({
+      repayment: 'equal-principal',
+      frequency: 'quarterly',
+      accrualMode: 'daycount',
+      dayCount: '30e-360',
+    });
+    expect(result.explain.values.yf1).toBe('0.25');
+    expect(strip(instalmentFormula(result.explain, 'en-US', 2))).toContain('YF_(1) = 0.25 → ');
+  });
+
+  it('separates the parts with "; " in ru-RU', () => {
+    const model = instalmentFormula(loan({ repayment: 'equal-principal' }).explain, 'ru-RU', 2);
+    expect(strip(model)).toBe(
+      `${FIRST} = p_(1) + I_(1); p_(1) = q = R(P ÷ N) = 972,22; I_(1) = P × j ÷ m = 2 005,21; ` +
+        'P = 350 000,00; N = 360; j = 0,06875; m = 12 → 2 977,43',
+    );
+  });
+
+  it('shows the first interest payment of an interest-only loan as I₁', () => {
     const model = instalmentFormula(loan({ repayment: 'bullet' }).explain, 'en-US', 2);
     expect(strip(model)).toBe(
-      'p_(k) = 0 (k < N), p_(N) = P, P = 350,000.00, N = 360 → I_(1) = 2,005.21',
+      `${FIRST} = I_(1) = P × j ÷ m, P = 350,000.00, N = 360, j = 0.06875, m = 12 → 2,005.21`,
     );
-    expect(values(model)).toEqual({ P: '350,000.00', N: '360', I1: '2,005.21' });
-    expect(model.result?.raw).toBe('2005.21');
+    expect(lines(model)).toEqual([`${FIRST} = I_(1) = P × j ÷ m`, 'p_(k) = 0 (k < N), p_(N) = P']);
+    expect(values(model)).toEqual({
+      P: '350,000.00',
+      N: '360',
+      j: '0.06875',
+      m: '12',
+      I1: '2,005.21',
+      first: '2,005.21',
+    });
+    expect(model.result).toEqual({ raw: '2005.21', text: '2,005.21', symbol: null });
     expect(model.note).toBe('explain.instalmentBullet');
+  });
+
+  it('adds P to I₁ for an interest-only loan with a single payment', () => {
+    const model = instalmentFormula(
+      loan({ repayment: 'bullet', termMode: 'payments', termPayments: '1' }).explain,
+      'en-US',
+      2,
+    );
+    expect(strip(model)).toBe(
+      `${FIRST} = P + I_(1), I_(1) = P × j ÷ m = 2,005.21, P = 350,000.00, N = 1, ` +
+        'j = 0.06875, m = 12 → 352,005.21',
+    );
+    expect(lines(model)).toEqual([
+      `${FIRST} = P + I_(1)`,
+      'I_(1) = P × j ÷ m',
+      'p_(k) = 0 (k < N), p_(N) = P',
+    ]);
+    expect(model.result?.raw).toBe('352005.21');
+  });
+
+  it('shows the rate of an interest-only loan in every accrual mode', () => {
+    const quarterly = loan({ repayment: 'bullet', compounding: 'quarterly' });
+    expect(strip(instalmentFormula(quarterly.explain, 'en-US', 2))).toBe(
+      `${FIRST} = I_(1) = P × i, P = 350,000.00, N = 360, i = 0.005696653187 → 1,993.83`,
+    );
+    const dayCount = loan({ repayment: 'bullet', accrualMode: 'daycount', dayCount: 'act-360' });
+    expect(strip(instalmentFormula(dayCount.explain, 'en-US', 2))).toBe(
+      `${FIRST} = I_(1) = P × j × YF_(1), P = 350,000.00, N = 360, j = 0.06875, ` +
+        'YF_(1) = 0.08333333333 → 2,005.21',
+    );
+    const single = loan({
+      repayment: 'bullet',
+      accrualMode: 'daycount',
+      dayCount: 'act-360',
+      termMode: 'payments',
+      termPayments: '1',
+    });
+    expect(strip(instalmentFormula(single.explain, 'en-US', 2))).toBe(
+      `${FIRST} = P + I_(1), I_(1) = P × j × YF_(1) = 2,005.21, P = 350,000.00, N = 1, ` +
+        'j = 0.06875, YF_(1) = 0.08333333333 → 352,005.21',
+    );
   });
 
   it('formats amounts with the minor units of the currency', () => {
     const model = instalmentFormula(
-      { formulaId: 'instalment.equal-principal', values: { P: '35000000', N: '360', q: '97222' } },
+      {
+        formulaId: 'instalment.equal-principal',
+        values: {
+          P: '35000000',
+          N: '360',
+          j: '0.06875',
+          m: '12',
+          q: '97222',
+          p1: '97222',
+          I1: '200521',
+          first: '297743',
+        },
+      },
       'en-US',
       0,
     );
-    expect(strip(model)).toBe('q = P ÷ N, P = 35,000,000, N = 360 → 97,222');
+    expect(strip(model)).toBe(
+      `${FIRST} = p_(1) + I_(1), p_(1) = q = R(P ÷ N) = 97,222, I_(1) = P × j ÷ m = 200,521, ` +
+        'P = 35,000,000, N = 360, j = 0.06875, m = 12 → 297,743',
+    );
+  });
+
+  it('shows values that follow no equal-principal or interest-only formula as raw values', () => {
+    const principal = loan({ repayment: 'equal-principal' }).explain;
+    const shown = (explain: Explain, patch: Readonly<Record<string, string>>): FormulaModel =>
+      instalmentFormula({ ...explain, values: { ...explain.values, ...patch } }, 'en-US', 2);
+    expect(shown(principal, {}).lines).toHaveLength(4);
+    // p₁ is neither q nor P − (N − 1)·q.
+    expect(shown(principal, { p1: '972.23', first: '2977.44' }).lines).toEqual([]);
+    // first is not p₁ + I₁.
+    expect(shown(principal, { first: '2977.44' }).lines).toEqual([]);
+    // An amount finer than the minor units, or not an amount at all.
+    expect(shown(principal, { q: '972.220' }).lines).toEqual([]);
+    expect(shown(principal, { I1: '2,005.21' }).lines).toEqual([]);
+    expect(shown(principal, { N: 'many' }).lines).toEqual([]);
+
+    const bullet = loan({ repayment: 'bullet' }).explain;
+    expect(shown(bullet, {}).lines).toHaveLength(2);
+    // first is neither I₁ nor P + I₁.
+    const neither = shown(bullet, { first: '2005.22' });
+    expect(neither.lines).toEqual([]);
+    expect(neither.result).toBeNull();
+    expect(strip(neither)).toBe(
+      'instalment.bullet, P = 350,000, N = 360, j = 0.06875, m = 12, I1 = 2,005.21, ' +
+        'first = 2,005.22',
+    );
   });
 
   it('shows an unknown id with its raw values and no formula', () => {
@@ -249,7 +485,19 @@ describe('instalmentFormula', () => {
     expect(strip(missing)).toBe('instalment.annuity, P = 1,000');
 
     const malformed = instalmentFormula(
-      { formulaId: 'instalment.equal-principal', values: { P: 'lots', N: '2', q: '1.00' } },
+      {
+        formulaId: 'instalment.equal-principal',
+        values: {
+          P: 'lots',
+          N: '2',
+          j: '0',
+          m: '12',
+          q: '1.00',
+          p1: '1.00',
+          I1: '0.00',
+          first: '1.00',
+        },
+      },
       'en-US',
       2,
     );
@@ -261,12 +509,24 @@ describe('instalmentFormula', () => {
     const model = instalmentFormula(
       {
         formulaId: 'instalment.equal-principal',
-        values: { P: '2.00', N: '2', q: '1.00', Z: '0.5' },
+        values: {
+          P: '2.00',
+          N: '2',
+          j: '0',
+          m: '12',
+          q: '1.00',
+          p1: '1.00',
+          I1: '0.00',
+          first: '1.00',
+          Z: '0.5',
+        },
       },
       'en-US',
       2,
     );
-    expect(model.values[3]).toEqual({
+    // The formula is built: a value it does not know does not stop it.
+    expect(model.lines).toHaveLength(4);
+    expect(model.values[8]).toEqual({
       name: 'Z',
       symbol: [{ kind: 'text', text: 'Z' }],
       label: null,

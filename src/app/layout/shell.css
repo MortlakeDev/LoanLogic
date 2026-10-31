@@ -136,30 +136,74 @@
   max-width: 16rem;
 }
 
-/* Theme menu: a panel under the icon button, aligned to its end edge. */
+/* Theme menu (DESIGN §7.1): a menu under the icon button, aligned to its end edge. */
 .theme-menu {
   position: relative;
   flex: none;
 }
 
-.theme-menu__panel {
+.theme-menu__list {
   position: absolute;
   top: calc(100% + var(--space-2));
   inset-inline-end: 0;
   z-index: 40;
+  display: grid;
+  gap: var(--space-1);
   min-width: 12rem;
-  padding: var(--space-3);
+  padding: var(--space-2);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
   background: var(--color-surface-1);
   box-shadow: var(--shadow-2);
 }
 
-.theme-menu__panel[hidden] {
+.theme-menu__list[hidden] {
   display: none;
 }
 
-/* The theme radios (header panel and menu sheet). */
+.theme-menu__item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: var(--size-target);
+  padding: 0 var(--space-3);
+  border-radius: var(--radius-md);
+  color: var(--color-text-primary);
+  font-size: var(--font-size-sm);
+  white-space: nowrap;
+  cursor: pointer;
+  user-select: none;
+  transition: background-color var(--duration-fast) var(--easing-standard);
+}
+
+.theme-menu__item:hover {
+  background: var(--color-surface-3);
+}
+
+/* The check mark carries the checked state; the background and weight only add to it. */
+.theme-menu__item[aria-checked='true'] {
+  background: var(--color-surface-2);
+  font-weight: var(--font-weight-semibold);
+}
+
+/* The mark's slot keeps its width when empty, so the labels line up. */
+.theme-menu__check {
+  display: inline-flex;
+  flex: none;
+  width: 1rem;
+  height: 1rem;
+}
+
+.theme-menu__check .icon {
+  width: 1rem;
+  height: 1rem;
+}
+
+.theme-menu__icon {
+  color: var(--color-text-secondary);
+}
+
+/* The theme radios of the menu sheet. */
 .theme-options {
   display: grid;
   gap: var(--space-2);
@@ -245,8 +289,23 @@
 }
 
 @media (forced-colors: active) {
-  .theme-menu__panel {
+  .theme-menu__list {
     border-color: CanvasText;
+  }
+
+  /* System colours mark the checked item, as for the selected segment. */
+  .theme-menu__item[aria-checked='true'] {
+    forced-color-adjust: none;
+    background: Highlight;
+    color: HighlightText;
+  }
+
+  .theme-menu__item[aria-checked='true'] .theme-menu__icon {
+    color: inherit;
+  }
+
+  .theme-menu__item[aria-checked='true']:focus-visible {
+    outline-color: CanvasText;
   }
 }
 
