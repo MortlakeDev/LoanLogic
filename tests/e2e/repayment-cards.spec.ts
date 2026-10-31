@@ -114,6 +114,14 @@ for (const language of LANGUAGES_WITH_LONG_TITLES) {
       }) => {
         const title = '#field-repayment .choice:has(input[value="equal-principal"]) .choice__title';
         expect(await page.locator(title).textContent()).toContain('\u00AD');
+        // Whether the word fits a card depends on the fonts the runner renders with (on
+        // Linux CI the uk title fits at 1 024 px), so the control narrows the title until the
+        // word must wrap: the checker then has to report the mid-word break.
+        await page.locator(title).evaluate((element) => {
+          if (element instanceof HTMLElement) {
+            element.style.maxWidth = '5em';
+          }
+        });
         expect(await unhyphenatedBreaks(page, title, true)).not.toEqual([]);
       });
     });
