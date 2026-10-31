@@ -294,6 +294,47 @@ describe('buildSchedule properties', () => {
             break;
         }
 
+        // Every explanation carries exactly its own values (SPEC §9.6): the first row as
+        // posted for equal principal and bullet, and the rate values of the accrual mode.
+        const { formulaId, values } = schedule.explain;
+        const daycount = terms.accrual.mode === 'daycount';
+        const periodicRate =
+          !daycount && terms.accrual.compounding !== terms.frequency ? ['j', 'm', 'i'] : ['j', 'm'];
+        const expectedKeys: Record<string, readonly string[]> = {
+          'instalment.annuity': ['P', 'N', ...periodicRate, 'Astar', 'A'],
+          'instalment.balloon': ['P', 'N', ...periodicRate, 'Astar', 'A', 'Bal'],
+          'instalment.annuity-exact-basis': ['P', 'N', 'j', 'dayCount', 'Astar', 'A'],
+          'instalment.equal-principal': [
+            'P',
+            'N',
+            'q',
+            'p1',
+            'I1',
+            'first',
+            ...(daycount ? ['j', 'dayCount', 'yf1'] : periodicRate),
+          ],
+          'instalment.bullet': [
+            'P',
+            'N',
+            'I1',
+            'first',
+            ...(daycount ? ['j', 'dayCount', 'yf1'] : periodicRate),
+          ],
+        };
+        expect(Object.keys(values).sort()).toEqual([...(expectedKeys[formulaId] ?? [])].sort());
+        if (terms.repayment === 'equal-principal' || terms.repayment === 'bullet') {
+          const firstRow = schedule.rows[0];
+          if (firstRow === undefined) {
+            throw new Error('expected a first row');
+          }
+          const money = (value: bigint): string => formatScaled(value, terms.minorUnits);
+          expect(values.I1).toBe(money(firstRow.interest));
+          expect(values.first).toBe(money(firstRow.principal + firstRow.interest));
+          if (terms.repayment === 'equal-principal') {
+            expect(values.p1).toBe(money(firstRow.principal));
+          }
+        }
+
         // Fixed and pct-original items are the same every period; pct-balance follows the
         // opening balance (SPEC §6.2).
         terms.fees.forEach((fee, index) => {
