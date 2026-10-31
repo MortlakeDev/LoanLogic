@@ -94,4 +94,65 @@ the live site are fixed too.
 
 ## Completion notes
 
-_(to be filled by the implementer)_
+**Status:** in review, [PR #__PR__](https://github.com/MortlakeDev/LoanLogic/pull/__PR__)
+(branch `task/T03a-ui-followups`). The branch includes PR #9 (SPEC v0.2.3, DESIGN, this
+brief), which was not merged into `main` when the task started; once #9 is merged the
+PR shows only T03a's changes.
+
+**Acceptance criteria (local evidence, 2026-10-31, Windows, Node 24.19):**
+
+- Every formula strip ends with the engine's own value (`A`, or `first` for equal
+  principal and interest-only), and the hero shows that value, so they are equal for
+  every repayment type, compounding and accrual mode: 18 component cases render the hero
+  with its strip (annuity, balloon, exact basis, equal principal with the remainder last
+  and first, interest-only with N = 1 and N > 1; periodic c = m, c ≠ m and day-count),
+  and e2e checks equal principal and interest-only in Chromium and WebKit.
+- The amount and the currency select are one `fieldset`; its legend "Loan amount" is
+  the visible label and names the amount input (`aria-labelledby`); the select keeps
+  "Currency". axe passes in all four languages, both themes, 360 and 1 280 px.
+- The theme menu is a WAI-ARIA menu button with three `menuitemradio` items: a click,
+  Enter or Space applies the choice and closes it, the arrow keys (and Home/End) only
+  move focus, Esc returns focus to the button, Tab closes it and moves on.
+- ru and uk repayment titles carry soft hyphens; an e2e check at 360, 390, 1 024 and
+  1 280 px compares the line boxes of every word in the cards with a DOM `Range` and
+  fails on a mid-word break without a hyphen (a control run without the soft hyphens
+  shows the check sees the defect). Currency options show the code alone when
+  `Intl.DisplayNames` has no name.
+- `npm run check` passes: 2 754 unit tests, coverage 99.61 % statements, 98.95 %
+  branches; initial JS 82.8 KiB gzip. `npm run e2e`: 268 passed, 10 skipped (the known
+  WebKit-on-Windows and forced-colors cases). No golden vector changes.
+- Screenshots: [`T03a-screenshots/`](T03a-screenshots/) (theme menu, an equal-principal
+  strip, the ru cards at 360 px).
+
+**Engine (SPEC v0.2.3 §9.6):** `instalment.equal-principal` carries `p1`, `I1` and
+`first` from the first row as posted, and `instalment.bullet` carries `first`; both carry
+the rate behind `I1` (`j`, `m`, and `i` only when `c ≠ m`; or `j`, `dayCount`, `yf1` in
+day-count mode). A property test checks on random loans that every payload, annuity and
+balloon included, has exactly its own fields.
+
+**Decisions:**
+
+1. The amount input is named by the legend (`aria-labelledby`); `NumberInput` gained an
+   `ariaLabelledBy` prop for it.
+2. The theme menu items are `div`s with menu roles (native buttons would turn Enter and
+   Space into a second click; list elements may not carry menu roles under the strict
+   jsx-a11y rules). The phone menu sheet keeps its radio group: it is a settings sheet,
+   not this menu. A click now also moves focus to the checked item, as the menu pattern
+   does.
+3. The equal-principal and interest-only strips in day-count mode show `YF₁` but not the
+   method name (the Explain sheet names it); DESIGN §8.6 does not ask for it in the strip
+   (не уверен).
+4. The new engine tests sit in `src/engine/schedule/build.test.ts`, next to
+   `buildSchedule`.
+
+**SPEC question:** in day-count mode `yf1` is rounded to 20 significant digits when the
+fraction does not terminate (30/360 methods), so at an exact rounding tie the strip's
+`P × j × YF₁` cannot reproduce the posted interest: USD 1 001.00 at 6 %, interest-only,
+monthly, 30E/360 (also 30U/360), disbursed 2026-01-15 gives `yf1` 0.083333333333333333333,
+`P × j × yf1` = 5.004999… → 5.00, while the engine posts 5.01 (exactly 5.005, half-up).
+The strip shows the engine's 5.01, so the figures stay right; only a reader recomputing
+by hand would differ. Options: carry `YF₁` exactly (for example as the day count and the
+basis divisor), or accept that operands are display values (DESIGN §8.6 says so for
+irrational ones).
+
+**Open items:** none beyond the SPEC question.
