@@ -394,24 +394,32 @@ open with `--duration-normal`.
 - Formula strip: surface-2 box, mono xs–sm, built from the engine's `explain` values
   (SPEC §9.6) so that it reproduces the result. The strip's result is the engine's own
   value (`A` or `first`), never recomputed in the UI, so it always equals the hero.
-  Irrational operands are displayed with 10 significant digits, for display only. The
-  accent action "How it's calculated →" opens the Explain sheet (§8.12). One branch per
-  payload; the equal-principal and bullet branches need the SPEC v0.2.3 payloads, which
-  task T03a adds to the engine:
+  Operands are shown in an exact form wherever one exists (`i` as `j ÷ m`, `YF₁` as day
+  counts), so a reader can reproduce the posted figure by hand. The one exception is the
+  payload's `i` when `c ≠ m`: with more than 11 significant digits (it is often
+  irrational, or a fraction that does not terminate) it is shown rounded to 10 significant
+  digits, for display only. The accent action "How it's calculated →" opens the Explain
+  sheet (§8.12). One branch per payload; the equal-principal and bullet branches need the
+  SPEC v0.2.3 and v0.2.4 payloads, which task T03a adds to the engine:
   - The rate `i` (annuity and balloon, and `I₁` in periodic mode): when the payload
     carries `i` (periodic interest with `c ≠ m`), its value is shown; otherwise `i` is
     shown as `j ÷ m` (periodic interest with `c = m`, and an annuity or balloon with the
     nominal payment basis in day-count mode). Day-count equal-principal and bullet
-    payloads have no `i` and no `m`; their `I₁` uses `yf1` (below).
+    payloads have no `i` and no `m`; their `I₁` uses `YF₁` (below).
   - `instalment.annuity`: `A = P·i ÷ (1 − (1+i)^−N)`, e.g.
     `A = P·i ÷ (1 − (1+i)^−N), i = 0.06875 ÷ 12, N = 360 → 2,299.25`.
   - `instalment.balloon`: `A = (P − Bal·(1+i)^−N)·i ÷ (1 − (1+i)^−N)`.
   - `instalment.annuity-exact-basis`: there is no single `i`. The strip names the rate
     per period, `r_k = j × YF_k` with the day-count method (`dayCount`), and shows `P`,
     `N` → `A`.
-  - The first period's interest `I₁` (equal principal, interest-only): `I₁ = P × j × YF₁`
-    in day-count mode (the payload carries `yf1`); in periodic mode `I₁ = P × i` when the
-    payload carries `i`, else `I₁ = P × j ÷ m`.
+  - The first period's interest `I₁` (equal principal, interest-only) is the posted
+    interest, the payload's `I1`, so the strip shows the interest rounding `R` (SPEC
+    §5.1): `I₁ = R(P × j × YF₁)` in day-count mode, with `YF₁` written from the payload's
+    `yf1Parts` as day counts (`YF₁ = 30 ÷ 360`, or `61 ÷ 365 + 121 ÷ 366` for ACT/ACT
+    across a year end); in periodic mode `I₁ = R(P × i)` when the payload carries `i`,
+    else `I₁ = R(P × j ÷ m)`. This strip needs no method name, since `30 ÷ 360` is
+    exact; the Explain sheet names the method. (The exact-basis strip above does name
+    it: its `YF_k` changes from period to period, so there are no day counts to show.)
   - `instalment.equal-principal`: `q = R(P ÷ N)` (half-up to the minor unit, SPEC
     §5.3), then `first = p₁ + I₁`, where `p₁ = q`, or `p₁ = P − (N − 1)·q` when the
     remainder comes first.
