@@ -286,7 +286,9 @@ xs section labels and table headers.
 
 - Header: wordmark (22 px high) + "by Mortlake" (xs, muted) left; right: region and
   currency pill (globe icon, "United States · USD"; T05), language select (endonyms),
-  theme button, **Share** (primary button).
+  theme button, **Share** (primary button). The theme button opens a menu (System, Dark,
+  Light): a click, Enter or Space applies the choice and closes the menu, the arrow keys
+  only move between the options, and Esc closes it; focus returns to the button.
 - Two columns: the inputs panel (≤ 420 px) and the results column. The panel is sticky
   at the top with `max-height: calc(100dvh − 3rem)` and scrolls on its own
   (`overflow-y: auto`), so Fees and Advanced are reachable without scrolling the page.
@@ -340,6 +342,12 @@ never a different color.
   and `aria-describedby`; the message is the localized engine error (SPEC §13).
 - Numbers are typed in the user's locale (grouping and decimal separator) and parsed to
   the engine's decimal strings; the field reformats on blur, never while typing.
+- The loan amount and its currency select are one group: a `fieldset` whose legend
+  "Loan amount" is the visible label (§11); the select keeps the accessible name
+  "Currency". Below 30rem the amount is 18 px so both fit side by side at 360 px.
+- Currency options read "USD · US dollar": the code and the localized name from
+  `Intl.DisplayNames`. When the browser has no name for a code (it returns the code, as
+  for CLF or ZWG in some versions), the option shows the code alone, not "CLF · CLF".
 
 ### 8.3 Segmented control
 
@@ -359,6 +367,11 @@ secondary); radius `lg`, surface-2, 1 px border. Selected: 1 px `--color-accent`
 `--color-accent-subtle` background. Titles: Equal payments / Equal principal /
 Interest-only / Balloon (zh-CN: 等额本息 / 等额本金 / 先息后本 / 气球贷).
 
+A title never breaks inside a word without a hyphen. The cards are narrower than the ru
+and uk titles of equal principal at most widths, so those strings carry soft hyphens
+(U+00AD) at the syllable breaks: Диф-фе-рен-ци-ро-ван-ный, Ди-фе-рен-ці-йо-ва-ний. Soft
+hyphens work in every browser; `hyphens: auto` depends on the browser's dictionaries.
+
 ### 8.5 Disclosure
 
 Full-width button (min 56 px): title (sm, 600) + status line (xs, muted, e.g. "Monthly
@@ -371,12 +384,38 @@ open with `--duration-normal`.
   for equal principal "First payment" with the range "→ last $…".
 - Hero number (§4.2) over a dotted grid (`radial-gradient` dots in `--color-chart-grid`,
   16 px pitch).
+- The hero is the engine's instalment: `A` for annuity and balloon, `first` for equal
+  principal and interest-only. It is the principal and interest of one payment, so for
+  interest-only it is the interest alone (`I₁`, principal 0), or `P + I₁` when the loan
+  has one payment (`N = 1`). Periodic fees and insurance are not part of it; when payments
+  carry them, the meta line adds "first payment $… with periodic fees" (or "with
+  insurance").
 - Meta line: "360 payments · final payment $2,300.28 · paid off Nov 1, 2056".
 - Formula strip: surface-2 box, mono xs–sm, built from the engine's `explain` values
-  (SPEC §9.6) so that it reproduces the result: `i` is shown as `j ÷ m`, irrational
-  values with 10 significant digits, e.g.
-  `A = P·i ÷ (1 − (1+i)^−N), i = 0.06875 ÷ 12, N = 360 → 2,299.25`; and the accent
-  action "How it's calculated →" that opens the Explain sheet (§8.12).
+  (SPEC §9.6) so that it reproduces the result. The strip's result is the engine's own
+  value (`A` or `first`), never recomputed in the UI, so it always equals the hero.
+  Irrational operands are displayed with 10 significant digits, for display only. The
+  accent action "How it's calculated →" opens the Explain sheet (§8.12). One branch per
+  payload; the equal-principal and bullet branches need the SPEC v0.2.3 payloads, which
+  task T03a adds to the engine:
+  - The rate `i` (annuity and balloon, and `I₁` in periodic mode): when the payload
+    carries `i` (periodic interest with `c ≠ m`), its value is shown; otherwise `i` is
+    shown as `j ÷ m` (periodic interest with `c = m`, and an annuity or balloon with the
+    nominal payment basis in day-count mode). Day-count equal-principal and bullet
+    payloads have no `i` and no `m`; their `I₁` uses `yf1` (below).
+  - `instalment.annuity`: `A = P·i ÷ (1 − (1+i)^−N)`, e.g.
+    `A = P·i ÷ (1 − (1+i)^−N), i = 0.06875 ÷ 12, N = 360 → 2,299.25`.
+  - `instalment.balloon`: `A = (P − Bal·(1+i)^−N)·i ÷ (1 − (1+i)^−N)`.
+  - `instalment.annuity-exact-basis`: there is no single `i`. The strip names the rate
+    per period, `r_k = j × YF_k` with the day-count method (`dayCount`), and shows `P`,
+    `N` → `A`.
+  - The first period's interest `I₁` (equal principal, interest-only): `I₁ = P × j × YF₁`
+    in day-count mode (the payload carries `yf1`); in periodic mode `I₁ = P × i` when the
+    payload carries `i`, else `I₁ = P × j ÷ m`.
+  - `instalment.equal-principal`: `q = R(P ÷ N)` (half-up to the minor unit, SPEC
+    §5.3), then `first = p₁ + I₁`, where `p₁ = q`, or `p₁ = P − (N − 1)·q` when the
+    remainder comes first.
+  - `instalment.bullet`: `first = I₁`, or `first = P + I₁` when `N = 1`.
 
 ### 8.7 Regional rate card
 
@@ -462,7 +501,9 @@ Esc closes, focus returns to the trigger.
   flash.
 - Engine warnings (`RATE_HIGH`, `EARLY_CLOSE`, …) appear as an info/warning line under the
   hero with the localized explanation.
-- Rate failures (`IRR_NO_CONVERGENCE`) show "n/a" with the reason in a tooltip.
+- Rate failures (`IRR_NO_CONVERGENCE`) show "n/a" with the reason as visible text beside
+  it, not in a tooltip (a tooltip fails keyboard and touch users); a failed rate has no
+  Explain button.
 
 ### 8.14 Checks (T11)
 

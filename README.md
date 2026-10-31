@@ -7,9 +7,10 @@ EU, China, Ukraine and beyond. It aims to reproduce a lender's schedule to the c
 real cost of credit the way your region defines it, and explain every number it shows. There is
 no server and no tracking, it works offline, and it is open source.
 
-> **Status: pre-alpha.** This is the foundation (milestone M0): the app shell, tooling,
-> languages, themes and builds. **There are no calculations yet.** The financial engine
-> arrives with task T02. See [`docs/PLAN.md`](docs/PLAN.md) §7 for the milestones.
+> **Status: pre-alpha.** The financial engine (milestone M1) and the first version of the
+> loan calculator are in; try it at <https://mortlakedev.github.io/LoanLogic/>. Charts, region
+> profiles and everything else under "Planned" are still to come. See
+> [`docs/PLAN.md`](docs/PLAN.md) §7 for the milestones.
 
 ## Principles
 
@@ -27,16 +28,23 @@ no server and no tracking, it works offline, and it is open source.
 - **No silent fallbacks.** If something cannot be computed or applied, LoanLogic says so
   instead of computing something else.
 
-## Planned features
+## Features
 
-Nothing below is implemented yet. The full catalogue, with priorities and milestones, is in
-[`docs/PLAN.md`](docs/PLAN.md) §3.
+The full catalogue, with priorities and milestones, is in [`docs/PLAN.md`](docs/PLAN.md) §3.
+
+Available now:
 
 - **Loan calculator.** Annuity, equal principal, interest-only with a bullet, and balloon
   loans. Term and payment frequency are set independently. Compounding, day-count conventions
-  and rounding policy are configurable. Fees and insurance carry a per-fee APR flag.
-  Prepayments, rate changes and payment holidays are supported. Every loan gets a full
-  schedule, charts and a "How was this calculated?" view.
+  and rounding policy are configurable. Fees and insurance carry a per-fee APR flag. Every
+  loan gets a full schedule, the headline cost-of-credit rate and a "How it's calculated"
+  view.
+- **Experience.** Dark, light and system themes, a responsive layout, four languages, and a
+  single self-contained HTML file.
+
+Planned:
+
+- **Loan calculator, continued.** Charts; prepayments, rate changes and payment holidays.
 - **Comparison.** The same loan under every repayment type, up to five offers side by side,
   the break-even reinvestment rate, a day-count comparison and what-if sliders.
 - **Prepayment, payoff and refinancing.** Invest vs prepay, borrow vs pay cash, the payoff
@@ -54,8 +62,7 @@ Nothing below is implemented yet. The full catalogue, with priorities and milest
 - **Productivity.** Saved scenarios, history, presets, a glossary, and shareable links that
   carry the scenario in the URL fragment, which is never sent to a server.
 - **Reports and exports.** Print/PDF, XLSX, DOCX, CSV, a flat CSV for ERP import, and JSON.
-- **Experience.** Dark, light and system themes, a responsive layout, an installable PWA, and
-  a single self-contained HTML file.
+- **Installable app.** A PWA you can install and use offline.
 
 Out of scope for v1: accounts or any server, live market rates, tax-law calculators,
 revolving credit and leasing.
@@ -64,8 +71,8 @@ revolving credit and leasing.
 
 - **No server.** LoanLogic is a static web app. All calculation happens on your device.
 - **No tracking.** There are no analytics, no telemetry and no third-party scripts.
-- **No runtime network requests.** Everything is bundled, including the Inter font. Nothing is
-  loaded from a CDN.
+- **No runtime network requests.** Everything is bundled, including the fonts (Onest and
+  JetBrains Mono). Nothing is loaded from a CDN.
 - **Your data stays on your device.** Settings such as language and theme are kept in your
   browser's `localStorage` under the `loanlogic:` namespace.
 - **Offline single file.** `npm run build:single` produces `dist-single/LoanLogic.html`. It
@@ -114,14 +121,14 @@ npm run e2e
 | `npm run e2e`            | Run both builds, then the Playwright end-to-end and axe accessibility tests in Chromium and WebKit.                                                       |
 | `npm run check:spdx`     | Check that every source file starts with the SPDX license and copyright header.                                                                           |
 | `npm run check:licenses` | Check the license of every installed package against the allowlist.                                                                                       |
-| `npm run check:size`     | Check that the initial JavaScript stays within the gzip budget (60 KiB at this stage). Run it after `build`.                                              |
+| `npm run check:size`     | Check that the initial JavaScript stays within the gzip budget (150 KiB, PLAN §5.6). Run it after `build`.                                                |
 | `npm run check`          | Everything a pull request needs: lint, format check, typecheck, SPDX and license checks, tests with coverage thresholds, both builds and the size budget. |
 
 ### Project layout
 
 ```text
 src/
-  engine/      financial engine: pure, deterministic TypeScript (placeholder until T02)
+  engine/      financial engine: pure, deterministic TypeScript (schedule/, metrics/)
   app/         UI: state/, components/, panels/, layout/, storage.ts, main.tsx
   i18n/        locales/{en,zh-CN,ru,uk}.json, format.ts, index.ts
   export/      reports and exports (placeholder until T14–T15)
