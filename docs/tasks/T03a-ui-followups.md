@@ -1,6 +1,6 @@
 # T03a — UI follow-ups from the T03 review
 
-- **Milestone:** M2 · **Status:** ready
+- **Milestone:** M2 · **Status:** in review (PR #11)
 - **Depends on:** T03 ✓ · **Blocks:** T04, T05 (they start after this small task)
 - **Branch:** `task/T03a-ui-followups`
 
@@ -113,4 +113,81 @@ the live site are fixed too.
 
 ## Completion notes
 
-_(to be filled by the implementer)_
+**Status:** in review, [PR #11](https://github.com/MortlakeDev/LoanLogic/pull/11)
+(branch `task/T03a-ui-followups`). The architect accepted the first round with one
+change, scope item 7 (SPEC v0.2.4); `main` with #9, #10 and #12 is merged into the
+branch, so the PR shows only T03a's changes.
+
+**Acceptance criteria (local evidence, 2026-11-01, Windows, Node 24.19):**
+
+- Every formula strip ends with the engine's own value (`A`, or `first` for equal
+  principal and interest-only), and the hero shows that value, so they are equal for
+  every repayment type, compounding and accrual mode: 18 component cases render the hero
+  with its strip (annuity, balloon, exact basis, equal principal with the remainder last
+  and first, interest-only with N = 1 and N > 1; periodic c = m, c ≠ m and day-count),
+  and e2e checks equal principal and interest-only in Chromium and WebKit.
+- The amount and the currency select are one `fieldset`; its legend "Loan amount" is
+  the visible label and names the amount input (`aria-labelledby`); the select keeps
+  "Currency". axe passes in all four languages, both themes, 360 and 1 280 px.
+- The theme menu is a WAI-ARIA menu button with three `menuitemradio` items: a click,
+  Enter or Space applies the choice and closes it, the arrow keys (and Home/End) only
+  move focus, Esc returns focus to the button, Tab closes it and moves on.
+- ru and uk repayment titles carry soft hyphens; an e2e check at 360, 390, 1 024 and
+  1 280 px compares the line boxes of every word in the cards with a DOM `Range` and
+  fails on a mid-word break without a hyphen (a control run without the soft hyphens
+  shows the check sees the defect). Currency options show the code alone when
+  `Intl.DisplayNames` has no name.
+- Day-count strips write `YF₁` from `yf1Parts` (`YF₁ = 30 ÷ 360`) and `I₁` as posted
+  (`I₁ = R(P × j × YF₁)`, `R(P × i)`, `R(P × j ÷ m)`), so the hand calculation gives the
+  posted `I₁`; the tie (USD 1 001.00, 6 %, interest-only, monthly, N = 12, 30E/360,
+  disbursed 2026-01-15) has its own strip test: `YF₁ = 30 ÷ 360 → 5.01`.
+- `npm run check` passes: 2 769 unit tests, coverage 99.58 % statements, 98.91 %
+  branches; initial JS 83.1 KiB gzip. `npm run e2e`: 268 passed, 10 skipped (the known
+  WebKit-on-Windows and forced-colors cases). No golden vector changes
+  (`generate.py --check`: 106 vectors).
+- Screenshots: [`T03a-screenshots/`](T03a-screenshots/) (theme menu, an equal-principal
+  strip, the ru cards at 360 px).
+
+**Engine (SPEC v0.2.3 §9.6):** `instalment.equal-principal` carries `p1`, `I1` and
+`first` from the first row as posted, and `instalment.bullet` carries `first`; both carry
+the rate behind `I1` (`j`, `m`, and `i` only when `c ≠ m`; or `j`, `dayCount`, `yf1` in
+day-count mode). A property test checks on random loans that every payload, annuity and
+balloon included, has exactly its own fields.
+
+**Engine (SPEC v0.2.4 §9.6, item 7):** the day-count payloads also carry `yf1Parts`.
+`daycount.ts` gained `dayCountParts` (the day counts over their year lengths, one part
+per calendar year for ACT/ACT ISDA), and `yearFraction` is now the exact sum of those
+parts, so `yf1` and `yf1Parts` come from one day count and cannot disagree. Tests: every
+method (30U, 30E, 30/360 ISDA with their day-31 and end-of-February rules, ACT/360,
+ACT/365F, ACT/ACT ISDA inside one year and across a year end) for both formula ids; a
+property test that `yf1` is the parts' exact sum (exact when it terminates, otherwise
+that sum half-up to 20 significant digits), and one that the parts sum to `yearFraction`
+on random dates.
+
+**Decisions:**
+
+1. The amount input is named by the legend (`aria-labelledby`); `NumberInput` gained an
+   `ariaLabelledBy` prop for it.
+2. The theme menu items are `div`s with menu roles (native buttons would turn Enter and
+   Space into a second click; list elements may not carry menu roles under the strict
+   jsx-a11y rules). The phone menu sheet keeps its radio group: it is a settings sheet,
+   not this menu. A click now also moves focus to the checked item, as the menu pattern
+   does.
+3. The equal-principal and interest-only strips in day-count mode show `YF₁` but not the
+   method name; the Explain sheet names it (accepted by the architect, now in DESIGN
+   §8.6).
+4. The new engine tests sit in `src/engine/schedule/build.test.ts`, next to
+   `buildSchedule`.
+5. In the Explain sheet `yf1` keeps its own row ("Year fraction of the first period",
+   the full serialized value) and `yf1Parts` gets a new one ("Year fraction as day
+   counts", `30 ÷ 360`), both with the symbol `YF₁`: the sheet lists every payload
+   value, and the strip uses only `yf1Parts`.
+6. A day-count payload without `yf1Parts`, or with one that is not day counts, is
+   malformed: the strip shows the raw payload values instead of guessing a formula from
+   `yf1`, as for every other malformed payload.
+
+**Answered questions:** the first round asked how the strip can reproduce `I₁` at a
+rounding tie, since the 20-digit `yf1` gives 5.004999… → 5.00 where the engine posts
+5.01; SPEC v0.2.4 added `yf1Parts`, done in item 7. Naming the method in the strip
+(decision 3) was accepted, and the DESIGN wording on rounded operands was replaced in
+#12. No open items.

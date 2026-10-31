@@ -24,7 +24,8 @@ import {
   STORAGE_KEYS,
   THEME_PREFERENCES,
   themeButton,
-  themeGroup,
+  themeItem,
+  themeMenu,
   themeRadio,
   THEMES,
   type Theme,
@@ -33,30 +34,69 @@ import {
 test.use({ locale: 'en-US' });
 
 test.describe('theme menu', () => {
-  test('offers System, Dark and Light as radio buttons', async ({ page }) => {
+  // A dark system scheme makes a click on Light visible.
+  test.use({ colorScheme: 'dark' });
+
+  test('offers System, Dark and Light as a menu of radio items', async ({ page }) => {
     await gotoApp(page);
     const button = themeButton(page);
+    await expect(button).toHaveAttribute('aria-haspopup', 'menu');
     await expect(button).toHaveAttribute('aria-expanded', 'false');
-    await expect(themeGroup(page)).toBeHidden();
+    await expect(themeMenu(page)).toBeHidden();
 
-    const group = await openThemeMenu(page);
-    const panelId = await button.getAttribute('aria-controls');
-    expect(panelId, 'the button names the panel it controls').toBeTruthy();
-    await expect(page.locator(`[id="${panelId ?? ''}"]`)).toBeVisible();
-    await expect(group.getByRole('radio')).toHaveCount(THEME_PREFERENCES.length);
+    const menu = await openThemeMenu(page);
+    const menuId = await button.getAttribute('aria-controls');
+    expect(menuId, 'the button names the menu it controls').toBeTruthy();
+    await expect(page.locator(`[id="${menuId ?? ''}"]`)).toBeVisible();
+    await expect(page.locator(`[id="${menuId ?? ''}"]`)).toHaveAttribute('role', 'menu');
+    await expect(menu.getByRole('menuitemradio')).toHaveText(
+      THEME_PREFERENCES.map((preference) => message('en', `theme.${preference}`)),
+    );
+    // Items are 44 px targets (DESIGN §11).
     for (const preference of THEME_PREFERENCES) {
-      await expect(themeRadio(page, preference)).toBeVisible();
+      const box = await themeItem(page, preference).boundingBox();
+      expect(box?.height ?? 0, `${preference} item height`).toBeGreaterThanOrEqual(44 - 0.5);
     }
     await expectThemeChoice(page, 'system');
+  });
+
+  test('a click opens it at the checked item; a click on an item applies it and closes it', async ({
+    page,
+  }) => {
+    await gotoApp(page);
+    await expectTheme(page, 'dark');
+    const button = themeButton(page);
+
+    await button.click();
+    await expect(button).toHaveAttribute('aria-expanded', 'true');
+    await expect(themeItem(page, 'system')).toBeFocused();
+
+    await themeItem(page, 'light').click();
+    await expect(button).toHaveAttribute('aria-expanded', 'false');
+    await expect(themeMenu(page)).toBeHidden();
+    await expect(button).toBeFocused();
+    await expectTheme(page, 'light');
+    expect(await readStorage(page, STORAGE_KEYS.theme)).toBe(JSON.stringify('light'));
+
+    // It opens again at the new choice, and a click on the button closes it.
+    await button.click();
+    await expect(themeItem(page, 'light')).toBeFocused();
+    await expect(themeItem(page, 'light')).toBeChecked();
+    await button.click();
+    await expect(themeMenu(page)).toBeHidden();
+    await expect(button).toBeFocused();
+    await expectTheme(page, 'light');
   });
 
   test('closes on a click outside and keeps the choice', async ({ page }) => {
     await gotoApp(page);
     await chooseTheme(page, 'light');
+    await openThemeMenu(page);
     await page.getByRole('main').click({ position: { x: 4, y: 4 } });
     await expect(themeButton(page)).toHaveAttribute('aria-expanded', 'false');
-    await expect(themeGroup(page)).toBeHidden();
+    await expect(themeMenu(page)).toBeHidden();
     await expectTheme(page, 'light');
+    expect(await readStorage(page, STORAGE_KEYS.theme)).toBe(JSON.stringify('light'));
   });
 
   for (const theme of THEMES) {

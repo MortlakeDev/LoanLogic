@@ -4,7 +4,13 @@
 import * as fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import { type LocalDate, addDays, daysBetween, daysInMonth, parseIsoDate } from './date';
-import { DAY_COUNT_IDS, isDayCountId, yearFraction } from './daycount';
+import {
+  DAY_COUNT_IDS,
+  dayCountParts,
+  formatDayCountParts,
+  isDayCountId,
+  yearFraction,
+} from './daycount';
 import { toMinorUnits } from './money';
 import {
   type Rational,
@@ -15,6 +21,7 @@ import {
   parseDecimal,
   rational,
   toExplainString,
+  ZERO,
 } from './rational';
 import { dayCountInterest } from './rates';
 import type { DayCountId } from './types';
@@ -289,6 +296,72 @@ describe('golden vector rows (day-count interest = R(B × j × YF), half-up)', (
     );
     expect(interest('act-360', '2026-12-31', '2027-03-31', true, '5000000.00', '6.1')).toBe(
       7625000n,
+    );
+  });
+});
+
+describe('dayCountParts (SPEC §9.6 yf1Parts)', () => {
+  const day = (iso: string): LocalDate => {
+    const parsed = parseIsoDate(iso);
+    if (parsed === undefined) {
+      throw new Error(`bad date ${iso}`);
+    }
+    return parsed;
+  };
+
+  it('splits ACT/ACT ISDA at each year end, one part per year with days', () => {
+    const parts = dayCountParts('act-act-isda', day('2003-11-01'), day('2004-05-01'), false);
+    expect(parts).toEqual([
+      { days: 61, base: 365 },
+      { days: 121, base: 366 },
+    ]);
+    expect(formatDayCountParts(parts)).toBe('61/365+121/366');
+    // A period that ends on 1 January has no days in the new year.
+    expect(
+      formatDayCountParts(
+        dayCountParts('act-act-isda', day('2026-12-01'), day('2027-01-01'), false),
+      ),
+    ).toBe('31/365');
+  });
+
+  it('gives one part for the other methods, with their day adjustments', () => {
+    const write = (method: DayCountId, from: string, to: string, eom = false): string =>
+      formatDayCountParts(dayCountParts(method, day(from), day(to), eom));
+    expect(write('30u-360', '2026-01-31', '2026-03-31')).toBe('60/360');
+    expect(write('30e-360', '2026-01-30', '2026-03-31')).toBe('60/360');
+    expect(write('30-360-isda', '2026-01-15', '2026-03-31')).toBe('76/360');
+    expect(write('30u-360', '2026-02-28', '2026-03-31', true)).toBe('30/360');
+    expect(write('act-360', '2026-01-15', '2026-02-15')).toBe('31/360');
+    expect(write('act-365f', '2026-01-15', '2026-02-15')).toBe('31/365');
+  });
+
+  it('sums exactly to yearFraction, and the actual methods count every day once', () => {
+    fc.assert(
+      fc.property(
+        fc.constantFrom(...DAY_COUNT_IDS),
+        fc.integer({ min: 0, max: 36_500 }),
+        fc.integer({ min: 0, max: 800 }),
+        fc.boolean(),
+        (method, offset, length, eom) => {
+          // Engine dates only: the start is a day offset from 1 January 1990.
+          const from = addDays({ y: 1990, m: 1, d: 1 }, offset);
+          const to = addDays(from, length);
+          const parts = dayCountParts(method, from, to, eom);
+          const fraction = yearFraction(method, from, to, eom);
+          const sum = parts.reduce(
+            (total, part) => add(total, rational(BigInt(part.days), BigInt(part.base))),
+            ZERO,
+          );
+          expect(sum).toEqual(fraction);
+          // yearFraction is that same sum, so the check above cannot catch wrong parts; the
+          // calendar days from daysBetween can, for the methods that count actual days.
+          if (method.startsWith('act-')) {
+            const days = parts.reduce((total, part) => total + part.days, 0);
+            expect(days).toBe(daysBetween(from, to));
+          }
+        },
+      ),
+      { numRuns: 300 },
     );
   });
 });

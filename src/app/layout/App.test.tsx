@@ -207,49 +207,55 @@ describe('language switcher', () => {
 });
 
 describe('theme menu', () => {
-  /** Opens the header theme menu and returns its radio group. */
-  function openThemeMenu(): HTMLElement {
-    const button = screen.getByRole('button', { name: en['theme.label'] });
-    fireEvent.click(button);
-    expect(button.getAttribute('aria-expanded')).toBe('true');
-    return screen.getByRole('group', { name: en['theme.label'] });
+  /** The header theme menu button. */
+  function themeButton(): HTMLElement {
+    return screen.getByRole('button', { name: en['theme.label'] });
   }
 
-  /** Values of all checked radios in the group: a list, so it also proves only one is checked. */
-  function checkedValues(group: HTMLElement): string[] {
-    return within(group)
-      .getAllByRole<HTMLInputElement>('radio')
-      .filter((radio) => radio.checked)
-      .map((radio) => radio.value);
+  /** Opens the header theme menu and returns it. */
+  function openThemeMenu(): HTMLElement {
+    const button = themeButton();
+    fireEvent.click(button);
+    expect(button.getAttribute('aria-expanded')).toBe('true');
+    return screen.getByRole('menu', { name: en['theme.label'] });
+  }
+
+  /** The preferences of all checked items: a list, so it also proves only one is checked. */
+  function checkedNames(menu: HTMLElement): string[] {
+    return within(menu)
+      .getAllByRole('menuitemradio')
+      .filter((item) => item.getAttribute('aria-checked') === 'true')
+      .map((item) => item.textContent);
   }
 
   it('restores the stored preference on load', async () => {
     localStorage.setItem(THEME_KEY, '"dark"');
     await renderShell();
-    expect(checkedValues(openThemeMenu())).toEqual(['dark']);
+    expect(checkedNames(openThemeMenu())).toEqual([en['theme.dark']]);
   });
 
-  it('applies and persists Light when it is clicked', async () => {
+  it('applies and persists Light when it is clicked, then closes', async () => {
     const { theme } = await renderShell({ syncDocument: true });
     expect(document.documentElement.dataset.theme).toBe('dark');
 
-    const group = openThemeMenu();
-    fireEvent.click(within(group).getByRole('radio', { name: en['theme.light'] }));
+    const menu = openThemeMenu();
+    fireEvent.click(within(menu).getByRole('menuitemradio', { name: en['theme.light'] }));
 
     expect(theme.themePreference.value).toBe('light');
     expect(localStorage.getItem(THEME_KEY)).toBe('"light"');
     expect(document.documentElement.dataset.theme).toBe('light');
-    expect(checkedValues(group)).toEqual(['light']);
+    expect(themeButton().getAttribute('aria-expanded')).toBe('false');
+    expect(checkedNames(openThemeMenu())).toEqual([en['theme.light']]);
   });
 
-  it('checks the radio of a preference changed elsewhere', async () => {
+  it('checks the item of a preference changed elsewhere', async () => {
     const { theme } = await renderShell();
-    const group = openThemeMenu();
-    expect(checkedValues(group)).toEqual(['system']);
+    const menu = openThemeMenu();
+    expect(checkedNames(menu)).toEqual([en['theme.system']]);
     await act(() => {
       theme.setThemePreference('dark');
     });
-    expect(checkedValues(group)).toEqual(['dark']);
+    expect(checkedNames(menu)).toEqual([en['theme.dark']]);
   });
 });
 

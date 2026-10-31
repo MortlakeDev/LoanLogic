@@ -142,6 +142,8 @@ interface NumberInputProps {
   readonly suffix?: string;
   /** For inputs without a `<label>` of their own (the term's years and months). */
   readonly ariaLabel?: string;
+  /** Names the input by another element, such as the legend of its group. */
+  readonly ariaLabelledBy?: string;
   readonly hintId?: string;
   readonly size?: 'md' | 'lg';
   /**
@@ -219,6 +221,7 @@ export function NumberInput(props: NumberInputProps): JSX.Element {
         spellcheck={false}
         value={shown}
         aria-label={props.ariaLabel}
+        aria-labelledby={props.ariaLabelledBy}
         aria-invalid={invalid}
         aria-describedby={describedBy(props.field, props.hintId)}
         onInput={onInput}

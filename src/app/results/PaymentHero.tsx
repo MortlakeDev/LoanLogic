@@ -28,13 +28,14 @@ export function heroLabel(summary: LoanSummary, frequency: FrequencyId): string 
 
 /** The hero's amounts of a result, in the form's currency (`heroAmounts`). */
 function amountsOf(result: OkLoanResult): HeroAmounts {
-  return heroAmounts(result.summary, result.rows, currencyDigits.value);
+  return heroAmounts(result, currencyDigits.value);
 }
 
 /**
- * The payment the hero shows, on the instalment basis (principal + interest): the regular
- * instalment (annuity, balloon), else the first payment's (equal principal; interest-only,
- * whose principal comes with the last payment). Every view of the payment uses it.
+ * The payment the hero shows, on the instalment basis (principal + interest): the engine's
+ * regular instalment `A` (annuity, balloon), else its first payment `first` (equal
+ * principal; interest-only, whose principal comes with the last payment), the value the
+ * formula strip ends with. Every view of the payment uses it.
  */
 export function heroPayment(result: OkLoanResult): string {
   return amountsOf(result).payment;

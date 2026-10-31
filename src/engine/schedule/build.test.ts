@@ -3,6 +3,7 @@
 
 import { describe, expect, it } from 'vitest';
 import type { LocalDate } from '../date';
+import { formatMinor } from '../money';
 import { rational } from '../rational';
 import type { Fee, LoanTerms } from '../types';
 import { type Schedule, type ScheduleResult, buildSchedule } from './build';
@@ -380,7 +381,16 @@ describe('buildSchedule: day-count mode (SPEC §3.3, §5.2)', () => {
     expect(s.rows[0]).toMatchObject({ days: 90, interest: 162_500n, principal: 0n });
     expect(s.explain).toEqual({
       formulaId: 'instalment.bullet',
-      values: { P: '100000.00', N: '4', I1: '1625.00' },
+      values: {
+        P: '100000.00',
+        N: '4',
+        j: '0.065',
+        dayCount: 'act-360',
+        yf1: '0.25',
+        yf1Parts: '90/360',
+        I1: '1625.00',
+        first: '1625.00',
+      },
     });
   });
 });
@@ -402,7 +412,16 @@ describe('buildSchedule: equal principal (SPEC §5.3)', () => {
     expect(s.regularInstalment).toBeNull();
     expect(s.explain).toEqual({
       formulaId: 'instalment.equal-principal',
-      values: { P: '100000.00', N: '7', q: '14285.71' },
+      values: {
+        P: '100000.00',
+        N: '7',
+        j: '0.1',
+        m: '12',
+        q: '14285.71',
+        p1: '14285.71',
+        I1: '833.33',
+        first: '15119.04',
+      },
     });
   });
 
@@ -469,7 +488,14 @@ describe('buildSchedule: bullet (SPEC §5.4)', () => {
       s.rows.slice(0, 11).every((row) => row.principal === 0n && row.payment === 133_333n),
     ).toBe(true);
     expect(s.rows[11]).toMatchObject({ principal: 20_000_000n, payment: 20_133_333n, closing: 0n });
-    expect(s.explain.values).toEqual({ P: '200000.00', N: '12', I1: '1333.33' });
+    expect(s.explain.values).toEqual({
+      P: '200000.00',
+      N: '12',
+      j: '0.08',
+      m: '12',
+      I1: '1333.33',
+      first: '1333.33',
+    });
   });
 
   it('allows a negative payment with a negative rate', () => {
@@ -480,6 +506,349 @@ describe('buildSchedule: bullet (SPEC §5.4)', () => {
     );
     expect(s.rows[0]?.payment).toBe(-41_667n);
     expect(s.earlyClose).toBe(false);
+  });
+});
+
+describe('buildSchedule: the first payment in the explanation (SPEC §9.6, v0.2.3)', () => {
+  /** 100 000.00 at 6.5 %, 24 monthly payments, monthly compounding (c = m). */
+  const periodic = terms();
+  /** 500 000.00 at 5.29 %, 300 monthly payments, semiannual compounding: i is irrational. */
+  const semiannual = terms({
+    amount: 50_000_000n,
+    rate: rational(529n, 10_000n),
+    annualRatePct: '5.29',
+    payments: 300,
+    disbursementDate: { y: 2026, m: 9, d: 1 },
+    accrual: { mode: 'periodic', compounding: 'semiannual' },
+  });
+  /** 100 000.00 at 6 %, 8 quarterly payments, monthly compounding: i = 1.005³ − 1 exactly. */
+  const quarterly = terms({
+    rate: rational(3n, 50n),
+    annualRatePct: '6',
+    frequency: 'quarterly',
+    payments: 8,
+    accrual: { mode: 'periodic', compounding: 'monthly' },
+  });
+  /** 100 000.00 at 6.5 %, 24 monthly payments, ACT/365F: 15 Jan → 15 Feb is 31 days. */
+  const actual = terms({
+    accrual: { mode: 'daycount', method: 'act-365f', paymentBasis: 'nominal' },
+  });
+
+  const RATE_C_EQ_M = { j: '0.065', m: '12' };
+  const RATE_SEMIANNUAL = { j: '0.0529', m: '12', i: '0.0043605207040370690871' };
+  const RATE_QUARTERLY = { j: '0.06', m: '4', i: '0.015075125' };
+  // 31/365 = 0.0849315068493150684931…, 20 significant digits.
+  const RATE_ACT_365F = {
+    j: '0.065',
+    dayCount: 'act-365f',
+    yf1: '0.084931506849315068493',
+    yf1Parts: '31/365',
+  };
+
+  function withRemainderFirst(base: LoanTerms): LoanTerms {
+    return { ...base, rounding: { ...base.rounding, principalRemainder: 'first' } };
+  }
+
+  /** The payload's first payment is the first row's, to the minor unit. */
+  function expectFirstRow(s: Schedule): void {
+    const row = s.rows[0];
+    if (row === undefined) {
+      throw new Error('expected a first row');
+    }
+    expect(s.explain.values.I1).toBe(formatMinor(row.interest, 2));
+    expect(s.explain.values.first).toBe(formatMinor(row.principal + row.interest, 2));
+    if (s.explain.formulaId === 'instalment.equal-principal') {
+      expect(s.explain.values.p1).toBe(formatMinor(row.principal, 2));
+    }
+  }
+
+  // P = 100 000.00, N = 24: q = R(4166.666…) = 4166.67; remainder first
+  // p1 = 100 000.00 − 23 × 4166.67 = 4166.59. I1 = R(100 000 × 0.065 ÷ 12) = 541.67, or
+  // R(100 000 × 0.065 × 31/365) = 552.05 in day-count mode.
+  // P = 500 000.00, N = 300: q = 1666.67, remainder first p1 = 1665.67; I1 = R(P × i) = 2180.26.
+  // Quarterly: q = 12 500.00; I1 = R(100 000 × 0.015075125) = R(1507.5125) = 1507.51.
+  it.each([
+    {
+      name: 'periodic c = m, remainder last',
+      loan: periodic,
+      values: {
+        P: '100000.00',
+        N: '24',
+        ...RATE_C_EQ_M,
+        q: '4166.67',
+        p1: '4166.67',
+        I1: '541.67',
+        first: '4708.34',
+      },
+    },
+    {
+      name: 'periodic c = m, remainder first',
+      loan: withRemainderFirst(periodic),
+      values: {
+        P: '100000.00',
+        N: '24',
+        ...RATE_C_EQ_M,
+        q: '4166.67',
+        p1: '4166.59',
+        I1: '541.67',
+        first: '4708.26',
+      },
+    },
+    {
+      name: 'periodic c ≠ m (irrational i), remainder last',
+      loan: semiannual,
+      values: {
+        P: '500000.00',
+        N: '300',
+        ...RATE_SEMIANNUAL,
+        q: '1666.67',
+        p1: '1666.67',
+        I1: '2180.26',
+        first: '3846.93',
+      },
+    },
+    {
+      name: 'periodic c ≠ m (irrational i), remainder first',
+      loan: withRemainderFirst(semiannual),
+      values: {
+        P: '500000.00',
+        N: '300',
+        ...RATE_SEMIANNUAL,
+        q: '1666.67',
+        p1: '1665.67',
+        I1: '2180.26',
+        first: '3845.93',
+      },
+    },
+    {
+      name: 'periodic c ≠ m (exact i)',
+      loan: quarterly,
+      values: {
+        P: '100000.00',
+        N: '8',
+        ...RATE_QUARTERLY,
+        q: '12500.00',
+        p1: '12500.00',
+        I1: '1507.51',
+        first: '14007.51',
+      },
+    },
+    {
+      name: 'day-count, remainder last',
+      loan: actual,
+      values: {
+        P: '100000.00',
+        N: '24',
+        ...RATE_ACT_365F,
+        q: '4166.67',
+        p1: '4166.67',
+        I1: '552.05',
+        first: '4718.72',
+      },
+    },
+    {
+      name: 'day-count, remainder first',
+      loan: withRemainderFirst(actual),
+      values: {
+        P: '100000.00',
+        N: '24',
+        ...RATE_ACT_365F,
+        q: '4166.67',
+        p1: '4166.59',
+        I1: '552.05',
+        first: '4718.64',
+      },
+    },
+  ])('equal principal, $name', ({ loan, values }) => {
+    const s = schedule(buildSchedule({ ...loan, repayment: 'equal-principal' }));
+    expect(s.explain).toEqual({ formulaId: 'instalment.equal-principal', values });
+    expectFirstRow(s);
+  });
+
+  it.each([
+    {
+      name: 'periodic c = m, N > 1',
+      loan: periodic,
+      values: { P: '100000.00', N: '24', ...RATE_C_EQ_M, I1: '541.67', first: '541.67' },
+    },
+    {
+      name: 'periodic c = m, N = 1',
+      loan: { ...periodic, payments: 1 },
+      values: { P: '100000.00', N: '1', ...RATE_C_EQ_M, I1: '541.67', first: '100541.67' },
+    },
+    {
+      name: 'periodic c ≠ m (irrational i), N > 1',
+      loan: semiannual,
+      values: { P: '500000.00', N: '300', ...RATE_SEMIANNUAL, I1: '2180.26', first: '2180.26' },
+    },
+    {
+      name: 'periodic c ≠ m (irrational i), N = 1',
+      loan: { ...semiannual, payments: 1 },
+      values: { P: '500000.00', N: '1', ...RATE_SEMIANNUAL, I1: '2180.26', first: '502180.26' },
+    },
+    {
+      name: 'periodic c ≠ m (exact i), N > 1',
+      loan: quarterly,
+      values: { P: '100000.00', N: '8', ...RATE_QUARTERLY, I1: '1507.51', first: '1507.51' },
+    },
+    {
+      name: 'periodic c ≠ m (exact i), N = 1',
+      loan: { ...quarterly, payments: 1 },
+      values: { P: '100000.00', N: '1', ...RATE_QUARTERLY, I1: '1507.51', first: '101507.51' },
+    },
+    {
+      name: 'day-count, N > 1',
+      loan: actual,
+      values: { P: '100000.00', N: '24', ...RATE_ACT_365F, I1: '552.05', first: '552.05' },
+    },
+    {
+      name: 'day-count, N = 1',
+      loan: { ...actual, payments: 1 },
+      values: { P: '100000.00', N: '1', ...RATE_ACT_365F, I1: '552.05', first: '100552.05' },
+    },
+  ])('interest-only, $name', ({ loan, values }) => {
+    const s = schedule(buildSchedule({ ...loan, repayment: 'bullet' }));
+    expect(s.explain).toEqual({ formulaId: 'instalment.bullet', values });
+    expectFirstRow(s);
+  });
+
+  it('carries only the rate values of its own mode', () => {
+    for (const repayment of ['equal-principal', 'bullet'] as const) {
+      const same = schedule(buildSchedule({ ...periodic, repayment })).explain.values;
+      expect(same).toHaveProperty('m');
+      expect(same).not.toHaveProperty('i');
+      expect(same).not.toHaveProperty('dayCount');
+      expect(same).not.toHaveProperty('yf1');
+      expect(same).not.toHaveProperty('yf1Parts');
+      const differs = schedule(buildSchedule({ ...semiannual, repayment })).explain.values;
+      expect(differs).toHaveProperty('m');
+      expect(differs).toHaveProperty('i');
+      expect(differs).not.toHaveProperty('yf1');
+      expect(differs).not.toHaveProperty('yf1Parts');
+      const dayCount = schedule(buildSchedule({ ...actual, repayment })).explain.values;
+      expect(dayCount).not.toHaveProperty('m');
+      expect(dayCount).not.toHaveProperty('i');
+      expect(dayCount).toHaveProperty('yf1');
+      expect(dayCount).toHaveProperty('yf1Parts');
+    }
+    // The annuity keeps its own payload: no first-payment fields.
+    const annuity = schedule(buildSchedule(semiannual)).explain.values;
+    for (const key of ['p1', 'I1', 'first', 'yf1', 'yf1Parts']) {
+      expect(annuity).not.toHaveProperty(key);
+    }
+  });
+
+  it('shows the same i as the annuity of the same loan', () => {
+    const annuity = schedule(buildSchedule(semiannual)).explain.values;
+    const bullet = schedule(buildSchedule({ ...semiannual, repayment: 'bullet' })).explain.values;
+    expect(bullet.i).toBe(annuity.i);
+  });
+
+  // SPEC v0.2.4 §9.6: YF_1 as day counts over year lengths, from the same count as yf1.
+  // 15 Jan → 15 Feb 2026 is 31 actual days and 30 days on 30/360; 31 Jan → 28 Feb (end of
+  // month) is 28 days on every 30/360 method; 15 Dec 2027 → 15 Jan 2028 crosses into a leap
+  // year: 17 days of 2027 and 14 of 2028.
+  it.each([
+    { method: '30u-360', start: { y: 2026, m: 1, d: 15 }, parts: '30/360' },
+    { method: '30-360-isda', start: { y: 2026, m: 1, d: 15 }, parts: '30/360' },
+    { method: '30e-360', start: { y: 2026, m: 1, d: 15 }, parts: '30/360' },
+    { method: '30u-360', start: { y: 2026, m: 1, d: 31 }, parts: '28/360' },
+    { method: '30-360-isda', start: { y: 2026, m: 1, d: 31 }, parts: '28/360' },
+    { method: '30e-360', start: { y: 2026, m: 1, d: 31 }, parts: '28/360' },
+    { method: 'act-360', start: { y: 2026, m: 1, d: 15 }, parts: '31/360' },
+    { method: 'act-365f', start: { y: 2026, m: 1, d: 15 }, parts: '31/365' },
+    { method: 'act-act-isda', start: { y: 2026, m: 1, d: 15 }, parts: '31/365' },
+    { method: 'act-act-isda', start: { y: 2027, m: 12, d: 15 }, parts: '17/365+14/366' },
+  ] as const)(
+    'writes yf1Parts $parts for $method from $start.d/$start.m/$start.y',
+    ({ method, start, parts }) => {
+      for (const repayment of ['equal-principal', 'bullet'] as const) {
+        const s = schedule(
+          buildSchedule({
+            ...actual,
+            repayment,
+            disbursementDate: start,
+            accrual: { mode: 'daycount', method, paymentBasis: 'nominal' },
+          }),
+        );
+        expect(s.explain.values.yf1Parts).toBe(parts);
+        // yf1 is the same fraction: the parts' exact sum, serialized.
+        const sum = parts
+          .split('+')
+          .map((part) => part.split('/').map(Number) as [number, number])
+          .reduce((total, [days, base]) => total + days / base, 0);
+        expect(Number(s.explain.values.yf1)).toBeCloseTo(sum, 15);
+      }
+    },
+  );
+
+  it('writes yf1 exactly when it terminates, else with 20 significant digits', () => {
+    // ACT/360, 15 Jan → 15 Apr: 90/360 = 0.25. 30/360 monthly: 30/360 = 1/12.
+    const quarter = schedule(
+      buildSchedule({
+        ...actual,
+        repayment: 'equal-principal',
+        frequency: 'quarterly',
+        payments: 4,
+        accrual: { mode: 'daycount', method: 'act-360', paymentBasis: 'nominal' },
+      }),
+    );
+    expect(quarter.explain.values).toMatchObject({ yf1: '0.25', I1: '1625.00' });
+    const month = schedule(
+      buildSchedule({
+        ...actual,
+        repayment: 'bullet',
+        accrual: { mode: 'daycount', method: '30u-360', paymentBasis: 'nominal' },
+      }),
+    );
+    expect(month.explain.values).toMatchObject({ yf1: '0.083333333333333333333', I1: '541.67' });
+  });
+
+  it('is the same with the exact payment basis, which only changes an annuity', () => {
+    for (const repayment of ['equal-principal', 'bullet'] as const) {
+      const nominal = schedule(buildSchedule({ ...actual, repayment })).explain;
+      const exactBasis = schedule(
+        buildSchedule({
+          ...actual,
+          repayment,
+          accrual: { mode: 'daycount', method: 'act-365f', paymentBasis: 'exact' },
+        }),
+      ).explain;
+      expect(exactBasis).toEqual(nominal);
+    }
+  });
+
+  it('is not changed by an early close', () => {
+    // 10.00 over 600 at 12 %: q = R(0.0166…) = 0.02 repays the balance after 500 payments;
+    // the first payment is still q + R(10.00 × 0.12 ÷ 12) = 0.02 + 0.10.
+    const s = schedule(
+      buildSchedule({
+        ...periodic,
+        repayment: 'equal-principal',
+        amount: 1_000n,
+        rate: rational(3n, 25n),
+        annualRatePct: '12',
+        payments: 600,
+      }),
+    );
+    expect(s.earlyClose).toBe(true);
+    expect(s.rows).toHaveLength(500);
+    expect(s.explain.values).toMatchObject({ q: '0.02', p1: '0.02', I1: '0.10', first: '0.12' });
+    expectFirstRow(s);
+
+    // Closed at the first payment: q = 0, and the remainder first repays all of P.
+    const once = schedule(
+      buildSchedule({
+        ...withRemainderFirst(periodic),
+        repayment: 'equal-principal',
+        amount: 1n,
+        payments: 3,
+      }),
+    );
+    expect(once.earlyClose).toBe(true);
+    expect(once.rows).toHaveLength(1);
+    expect(once.explain.values).toMatchObject({ q: '0.00', p1: '0.01', I1: '0.00', first: '0.01' });
+    expectFirstRow(once);
   });
 });
 

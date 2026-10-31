@@ -10,7 +10,7 @@
  */
 
 import { type LocalDate, daysBetween } from '../date';
-import { yearFraction } from '../daycount';
+import { dayCountParts, formatDayCountParts, yearFraction } from '../daycount';
 import { digitCount } from '../decimal';
 import { type UpfrontTotals, periodicFeeAmount, principalFinanced, upfrontTotals } from '../fees';
 import { isEndOfMonthSchedule, periodsPerYear, scheduleDates } from '../frequency';
@@ -69,7 +69,16 @@ export interface Schedule {
   readonly balloon: bigint | null;
   /** Whether the balance reached zero before the scheduled `N` (SPEC §5.1). */
   readonly earlyClose: boolean;
-  /** The instalment's explanation, formula ids `instalment.*` (SPEC §9.6). */
+  /**
+   * The instalment's explanation, formula ids `instalment.*` (SPEC §9.6); money at the
+   * currency's minor units, rates and year fractions exact when terminating, else with 20
+   * significant digits. Annuity and balloon: `P`, `N`, the rate, `Astar`, `A` (and `Bal`).
+   * Equal principal: `P`, `N`, the rate behind `I1`, `q`, and the first row's `p1`, `I1`
+   * and `first` = `p1 + I1`. Bullet: `P`, `N`, the rate behind `I1`, `I1` and `first`, the
+   * first row's principal + interest (`I1`, or `P + I1` when `N = 1`). The rate behind
+   * `I1` is `j`, `m` (and `i` when `c ≠ m`) in periodic mode, or `j`, `dayCount`, `yf1` and `yf1Parts`
+   * (the first period's year fraction) in day-count mode, never both.
+   */
   readonly explain: Explain;
 }
 
@@ -104,6 +113,20 @@ interface RateModel {
   readonly exactBasisRates: readonly Rational[] | null;
   /** `i` for the explanation when it differs from `j / m` (`c ≠ m`), else `null`. */
   readonly explainedRate: string | null;
+  /**
+   * The rate behind the first period's interest `I_1` for the equal-principal and bullet
+   * explanations (SPEC §9.6): `j`, `m` and, when `c ≠ m`, `i` in periodic mode; `j`,
+   * `dayCount` (the method id), `yf1` (`YF_1`) and `yf1Parts` (its day counts) in day-count mode.
+   */
+  readonly firstInterestRate: Readonly<Record<string, string>>;
+}
+
+/** The first row as posted: what the equal-principal and bullet explanations show. */
+interface FirstPayment {
+  /** `p_1`, minor units. */
+  readonly principal: bigint;
+  /** `I_1`, minor units. */
+  readonly interest: bigint;
 }
 
 /** How principal is scheduled for one repayment type. */
@@ -120,8 +143,8 @@ interface RepaymentPlan {
     lastInterest: bigint,
     earlyClose: boolean,
   ) => bigint | null;
-  /** The instalment explanation (SPEC §9.6); `firstInterest` is `I_1`. */
-  readonly explain: (firstInterest: bigint) => Explain;
+  /** The instalment explanation (SPEC §9.6) from the first row as posted. */
+  readonly explain: (first: FirstPayment) => Explain;
 }
 
 /** The planned periods (SPEC §2.3) with the interest rule of the accrual mode (§3). */
@@ -140,14 +163,21 @@ function rateModel(terms: LoanTerms, principal: bigint): RateModel {
     days: daysBetween(span.start, span.date),
     interest,
   });
+  const j = toExplainString(rate);
   if (accrual.mode === 'periodic') {
     // Balances never exceed P, so its digits size the precision of an irrational i.
     const i = periodicRate(rate, frequency, accrual.compounding, digitCount(principal));
+    const explainedRate = accrual.compounding === frequency ? null : realToExplainString(i);
     return {
       periods: spans.map((span) => period(span, (balance) => periodicInterest(balance, i, mode))),
       instalmentRate: i,
       exactBasisRates: null,
-      explainedRate: accrual.compounding === frequency ? null : realToExplainString(i),
+      explainedRate,
+      firstInterestRate: {
+        j,
+        m: String(periodsPerYear(frequency)),
+        ...(explainedRate === null ? {} : { i: explainedRate }),
+      },
     };
   }
   // The 30/360 US February rules depend on the planned dates (SPEC §2.1), whether or not
@@ -157,6 +187,13 @@ function rateModel(terms: LoanTerms, principal: bigint): RateModel {
     span,
     fraction: yearFraction(accrual.method, span.start, span.date, endOfMonth),
   }));
+  const firstSpan = spans[0];
+  const firstFraction = accruing[0]?.fraction;
+  if (firstSpan === undefined || firstFraction === undefined) {
+    throw new RangeError('A schedule needs at least one payment');
+  }
+  // The same day counts give YF_1 for the interest and its parts for the explanation.
+  const firstParts = dayCountParts(accrual.method, firstSpan.start, firstSpan.date, endOfMonth);
   return {
     periods: accruing.map(({ span, fraction }) =>
       period(span, (balance) => dayCountInterest(balance, rate, fraction, mode)),
@@ -168,6 +205,13 @@ function rateModel(terms: LoanTerms, principal: bigint): RateModel {
     // Day-count mode never shows i: the nominal basis implies j / m, and the exact basis has
     // a rate per period, r_k = j × YF_k (its own formula id, SPEC §9.6).
     explainedRate: null,
+    // I_1 accrues as j × YF_1 whatever the payment basis, so neither m nor i belongs here.
+    firstInterestRate: {
+      j,
+      dayCount: accrual.method,
+      yf1: toExplainString(firstFraction),
+      yf1Parts: formatDayCountParts(firstParts),
+    },
   };
 }
 
@@ -284,9 +328,17 @@ function repaymentPlan(
         regularInstalment: null,
         principalPerPeriod: q,
         balloon: noBalloon,
-        explain: () => ({
+        explain: (paid) => ({
           formulaId: 'instalment.equal-principal',
-          values: { P: money(principal), N: String(n), q: money(q) },
+          values: {
+            P: money(principal),
+            N: String(n),
+            ...rates.firstInterestRate,
+            q: money(q),
+            p1: money(paid.principal),
+            I1: money(paid.interest),
+            first: money(paid.principal + paid.interest),
+          },
         }),
       };
     }
@@ -297,9 +349,16 @@ function repaymentPlan(
         regularInstalment: null,
         principalPerPeriod: null,
         balloon: noBalloon,
-        explain: (firstInterest) => ({
+        // With N = 1 the first row repays P as well, so `first` is P + I_1.
+        explain: (paid) => ({
           formulaId: 'instalment.bullet',
-          values: { P: money(principal), N: String(n), I1: money(firstInterest) },
+          values: {
+            P: money(principal),
+            N: String(n),
+            ...rates.firstInterestRate,
+            I1: money(paid.interest),
+            first: money(paid.principal + paid.interest),
+          },
         }),
       };
   }
@@ -345,6 +404,7 @@ export function buildSchedule(terms: LoanTerms): ScheduleResult {
   let balance = principal;
   let earlyClose = false;
   let firstInterest = 0n;
+  let firstPrincipal = 0n;
   let lastInterest = 0n;
   let lastPrincipal = 0n;
   for (const period of rates.periods) {
@@ -401,6 +461,7 @@ export function buildSchedule(terms: LoanTerms): ScheduleResult {
     balance -= principalPaid;
     if (period.index === 1) {
       firstInterest = interest;
+      firstPrincipal = principalPaid;
     }
     lastInterest = interest;
     lastPrincipal = principalPaid;
@@ -419,7 +480,7 @@ export function buildSchedule(terms: LoanTerms): ScheduleResult {
       principalPerPeriod: plan.principalPerPeriod,
       balloon: plan.balloon(lastPrincipal, lastInterest, earlyClose),
       earlyClose,
-      explain: plan.explain(firstInterest),
+      explain: plan.explain({ principal: firstPrincipal, interest: firstInterest }),
     },
   };
 }

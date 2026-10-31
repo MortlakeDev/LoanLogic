@@ -7,10 +7,12 @@
  * into it, every payload value with its label, and the result, formatted for a locale.
  *
  * The models are built from the payload alone, so a formula shown from them reproduces
- * the engine's result: `i` is shown as `j ÷ m` (never as a rounded quotient), exact values
- * keep all their digits and irrational ones show 10 significant digits (`computedNumber`).
- * Words (a day-count method, a time basis) stay message keys or ids, which the components
- * translate.
+ * the engine's result: operands take their exact form wherever one exists (`i` as `j ÷ m`,
+ * `YF₁` as day counts such as `30 ÷ 360`), only a computed value without one (the payload's
+ * `i` when `c ≠ m`) shows 10 significant digits (`computedNumber`), and the result is the
+ * payload's own value (`A`, or `first` for equal principal and
+ * interest-only), never recomputed. Words (a day-count method, a time basis, "first
+ * payment") stay message keys or ids, which the components translate.
  */
 
 import {
@@ -21,6 +23,7 @@ import {
   type RateMetric,
 } from '../../engine';
 import { type MessageKey, formatNumber, formatPercent } from '../../i18n';
+import { toMinor } from './derived';
 import { percentToFraction } from './display';
 
 /** One piece of a formula or of a displayed value. */
@@ -36,8 +39,12 @@ export type FormulaPart =
 /** A run of formula parts: an expression, a symbol or a value. */
 export type FormulaText = readonly FormulaPart[];
 
-/** A value substituted into the formula strip: `i = 0.06875 ÷ 12`. */
+/**
+ * A value substituted into the formula strip, `i = 0.06875 ÷ 12`, or a step of the formula
+ * with the payload's value for it, `I₁ = P × i = 1,993.83`.
+ */
 export interface Substitution {
+  /** A symbol, or a step written with symbols (`I₁ = P × i`). */
   readonly symbol: FormulaText;
   readonly value: FormulaText;
 }
@@ -46,6 +53,7 @@ export interface Substitution {
 export interface FormulaValue {
   /** The payload key (`P`, `Astar`, `timeBasis`, …). */
   readonly name: string;
+  /** Empty for a value the formula names in words (`first`: "first payment"). */
   readonly symbol: FormulaText;
   /** The label (`explain.sym*`), or `null` for a key LoanLogic does not know. */
   readonly label: MessageKey | null;
@@ -143,6 +151,7 @@ type ValueFormat =
   | 'computed'
   | 'instalment'
   | 'dayCount'
+  | 'dayCountParts'
   | 'timeBasis'
   | 'compounding';
 
@@ -163,8 +172,14 @@ const VALUE_SPECS: ReadonlyMap<string, ValueSpec> = new Map<string, ValueSpec>([
   ['A', { symbol: 'A', label: 'explain.symA', format: 'money' }],
   ['Bal', { symbol: 'Bal', label: 'explain.symBal', format: 'money' }],
   ['q', { symbol: 'q', label: 'explain.symQ', format: 'money' }],
+  ['p1', { symbol: 'p_{1}', label: 'explain.symP1', format: 'money' }],
   ['I1', { symbol: 'I_{1}', label: 'explain.symI1', format: 'money' }],
+  // The formulas name it in words ("first payment"), which its label already says.
+  ['first', { symbol: '', label: 'explain.symFirst', format: 'money' }],
   ['dayCount', { symbol: 'YF_{k}', label: 'explain.symDayCount', format: 'dayCount' }],
+  // yf1 keeps every digit it has; the strip writes YF₁ from yf1Parts, its exact form.
+  ['yf1', { symbol: 'YF_{1}', label: 'explain.symYf1', format: 'exact' }],
+  ['yf1Parts', { symbol: 'YF_{1}', label: 'explain.symYf1Parts', format: 'dayCountParts' }],
   ['c', { symbol: 'c', label: 'explain.symC', format: 'compounding' }],
   ['k', { symbol: 'k', label: 'explain.symK', format: 'computed' }],
   ['r', { symbol: 'r', label: 'explain.symR', format: 'computed' }],
@@ -224,6 +239,26 @@ function instalmentNumber(value: string, locale: string, minorUnits: number): st
       });
 }
 
+/**
+ * `yf1Parts` (SPEC §9.6, v0.2.4) as the strip writes `YF₁`: "30/360" → "30 ÷ 360",
+ * "61/365+121/366" → "61 ÷ 365 + 121 ÷ 366", so a hand calculation reproduces the posted
+ * interest, ties included.
+ *
+ * @throws RangeError for a value that is not day counts over 360, 365 or 366.
+ */
+function dayCountParts(value: string, locale: string): string {
+  if (!/^\d+\/(360|365|366)(\+\d+\/(360|365|366))*$/.test(value)) {
+    throw new RangeError(`The payload's "yf1Parts" is not day counts: "${value}"`);
+  }
+  return value
+    .split('+')
+    .map((part) => {
+      const [days = '', base = ''] = part.split('/');
+      return `${formatNumber(days, locale)} ÷ ${formatNumber(base, locale)}`;
+    })
+    .join(' + ');
+}
+
 /** Formats payload values for one locale and currency. */
 class Payload {
   constructor(
@@ -249,6 +284,25 @@ class Payload {
     return Object.hasOwn(this.values, name);
   }
 
+  /**
+   * A money value as minor units, to tell which formula the values follow (exact BigInt
+   * arithmetic; nothing shown is computed from it).
+   *
+   * @throws RangeError when the value is missing or not an amount at the minor units.
+   */
+  minor(name: string): bigint {
+    const value = this.need(name);
+    const [whole = '', fraction] = value.replace(/^-/, '').split('.');
+    if (!/^\d+$/.test(whole) || (fraction !== undefined && !/^\d+$/.test(fraction))) {
+      throw new RangeError(`The payload's "${name}" is not an amount`);
+    }
+    // More digits than the minor units would be cut off, not compared.
+    if ((fraction?.length ?? 0) > this.minorUnits) {
+      throw new RangeError(`The payload's "${name}" is finer than the minor units`);
+    }
+    return toMinor(value, this.minorUnits);
+  }
+
   /** A number in the locale with the format of its key. */
   number(name: string): string {
     const value = this.need(name);
@@ -262,6 +316,11 @@ class Payload {
         return computedNumber(value, this.locale);
       case 'instalment':
         return instalmentNumber(value, this.locale, this.minorUnits);
+      case 'exact':
+        // Every digit of the payload: yf1 can have more decimals than the default 20.
+        return formatNumber(value, this.locale, {
+          maximumFractionDigits: Math.max(20, value.split('.')[1]?.length ?? 0),
+        });
       default:
         return formatNumber(value, this.locale);
     }
@@ -278,6 +337,9 @@ class Payload {
     if (format === 'timeBasis') {
       const key = TIME_BASIS_KEYS.get(value);
       return [key === undefined ? text(value) : { kind: 'message', key }];
+    }
+    if (format === 'dayCountParts') {
+      return [text(dayCountParts(value, this.locale))];
     }
     if (format === 'compounding' && value === 'continuous') {
       return [{ kind: 'message', key: 'compounding.continuous' }];
@@ -448,23 +510,113 @@ function balloon(payload: Payload): InstalmentFormula {
   };
 }
 
+/** The result of the equal-principal and interest-only formulas: the payload's `first`. */
+const FIRST_PAYMENT = { name: 'first', symbol: null } as const;
+
+/** "first payment" in the UI language, then the rest of a formula's line. */
+function firstPaymentLine(markup: string): FormulaText {
+  return [{ kind: 'message', key: 'explain.stripFirst' }, ...parse(markup)];
+}
+
+/** A step of the formula with the payload's value for it: `I₁ = P × i = 1,993.83`. */
+function step(payload: Payload, markup: string, name: string): Substitution {
+  return { symbol: parse(markup), value: payload.display(name) };
+}
+
+/** The first period's interest `I₁` and the rate values it is computed from. */
+interface FirstInterest {
+  readonly markup: string;
+  readonly operands: readonly string[];
+}
+
+/**
+ * `I₁` as posted (DESIGN §8.6), with the interest rounding `R` (SPEC §5.1):
+ * `R(P × j × YF₁)` in day-count mode, with `YF₁` written from the payload's `yf1Parts`
+ * (`30 ÷ 360`), else `R(P × i)` when the payload carries `i` (periodic interest with
+ * `c ≠ m`), else `R(P × j ÷ m)`.
+ *
+ * @throws RangeError for a day-count payload without `yf1Parts` (the raw payload is shown).
+ */
+function firstInterest(payload: Payload): FirstInterest {
+  if (payload.has('yf1')) {
+    payload.need('yf1Parts');
+    return { markup: 'I_{1} = R(P × j × YF_{1})', operands: ['j', 'yf1Parts'] };
+  }
+  if (payload.has('i')) {
+    return { markup: 'I_{1} = R(P × i)', operands: ['i'] };
+  }
+  return { markup: 'I_{1} = R(P × j ÷ m)', operands: ['j', 'm'] };
+}
+
+/**
+ * Equal principal (SPEC §5.3): `q = R(P ÷ N)`, and the first payment `p₁ + I₁`, where
+ * `p₁ = q`, or `p₁ = P − (N − 1)·q` when the rounding remainder comes first. Which one
+ * applies is read from the payload's values; values that follow neither, or a `first`
+ * that is not `p₁ + I₁`, are not shown with this formula.
+ *
+ * @throws RangeError for such values (the caller shows the raw payload).
+ */
 function equalPrincipal(payload: Payload): InstalmentFormula {
+  const p1 = payload.minor('p1');
+  const q = payload.minor('q');
+  if (payload.minor('first') !== p1 + payload.minor('I1')) {
+    throw new RangeError('The first payment is not p1 + I1');
+  }
+  let remainderFirst = false;
+  if (p1 !== q) {
+    const n = BigInt(payload.need('N'));
+    if (p1 !== payload.minor('P') - (n - 1n) * q) {
+      throw new RangeError('p1 is neither q nor P − (N − 1)·q');
+    }
+    remainderFirst = true;
+  }
+  const interest = firstInterest(payload);
   return {
-    lines: [parse('q = P ÷ N')],
-    substitutions: [payload.substitution('P'), payload.substitution('N')],
-    result: { name: 'q', symbol: null },
+    lines: [
+      firstPaymentLine(' = p_{1} + I_{1}'),
+      parse('q = R(P ÷ N)'),
+      parse(remainderFirst ? 'p_{1} = P − (N − 1)·q' : 'p_{1} = q'),
+      parse(interest.markup),
+    ],
+    substitutions: [
+      ...(remainderFirst
+        ? [step(payload, 'q = R(P ÷ N)', 'q'), step(payload, 'p_{1} = P − (N − 1)·q', 'p1')]
+        : [step(payload, 'p_{1} = q = R(P ÷ N)', 'p1')]),
+      step(payload, interest.markup, 'I1'),
+      ...['P', 'N', ...interest.operands].map((name) => payload.substitution(name)),
+    ],
+    result: FIRST_PAYMENT,
   };
 }
 
 /**
- * Interest only: no principal until the last payment (SPEC §5.4), so a payment is the
- * period's interest, `I_1` for the first.
+ * Interest only (SPEC §5.4): no principal until the last payment, so the first payment is
+ * `I₁`, or `P + I₁` with a single payment. Which one applies is read from the payload's
+ * values (`P` is never zero, so they cannot both hold).
+ *
+ * @throws RangeError when `first` is neither (the caller shows the raw payload).
  */
 function bullet(payload: Payload): InstalmentFormula {
+  const first = payload.minor('first');
+  const i1 = payload.minor('I1');
+  const interest = firstInterest(payload);
+  const principal = parse('p_{k} = 0 (k < N), p_{N} = P');
+  const operands = ['P', 'N', ...interest.operands].map((name) => payload.substitution(name));
+  if (first === i1) {
+    return {
+      lines: [firstPaymentLine(` = ${interest.markup}`), principal],
+      substitutions: operands,
+      result: FIRST_PAYMENT,
+    };
+  }
+  if (first !== payload.minor('P') + i1) {
+    throw new RangeError('The first payment is neither I1 nor P + I1');
+  }
   return {
-    lines: [parse('p_{k} = 0 (k < N), p_{N} = P')],
-    substitutions: [payload.substitution('P'), payload.substitution('N')],
-    result: { name: 'I1', symbol: 'I_{1}' },
+    lines: [firstPaymentLine(' = P + I_{1}'), parse(interest.markup), principal],
+    // I₁ shows its value: the result adds P to it.
+    substitutions: [step(payload, interest.markup, 'I1'), ...operands],
+    result: FIRST_PAYMENT,
   };
 }
 

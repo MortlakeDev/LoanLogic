@@ -31,7 +31,8 @@ function renderWithStrip(): HTMLElement {
       <ExplainSheet />
     </>,
   );
-  return screen.getByRole('button', { name: "How it's calculated" });
+  // Named in the current UI language.
+  return screen.getByRole('button', { name: t('hero.howCalculated') });
 }
 
 /** Clicks a trigger the way a browser does: focus first, then the click. */
@@ -97,6 +98,64 @@ describe('ExplainSheet', () => {
     expect(within(dialog).getByText(t('explain.instalmentAnnuity'))).toBeTruthy();
     // The instalment has no cash-flow summary.
     expect(within(dialog).queryByRole('heading', { name: 'Cash flows' })).toBeNull();
+  });
+
+  it('lists the first payment of equal principal and the year fraction behind its interest', () => {
+    updateForm({
+      repayment: 'equal-principal',
+      principalRemainder: 'first',
+      accrualMode: 'daycount',
+      dayCount: 'act-360',
+    });
+    const dialog = activate(renderWithStrip());
+    expect(within(dialog).getByText('instalment.equal-principal')).toBeTruthy();
+    const formula = dialog.querySelector('.explain__formula');
+    expect(Array.from(formula?.querySelectorAll('p') ?? [], (p) => p.textContent)).toEqual([
+      'first payment = p1 + I1',
+      'q = R(P ÷ N)',
+      'p1 = P − (N − 1)·q',
+      'I1 = R(P × j × YF1)',
+    ]);
+    // Every payload value in payload order, each with its label (and symbol).
+    expect(Array.from(dialog.querySelectorAll('dt'), (dt) => dt.textContent)).toEqual([
+      'Principal financed P',
+      'Number of payments N',
+      'Nominal annual rate j',
+      'Day count YFk',
+      'Year fraction of the first period YF1',
+      'Year fraction as day counts YF1',
+      'Principal per payment q',
+      'Principal of the first payment p1',
+      'Interest of the first period I1',
+      // Named in words in the formula: no symbol.
+      'First payment (principal + interest)',
+    ]);
+    expect(valueOf(dialog, 'Day count')).toBe('ACT/360 (actual days ÷ 360)');
+    // yf1 with every digit, and its exact form as day counts (SPEC v0.2.4).
+    expect(valueOf(dialog, 'Year fraction of the first period')).toBe('0.083333333333333333333');
+    expect(valueOf(dialog, 'Year fraction as day counts')).toBe('30 ÷ 360');
+    expect(valueOf(dialog, 'Principal per payment')).toBe('972.22');
+    expect(valueOf(dialog, 'Principal of the first payment')).toBe('973.02');
+    expect(valueOf(dialog, 'Interest of the first period')).toBe('2,005.21');
+    expect(valueOf(dialog, 'First payment (principal + interest)')).toBe('2,978.23');
+    // The result is the engine's first payment, the figure of the hero.
+    expect(dialog.querySelector('.explain__result')?.textContent).toBe('$2,978.23');
+    expect(within(dialog).getByText(t('explain.instalmentEqualPrincipal'))).toBeTruthy();
+  });
+
+  it('explains an interest-only loan with a single payment as P + I₁', () => {
+    updateForm({ repayment: 'bullet', termMode: 'payments', termPayments: '1' });
+    setLanguage('uk');
+    const dialog = activate(renderWithStrip());
+    const formula = dialog.querySelector('.explain__formula');
+    expect(Array.from(formula?.querySelectorAll('p') ?? [], (p) => p.textContent)).toEqual([
+      `${t('explain.stripFirst')} = P + I1`,
+      'I1 = R(P × j ÷ m)',
+      'pk = 0 (k < N), pN = P',
+    ]);
+    expect(valueOf(dialog, t('explain.symI1'))).toBe('2 005,21');
+    expect(valueOf(dialog, t('explain.symFirst'))).toBe('352 005,21');
+    expect(dialog.querySelector('.explain__result')?.textContent).toBe(money('352005.21'));
   });
 
   it('closes with Esc and returns focus to the trigger', () => {

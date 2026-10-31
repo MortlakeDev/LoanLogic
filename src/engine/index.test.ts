@@ -100,11 +100,20 @@ describe('calculateLoan: the instalment explanation (SPEC §9.6)', () => {
     });
     expect(okResult({ ...BASE, repayment: 'equal-principal' }).explain).toEqual({
       formulaId: 'instalment.equal-principal',
-      values: { P: '1000.00', N: '12', q: '83.33' },
+      values: {
+        P: '1000.00',
+        N: '12',
+        j: '0.06',
+        m: '12',
+        q: '83.33',
+        p1: '83.33',
+        I1: '5.00',
+        first: '88.33',
+      },
     });
     expect(okResult({ ...BASE, repayment: 'bullet' }).explain).toEqual({
       formulaId: 'instalment.bullet',
-      values: { P: '1000.00', N: '12', I1: '5.00' },
+      values: { P: '1000.00', N: '12', j: '0.06', m: '12', I1: '5.00', first: '5.00' },
     });
   });
 });

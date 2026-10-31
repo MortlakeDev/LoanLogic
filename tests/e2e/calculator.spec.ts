@@ -6,8 +6,8 @@ import { catalog, gotoApp, message, seedStorage, type Language } from './helpers
 
 /*
  * The calculator end to end (T03 brief, Tests): the golden-vector scenarios show their
- * exact figures, invalid input never shows stale numbers, and the input-to-paint time of a
- * 1 200-period loan is measured.
+ * exact figures, the formula strip ends with the hero figure (T03a), invalid input never
+ * shows stale numbers, and the input-to-paint time of a 1 200-period loan is measured.
  */
 
 test.use({ viewport: { width: 1280, height: 900 } });
@@ -130,6 +130,88 @@ test.describe('CN scenario in zh-CN (vector cn-mortgage-30y-equal-instalments)',
     }
   });
 });
+
+/** What a strip case changes in the design scenario. */
+interface StripCase {
+  readonly name: string;
+  readonly repayment: 'equal-principal' | 'bullet';
+  readonly remainderFirst?: boolean;
+  readonly singlePayment?: boolean;
+  /** How the strip starts: its formula. */
+  readonly formula: string;
+  /** The hero figure, which the strip must end with (without the currency symbol). */
+  readonly hero: string;
+}
+
+const STRIP_CASES: readonly StripCase[] = [
+  {
+    name: 'equal principal, remainder last',
+    repayment: 'equal-principal',
+    formula: 'first payment = p1 + I1, p1 = q = R(P ÷ N) = 972.22, I1 = R(P × j ÷ m) = 2,005.21',
+    hero: '$2,977.43',
+  },
+  {
+    name: 'equal principal, remainder first',
+    repayment: 'equal-principal',
+    remainderFirst: true,
+    formula: 'first payment = p1 + I1, q = R(P ÷ N) = 972.22, p1 = P − (N − 1)·q = 973.02',
+    hero: '$2,978.23',
+  },
+  {
+    name: 'interest-only',
+    repayment: 'bullet',
+    formula: 'first payment = I1 = R(P × j ÷ m), P = 350,000.00, N = 360',
+    hero: '$2,005.21',
+  },
+  {
+    name: 'interest-only, single payment',
+    repayment: 'bullet',
+    singlePayment: true,
+    formula: 'first payment = P + I1, I1 = R(P × j ÷ m) = 2,005.21, P = 350,000.00, N = 1',
+    hero: '$352,005.21',
+  },
+];
+
+test.describe('formula strip (DESIGN §8.6)', () => {
+  for (const scenario of STRIP_CASES) {
+    test(`${scenario.name}: the strip's result is the hero figure`, async ({ page }) => {
+      await gotoApp(page);
+      await type(page, 'field-disbursementDate', '2026-11-01');
+      const name = message(
+        'en',
+        scenario.repayment === 'bullet' ? 'repayment.bullet' : 'repayment.equalPrincipal',
+      );
+      await page.getByRole('radio', { name }).check();
+      if (scenario.remainderFirst === true) {
+        await page.locator('#advanced-button').click();
+        await page.locator('#field-rounding-principalRemainder').selectOption('first');
+      }
+      if (scenario.singlePayment === true) {
+        await type(page, 'field-term-years', '0');
+        await type(page, 'field-term-months', '1');
+      }
+
+      const column = results(page);
+      await expectHero(column, scenario.hero);
+      const strip = column.locator('.formula-strip__formula');
+      await expect(strip).toHaveCount(1);
+      const figure = scenario.hero.slice(1);
+      // The strip starts with the payload's formula and ends with "→ figure".
+      await expect(strip).toHaveText(
+        new RegExp(`^${regexLiteral(scenario.formula)}.* → ${regexLiteral(figure)}$`),
+      );
+      const text = (await strip.textContent()) ?? '';
+      const result = text.slice(text.lastIndexOf('→') + 1).trim();
+      const hero = (await column.locator('.hero-amount .visually-hidden').textContent()) ?? '';
+      expect(`$${result}`, 'the last number of the strip is the hero figure').toBe(hero);
+    });
+  }
+});
+
+/** A literal for a regular expression. */
+function regexLiteral(literal: string): string {
+  return literal.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
 
 test.describe('invalid input', () => {
   test('an invalid term shows the localized error and no stale numbers', async ({ page }) => {

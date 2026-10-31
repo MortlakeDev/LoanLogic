@@ -10,6 +10,7 @@
  * dates, pays the instalment on every regular annuity period, and is deterministic.
  */
 
+import { Decimal } from 'decimal.js';
 import * as fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import { FREQUENCY_IDS } from '../frequency';
@@ -210,6 +211,41 @@ function expectDefinedError(terms: LoanTerms, error: EngineError): void {
   }
 }
 
+/** Decimals with room for an exact sum of day-count fractions. */
+const Precise = Decimal.clone({ precision: 100 });
+
+/**
+ * SPEC v0.2.4 §9.6: `yf1Parts` is well formed ("30/360", "61/365+121/366") and `yf1` is its
+ * exact sum serialized: the exact decimal when it terminates, otherwise rounded half-up to
+ * the 20 significant digits the engine writes.
+ */
+function expectYf1FromParts(yf1: string | undefined, parts: string | undefined): void {
+  expect(parts).toMatch(/^\d+\/(360|365|366)(\+\d+\/(360|365|366))*$/);
+  // The exact sum as a reduced integer fraction n/d.
+  let n = 0n;
+  let d = 1n;
+  for (const part of (parts ?? '').split('+')) {
+    const [days = '0', base = '1'] = part.split('/');
+    n = n * BigInt(base) + BigInt(days) * d;
+    d *= BigInt(base);
+  }
+  const gcd = (a: bigint, b: bigint): bigint => (b === 0n ? a : gcd(b, a % b));
+  const g = gcd(n, d);
+  n /= g;
+  d /= g;
+  // A reduced fraction terminates when its denominator has no prime factors but 2 and 5.
+  let rest = d;
+  for (const factor of [2n, 5n]) {
+    while (rest % factor === 0n) {
+      rest /= factor;
+    }
+  }
+  // 100 digits: exact for a terminating sum, and enough to round the others correctly.
+  const exact = new Precise(n.toString()).div(d.toString());
+  const expected = rest === 1n ? exact : exact.toSignificantDigits(20, Decimal.ROUND_HALF_UP);
+  expect(new Precise(yf1 ?? 'NaN').eq(expected)).toBe(true);
+}
+
 describe('buildSchedule properties', () => {
   it('holds the ledger invariants on every schedule it builds', () => {
     fc.assert(
@@ -292,6 +328,50 @@ describe('buildSchedule properties', () => {
             expect(schedule.principalPerPeriod).toBeNull();
             expect(schedule.balloon).toBeNull();
             break;
+        }
+
+        // Every explanation carries exactly its own values (SPEC §9.6): the first row as
+        // posted for equal principal and bullet, and the rate values of the accrual mode.
+        const { formulaId, values } = schedule.explain;
+        const daycount = terms.accrual.mode === 'daycount';
+        const periodicRate =
+          !daycount && terms.accrual.compounding !== terms.frequency ? ['j', 'm', 'i'] : ['j', 'm'];
+        const expectedKeys: Record<string, readonly string[]> = {
+          'instalment.annuity': ['P', 'N', ...periodicRate, 'Astar', 'A'],
+          'instalment.balloon': ['P', 'N', ...periodicRate, 'Astar', 'A', 'Bal'],
+          'instalment.annuity-exact-basis': ['P', 'N', 'j', 'dayCount', 'Astar', 'A'],
+          'instalment.equal-principal': [
+            'P',
+            'N',
+            'q',
+            'p1',
+            'I1',
+            'first',
+            ...(daycount ? ['j', 'dayCount', 'yf1', 'yf1Parts'] : periodicRate),
+          ],
+          'instalment.bullet': [
+            'P',
+            'N',
+            'I1',
+            'first',
+            ...(daycount ? ['j', 'dayCount', 'yf1', 'yf1Parts'] : periodicRate),
+          ],
+        };
+        expect(Object.keys(values).sort()).toEqual([...(expectedKeys[formulaId] ?? [])].sort());
+        if (terms.repayment === 'equal-principal' || terms.repayment === 'bullet') {
+          const firstRow = schedule.rows[0];
+          if (firstRow === undefined) {
+            throw new Error('expected a first row');
+          }
+          const money = (value: bigint): string => formatScaled(value, terms.minorUnits);
+          expect(values.I1).toBe(money(firstRow.interest));
+          expect(values.first).toBe(money(firstRow.principal + firstRow.interest));
+          if (terms.repayment === 'equal-principal') {
+            expect(values.p1).toBe(money(firstRow.principal));
+          }
+          if (daycount) {
+            expectYf1FromParts(values.yf1, values.yf1Parts);
+          }
         }
 
         // Fixed and pct-original items are the same every period; pct-balance follows the
