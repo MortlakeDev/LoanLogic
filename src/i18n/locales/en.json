@@ -301,6 +301,7 @@
   "explain.symP1": "Principal of the first payment",
   "explain.symFirst": "First payment (principal + interest)",
   "explain.symYf1": "Year fraction of the first period",
+  "explain.symYf1Parts": "Year fraction as day counts",
   "explain.stripFirst": "first payment",
   "explain.timeBasisPeriods": "whole payment periods",
   "explain.timeBasisCountedBack": "periods counted back from each payment, then days",

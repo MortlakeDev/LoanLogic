@@ -10,7 +10,7 @@
  */
 
 import { type LocalDate, daysBetween } from '../date';
-import { yearFraction } from '../daycount';
+import { dayCountParts, formatDayCountParts, yearFraction } from '../daycount';
 import { digitCount } from '../decimal';
 import { type UpfrontTotals, periodicFeeAmount, principalFinanced, upfrontTotals } from '../fees';
 import { isEndOfMonthSchedule, periodsPerYear, scheduleDates } from '../frequency';
@@ -76,7 +76,7 @@ export interface Schedule {
    * Equal principal: `P`, `N`, the rate behind `I1`, `q`, and the first row's `p1`, `I1`
    * and `first` = `p1 + I1`. Bullet: `P`, `N`, the rate behind `I1`, `I1` and `first`, the
    * first row's principal + interest (`I1`, or `P + I1` when `N = 1`). The rate behind
-   * `I1` is `j`, `m` (and `i` when `c ≠ m`) in periodic mode, or `j`, `dayCount` and `yf1`
+   * `I1` is `j`, `m` (and `i` when `c ≠ m`) in periodic mode, or `j`, `dayCount`, `yf1` and `yf1Parts`
    * (the first period's year fraction) in day-count mode, never both.
    */
   readonly explain: Explain;
@@ -116,7 +116,7 @@ interface RateModel {
   /**
    * The rate behind the first period's interest `I_1` for the equal-principal and bullet
    * explanations (SPEC §9.6): `j`, `m` and, when `c ≠ m`, `i` in periodic mode; `j`,
-   * `dayCount` (the method id) and `yf1` (`YF_1`) in day-count mode.
+   * `dayCount` (the method id), `yf1` (`YF_1`) and `yf1Parts` (its day counts) in day-count mode.
    */
   readonly firstInterestRate: Readonly<Record<string, string>>;
 }
@@ -187,10 +187,13 @@ function rateModel(terms: LoanTerms, principal: bigint): RateModel {
     span,
     fraction: yearFraction(accrual.method, span.start, span.date, endOfMonth),
   }));
+  const firstSpan = spans[0];
   const firstFraction = accruing[0]?.fraction;
-  if (firstFraction === undefined) {
+  if (firstSpan === undefined || firstFraction === undefined) {
     throw new RangeError('A schedule needs at least one payment');
   }
+  // The same day counts give YF_1 for the interest and its parts for the explanation.
+  const firstParts = dayCountParts(accrual.method, firstSpan.start, firstSpan.date, endOfMonth);
   return {
     periods: accruing.map(({ span, fraction }) =>
       period(span, (balance) => dayCountInterest(balance, rate, fraction, mode)),
@@ -203,7 +206,12 @@ function rateModel(terms: LoanTerms, principal: bigint): RateModel {
     // a rate per period, r_k = j × YF_k (its own formula id, SPEC §9.6).
     explainedRate: null,
     // I_1 accrues as j × YF_1 whatever the payment basis, so neither m nor i belongs here.
-    firstInterestRate: { j, dayCount: accrual.method, yf1: toExplainString(firstFraction) },
+    firstInterestRate: {
+      j,
+      dayCount: accrual.method,
+      yf1: toExplainString(firstFraction),
+      yf1Parts: formatDayCountParts(firstParts),
+    },
   };
 }
 

@@ -114,7 +114,7 @@ describe('ExplainSheet', () => {
       'first payment = p1 + I1',
       'q = R(P ÷ N)',
       'p1 = P − (N − 1)·q',
-      'I1 = P × j × YF1',
+      'I1 = R(P × j × YF1)',
     ]);
     // Every payload value in payload order, each with its label (and symbol).
     expect(Array.from(dialog.querySelectorAll('dt'), (dt) => dt.textContent)).toEqual([
@@ -123,6 +123,7 @@ describe('ExplainSheet', () => {
       'Nominal annual rate j',
       'Day count YFk',
       'Year fraction of the first period YF1',
+      'Year fraction as day counts YF1',
       'Principal per payment q',
       'Principal of the first payment p1',
       'Interest of the first period I1',
@@ -130,7 +131,9 @@ describe('ExplainSheet', () => {
       'First payment (principal + interest)',
     ]);
     expect(valueOf(dialog, 'Day count')).toBe('ACT/360 (actual days ÷ 360)');
-    expect(valueOf(dialog, 'Year fraction of the first period')).toBe('0.08333333333');
+    // yf1 with every digit, and its exact form as day counts (SPEC v0.2.4).
+    expect(valueOf(dialog, 'Year fraction of the first period')).toBe('0.083333333333333333333');
+    expect(valueOf(dialog, 'Year fraction as day counts')).toBe('30 ÷ 360');
     expect(valueOf(dialog, 'Principal per payment')).toBe('972.22');
     expect(valueOf(dialog, 'Principal of the first payment')).toBe('973.02');
     expect(valueOf(dialog, 'Interest of the first period')).toBe('2,005.21');
@@ -147,7 +150,7 @@ describe('ExplainSheet', () => {
     const formula = dialog.querySelector('.explain__formula');
     expect(Array.from(formula?.querySelectorAll('p') ?? [], (p) => p.textContent)).toEqual([
       `${t('explain.stripFirst')} = P + I1`,
-      'I1 = P × j ÷ m',
+      'I1 = R(P × j ÷ m)',
       'pk = 0 (k < N), pN = P',
     ]);
     expect(valueOf(dialog, t('explain.symI1'))).toBe('2 005,21');

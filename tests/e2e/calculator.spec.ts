@@ -147,7 +147,7 @@ const STRIP_CASES: readonly StripCase[] = [
   {
     name: 'equal principal, remainder last',
     repayment: 'equal-principal',
-    formula: 'first payment = p1 + I1, p1 = q = R(P ÷ N) = 972.22, I1 = P × j ÷ m = 2,005.21',
+    formula: 'first payment = p1 + I1, p1 = q = R(P ÷ N) = 972.22, I1 = R(P × j ÷ m) = 2,005.21',
     hero: '$2,977.43',
   },
   {
@@ -160,14 +160,14 @@ const STRIP_CASES: readonly StripCase[] = [
   {
     name: 'interest-only',
     repayment: 'bullet',
-    formula: 'first payment = I1 = P × j ÷ m, P = 350,000.00, N = 360',
+    formula: 'first payment = I1 = R(P × j ÷ m), P = 350,000.00, N = 360',
     hero: '$2,005.21',
   },
   {
     name: 'interest-only, single payment',
     repayment: 'bullet',
     singlePayment: true,
-    formula: 'first payment = P + I1, I1 = P × j ÷ m = 2,005.21, P = 350,000.00, N = 1',
+    formula: 'first payment = P + I1, I1 = R(P × j ÷ m) = 2,005.21, P = 350,000.00, N = 1',
     hero: '$352,005.21',
   },
 ];

@@ -77,7 +77,7 @@ describe('FormulaStrip', () => {
     setLanguage('ru');
     render(<FormulaStrip explain={currentExplain()} />);
     expect(formulaText()).toBe(
-      'первый платёж = p1 + I1; p1 = q = R(P ÷ N) = 972,22; I1 = P × j ÷ m = 2 005,21; ' +
+      'первый платёж = p1 + I1; p1 = q = R(P ÷ N) = 972,22; I1 = R(P × j ÷ m) = 2 005,21; ' +
         'P = 350 000,00; N = 360; j = 0,06875; m = 12 → 2 977,43',
     );
     const group = screen.getByRole('group', { name: t('hero.formula') });
@@ -147,67 +147,67 @@ const STRIPS: readonly (readonly [string, Partial<LoanForm>, string])[] = [
   [
     'equal principal, remainder last, c = m',
     { repayment: 'equal-principal' },
-    'first payment = p1 + I1, p1 = q = R(P ÷ N) = 972.22, I1 = P × j ÷ m = 2,005.21, ' +
+    'first payment = p1 + I1, p1 = q = R(P ÷ N) = 972.22, I1 = R(P × j ÷ m) = 2,005.21, ' +
       'P = 350,000.00, N = 360, j = 0.06875, m = 12 → 2,977.43',
   ],
   [
     'equal principal, remainder first, c = m',
     { repayment: 'equal-principal', principalRemainder: 'first' },
     'first payment = p1 + I1, q = R(P ÷ N) = 972.22, p1 = P − (N − 1)·q = 973.02, ' +
-      'I1 = P × j ÷ m = 2,005.21, P = 350,000.00, N = 360, j = 0.06875, m = 12 → 2,978.23',
+      'I1 = R(P × j ÷ m) = 2,005.21, P = 350,000.00, N = 360, j = 0.06875, m = 12 → 2,978.23',
   ],
   [
     'equal principal, c ≠ m',
     { repayment: 'equal-principal', ...C_NOT_M },
-    'first payment = p1 + I1, p1 = q = R(P ÷ N) = 972.22, I1 = P × i = 1,993.83, ' +
+    'first payment = p1 + I1, p1 = q = R(P ÷ N) = 972.22, I1 = R(P × i) = 1,993.83, ' +
       'P = 350,000.00, N = 360, i = 0.005696653187 → 2,966.05',
   ],
   [
     'equal principal, day count',
     { repayment: 'equal-principal', ...DAY_COUNT },
-    'first payment = p1 + I1, p1 = q = R(P ÷ N) = 972.22, I1 = P × j × YF1 = 2,005.21, ' +
-      'P = 350,000.00, N = 360, j = 0.06875, YF1 = 0.08333333333 → 2,977.43',
+    'first payment = p1 + I1, p1 = q = R(P ÷ N) = 972.22, I1 = R(P × j × YF1) = 2,005.21, ' +
+      'P = 350,000.00, N = 360, j = 0.06875, YF1 = 30 ÷ 360 → 2,977.43',
   ],
   [
     'equal principal, day count, remainder first',
     { repayment: 'equal-principal', principalRemainder: 'first', ...DAY_COUNT },
     'first payment = p1 + I1, q = R(P ÷ N) = 972.22, p1 = P − (N − 1)·q = 973.02, ' +
-      'I1 = P × j × YF1 = 2,005.21, P = 350,000.00, N = 360, j = 0.06875, ' +
-      'YF1 = 0.08333333333 → 2,978.23',
+      'I1 = R(P × j × YF1) = 2,005.21, P = 350,000.00, N = 360, j = 0.06875, ' +
+      'YF1 = 30 ÷ 360 → 2,978.23',
   ],
   [
     'interest-only, N > 1, c = m',
     { repayment: 'bullet' },
-    'first payment = I1 = P × j ÷ m, P = 350,000.00, N = 360, j = 0.06875, m = 12 → 2,005.21',
+    'first payment = I1 = R(P × j ÷ m), P = 350,000.00, N = 360, j = 0.06875, m = 12 → 2,005.21',
   ],
   [
     'interest-only, N = 1, c = m',
     { repayment: 'bullet', ...SINGLE },
-    'first payment = P + I1, I1 = P × j ÷ m = 2,005.21, P = 350,000.00, N = 1, ' +
+    'first payment = P + I1, I1 = R(P × j ÷ m) = 2,005.21, P = 350,000.00, N = 1, ' +
       'j = 0.06875, m = 12 → 352,005.21',
   ],
   [
     'interest-only, N > 1, c ≠ m',
     { repayment: 'bullet', ...C_NOT_M },
-    'first payment = I1 = P × i, P = 350,000.00, N = 360, i = 0.005696653187 → 1,993.83',
+    'first payment = I1 = R(P × i), P = 350,000.00, N = 360, i = 0.005696653187 → 1,993.83',
   ],
   [
     'interest-only, N = 1, c ≠ m',
     { repayment: 'bullet', ...C_NOT_M, ...SINGLE },
-    'first payment = P + I1, I1 = P × i = 1,993.83, P = 350,000.00, N = 1, ' +
+    'first payment = P + I1, I1 = R(P × i) = 1,993.83, P = 350,000.00, N = 1, ' +
       'i = 0.005696653187 → 351,993.83',
   ],
   [
     'interest-only, N > 1, day count',
     { repayment: 'bullet', ...DAY_COUNT },
-    'first payment = I1 = P × j × YF1, P = 350,000.00, N = 360, j = 0.06875, ' +
-      'YF1 = 0.08333333333 → 2,005.21',
+    'first payment = I1 = R(P × j × YF1), P = 350,000.00, N = 360, j = 0.06875, ' +
+      'YF1 = 30 ÷ 360 → 2,005.21',
   ],
   [
     'interest-only, N = 1, day count',
     { repayment: 'bullet', ...DAY_COUNT, ...SINGLE },
-    'first payment = P + I1, I1 = P × j × YF1 = 2,005.21, P = 350,000.00, N = 1, ' +
-      'j = 0.06875, YF1 = 0.08333333333 → 352,005.21',
+    'first payment = P + I1, I1 = R(P × j × YF1) = 2,005.21, P = 350,000.00, N = 1, ' +
+      'j = 0.06875, YF1 = 30 ÷ 360 → 352,005.21',
   ],
 ];
 

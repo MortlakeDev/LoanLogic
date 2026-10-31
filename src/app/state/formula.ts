@@ -7,9 +7,10 @@
  * into it, every payload value with its label, and the result, formatted for a locale.
  *
  * The models are built from the payload alone, so a formula shown from them reproduces
- * the engine's result: `i` is shown as `j ÷ m` (never as a rounded quotient), exact values
- * keep all their digits and irrational ones show 10 significant digits (`computedNumber`),
- * and the result is the payload's own value (`A`, or `first` for equal principal and
+ * the engine's result: operands take their exact form wherever one exists (`i` as `j ÷ m`,
+ * `YF₁` as day counts such as `30 ÷ 360`), only a computed value without one (the payload's
+ * `i` when `c ≠ m`) shows 10 significant digits (`computedNumber`), and the result is the
+ * payload's own value (`A`, or `first` for equal principal and
  * interest-only), never recomputed. Words (a day-count method, a time basis, "first
  * payment") stay message keys or ids, which the components translate.
  */
@@ -150,6 +151,7 @@ type ValueFormat =
   | 'computed'
   | 'instalment'
   | 'dayCount'
+  | 'dayCountParts'
   | 'timeBasis'
   | 'compounding';
 
@@ -175,7 +177,9 @@ const VALUE_SPECS: ReadonlyMap<string, ValueSpec> = new Map<string, ValueSpec>([
   // The formulas name it in words ("first payment"), which its label already says.
   ['first', { symbol: '', label: 'explain.symFirst', format: 'money' }],
   ['dayCount', { symbol: 'YF_{k}', label: 'explain.symDayCount', format: 'dayCount' }],
-  ['yf1', { symbol: 'YF_{1}', label: 'explain.symYf1', format: 'computed' }],
+  // yf1 keeps every digit it has; the strip writes YF₁ from yf1Parts, its exact form.
+  ['yf1', { symbol: 'YF_{1}', label: 'explain.symYf1', format: 'exact' }],
+  ['yf1Parts', { symbol: 'YF_{1}', label: 'explain.symYf1Parts', format: 'dayCountParts' }],
   ['c', { symbol: 'c', label: 'explain.symC', format: 'compounding' }],
   ['k', { symbol: 'k', label: 'explain.symK', format: 'computed' }],
   ['r', { symbol: 'r', label: 'explain.symR', format: 'computed' }],
@@ -235,6 +239,26 @@ function instalmentNumber(value: string, locale: string, minorUnits: number): st
       });
 }
 
+/**
+ * `yf1Parts` (SPEC §9.6, v0.2.4) as the strip writes `YF₁`: "30/360" → "30 ÷ 360",
+ * "61/365+121/366" → "61 ÷ 365 + 121 ÷ 366", so a hand calculation reproduces the posted
+ * interest, ties included.
+ *
+ * @throws RangeError for a value that is not day counts over 360, 365 or 366.
+ */
+function dayCountParts(value: string, locale: string): string {
+  if (!/^\d+\/(360|365|366)(\+\d+\/(360|365|366))*$/.test(value)) {
+    throw new RangeError(`The payload's "yf1Parts" is not day counts: "${value}"`);
+  }
+  return value
+    .split('+')
+    .map((part) => {
+      const [days = '', base = ''] = part.split('/');
+      return `${formatNumber(days, locale)} ÷ ${formatNumber(base, locale)}`;
+    })
+    .join(' + ');
+}
+
 /** Formats payload values for one locale and currency. */
 class Payload {
   constructor(
@@ -292,6 +316,11 @@ class Payload {
         return computedNumber(value, this.locale);
       case 'instalment':
         return instalmentNumber(value, this.locale, this.minorUnits);
+      case 'exact':
+        // Every digit of the payload: yf1 can have more decimals than the default 20.
+        return formatNumber(value, this.locale, {
+          maximumFractionDigits: Math.max(20, value.split('.')[1]?.length ?? 0),
+        });
       default:
         return formatNumber(value, this.locale);
     }
@@ -308,6 +337,9 @@ class Payload {
     if (format === 'timeBasis') {
       const key = TIME_BASIS_KEYS.get(value);
       return [key === undefined ? text(value) : { kind: 'message', key }];
+    }
+    if (format === 'dayCountParts') {
+      return [text(dayCountParts(value, this.locale))];
     }
     if (format === 'compounding' && value === 'continuous') {
       return [{ kind: 'message', key: 'compounding.continuous' }];
@@ -498,17 +530,22 @@ interface FirstInterest {
 }
 
 /**
- * `I₁` (DESIGN §8.6): `P × j × YF₁` in day-count mode (the payload carries `yf1`), else
- * `P × i` when the payload carries `i` (periodic interest with `c ≠ m`), else `P × j ÷ m`.
+ * `I₁` as posted (DESIGN §8.6), with the interest rounding `R` (SPEC §5.1):
+ * `R(P × j × YF₁)` in day-count mode, with `YF₁` written from the payload's `yf1Parts`
+ * (`30 ÷ 360`), else `R(P × i)` when the payload carries `i` (periodic interest with
+ * `c ≠ m`), else `R(P × j ÷ m)`.
+ *
+ * @throws RangeError for a day-count payload without `yf1Parts` (the raw payload is shown).
  */
 function firstInterest(payload: Payload): FirstInterest {
   if (payload.has('yf1')) {
-    return { markup: 'I_{1} = P × j × YF_{1}', operands: ['j', 'yf1'] };
+    payload.need('yf1Parts');
+    return { markup: 'I_{1} = R(P × j × YF_{1})', operands: ['j', 'yf1Parts'] };
   }
   if (payload.has('i')) {
-    return { markup: 'I_{1} = P × i', operands: ['i'] };
+    return { markup: 'I_{1} = R(P × i)', operands: ['i'] };
   }
-  return { markup: 'I_{1} = P × j ÷ m', operands: ['j', 'm'] };
+  return { markup: 'I_{1} = R(P × j ÷ m)', operands: ['j', 'm'] };
 }
 
 /**
