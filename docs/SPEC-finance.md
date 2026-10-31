@@ -1046,10 +1046,10 @@ interface CashFlowInput {
 - §9.6: the day-count explanations of `instalment.equal-principal` and
   `instalment.bullet` also carry `yf1Parts`, the first period's year fraction as day
   counts (`30/360`, `61/365+121/366`). `yf1` alone does not always terminate (30/360 gives
-  `1/12`), so at an exact rounding tie a strip built from a rounded `yf1` could not
-  reproduce the posted interest: USD 1 001.00 at 6 %, 30E/360, gives exactly 5.005 and
-  posts 5.01, while the serialized `yf1` gives `1001 × 0.06 × 0.083333333333333333333`
-  = 5.00499…, which rounds to 5.00. With `30 ÷ 360` the strip is exact.
+  `1/12`), so at an exact rounding tie a hand calculation from the rounded `yf1` misses
+  the posted interest: USD 1 001.00 at 6 %, 30E/360, accrues exactly 5.005, and the engine
+  and the strip show the posted 5.01; by hand, `1001 × 0.06 × 0.083333333333333333333` =
+  5.00499…, which rounds to 5.00. With `30 ÷ 360` a hand calculation gives 5.01 too.
 
 **v0.2.3 (2026-10-20)** — asked during T03 (PR #8); no vector changes:
 
