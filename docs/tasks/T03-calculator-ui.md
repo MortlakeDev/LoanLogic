@@ -172,15 +172,15 @@ comparison and other tabs (M4–M5); exports and Share (T14–T15).
 
 ## Acceptance criteria
 
-- [x] The UI matches DESIGN.md in both themes at 1 280 px and 360 px (screenshots in the
+- [ ] The UI matches DESIGN.md in both themes at 1 280 px and 360 px (screenshots in the
       PR: desktop dark/light, 360 px dark/light, and one zh-CN 360 px).
-- [x] Every calculated figure on screen comes from the engine, and every number is
+- [ ] Every calculated figure on screen comes from the engine, and every number is
       formatted by the i18n helpers;
       the two e2e scenarios show the exact golden-vector figures.
-- [x] Live recalculation without a button; invalid input never shows stale results.
-- [x] Every engine error and warning code has a natural message in all four languages.
-- [x] Accessibility checklist of DESIGN §11 passes; keyboard-only use works end to end.
-- [x] Fonts switched with notices updated; single-file build still works offline.
+- [ ] Live recalculation without a button; invalid input never shows stale results.
+- [ ] Every engine error and warning code has a natural message in all four languages.
+- [ ] Accessibility checklist of DESIGN §11 passes; keyboard-only use works end to end.
+- [ ] Fonts switched with notices updated; single-file build still works offline.
 
 ## Notes
 
