@@ -1,6 +1,6 @@
 # LoanLogic — Financial Methodology Specification
 
-Status: v0.2.3 · Normative for the engine (`src/engine`). Keywords MUST / SHOULD / MAY are
+Status: v0.2.4 · Normative for the engine (`src/engine`). Keywords MUST / SHOULD / MAY are
 used as in RFC 2119. If the code and this document disagree, this document wins. If this
 document is ambiguous or looks wrong, the implementer stops and reports — financial
 rules are never invented in code.
@@ -668,17 +668,26 @@ interface RateFailure { ok: false; reason: 'IRR_NO_CONVERGENCE' }
 The loan result also carries the instalment's payload in a top-level `explain`
 (formula ids `instalment.*`). Golden vectors store `value` as a decimal string with 12
 decimals, list `warnings` only when there are any, and omit `explain`. Explain values are decimal strings — exact when
-the value is a terminating decimal, otherwise with at least 12 significant digits — so a
-formula shown from them reproduces the result (when `i = j ÷ m`, the UI shows it as
-`0.06875 ÷ 12`, never as a rounded quotient; DESIGN §8.6 has the strip for every
-payload).
+the value is a terminating decimal, otherwise with at least 12 significant digits —
+except `dayCount` (a method id) and `yf1Parts` (day counts, below). A formula shown from
+them uses the exact form where one exists, so it reproduces the posted result by hand:
+`i = j ÷ m` as `0.06875 ÷ 12` and `YF₁` as day counts such as `30 ÷ 360`, never as a
+rounded quotient (DESIGN §8.6 has the strip for every payload).
+
+`yf1Parts` is the first period's year fraction `YF₁` (§4) written as day counts over
+year lengths: `D/B`, where `D` is the method's day count for the period (for the 30/360
+methods the numerator of the §4 formula, `360(Y2−Y1) + 30(M2−M1) + (D2−D1)` after the
+day adjustments; actual days otherwise) and `B` is 360, 365 or 366. ACT/ACT
+ISDA splits a period at each year end, so its parts are joined with `+`, one per
+calendar year with days in the period: 1 Nov 2003 → 1 May 2004 is `61/365+121/366`.
+The parts sum to `yf1` exactly.
 
 | `formulaId` | `values` |
 |---|---|
 | `instalment.annuity` | `P`, `N`, `j`, `m` (and `i` when `c ≠ m`), `Astar`, `A` |
 | `instalment.annuity-exact-basis` | `P`, `N`, `j`, `dayCount` (method id), `Astar`, `A` — the exact payment basis has a rate per period, `r_k = j × YF_k`, and no single `i` |
 | `instalment.balloon` | as `instalment.annuity`, plus `Bal` |
-| `instalment.equal-principal` | `P`, `N`, `q`; the first payment: `p1` and `I1` (principal and interest of the first row), `first` = `p1 + I1`; the rate behind `I1`: `j`, `m` (and `i` when `c ≠ m`) in periodic mode, or `j`, `dayCount` and `yf1` (the first period's year fraction) in day-count mode |
+| `instalment.equal-principal` | `P`, `N`, `q`; the first payment: `p1` and `I1` (principal and interest of the first row), `first` = `p1 + I1`; the rate behind `I1`: `j`, `m` (and `i` when `c ≠ m`) in periodic mode, or `j`, `dayCount`, `yf1` (the first period's year fraction) and `yf1Parts` in day-count mode |
 | `instalment.bullet` | `P`, `N`, `I1` (interest of the first period), `first` (`I1`, or `P + I1` when N = 1) and the rate behind `I1` as for `instalment.equal-principal` |
 | `rate.nominal` | `j` |
 | `rate.effective` | `j`, `c` (periodic), or `m` and `k` (day-count) |
@@ -1030,6 +1039,16 @@ interface CashFlowInput {
 - Microsoft Support — XIRR function (example).
 
 ## 17. Change history
+
+**v0.2.4 (2026-10-31)** — asked during T03a (PR #11); no vector changes:
+
+- §9.6: the day-count explanations of `instalment.equal-principal` and
+  `instalment.bullet` also carry `yf1Parts`, the first period's year fraction as day
+  counts (`30/360`, `61/365+121/366`). `yf1` alone does not always terminate (30/360 gives
+  `1/12`), so at an exact rounding tie a strip built from a rounded `yf1` could not
+  reproduce the posted interest: USD 1 001.00 at 6 %, 30E/360, gives exactly 5.005 and
+  posts 5.01, while `1001 × 0.06 × 0.0833333333…` rounds to 5.00. With `30 ÷ 360` the
+  strip is exact.
 
 **v0.2.3 (2026-10-20)** — asked during T03 (PR #8); no vector changes:
 

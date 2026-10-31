@@ -52,6 +52,15 @@ the live site are fixed too.
    - "n/a" with a visible reason (§8.13);
    - the hero as principal + interest, with fees named in the meta line (§8.6);
    - 18 px amount on phones (§8.2).
+7. **Exact `YF₁` (SPEC v0.2.4, the answer to the question in PR #11).**
+   - Engine: the day-count payloads of equal principal and bullet also carry `yf1Parts`,
+     `YF₁` as day counts over year lengths (`30/360`, `31/365`, `61/365+121/366` for
+     ACT/ACT ISDA across a year end). Build `yf1` and `yf1Parts` from the same day count,
+     so they cannot disagree.
+   - Strip (DESIGN §8.6): `YF₁` is written from `yf1Parts` (`YF₁ = 30 ÷ 360`), and `I₁`
+     shows the interest rounding: `I₁ = R(P × j × YF₁)`, `R(P × i)` or `R(P × j ÷ m)`.
+     The method stays out of the strip; the Explain sheet names it and lists `yf1Parts`.
+   - Only the payload's `i` (`c ≠ m`) is still shown rounded to 10 significant digits.
 
 ## Tests
 
@@ -66,6 +75,10 @@ the live site are fixed too.
   interest-only (N = 1 and N > 1), annuity, balloon and the exact basis.
 - **Unit test:** the currency option label is the code alone when the display name is
   missing or equals the code.
+- **`yf1Parts` (v0.2.4):** engine tests for every day-count method, ACT/ACT ISDA inside
+  one year and across a year end, and a property test that the parts sum to `yf1`
+  exactly. A strip regression test for the tie: USD 1 001.00 at 6 %, interest-only,
+  monthly, 30E/360, disbursed 2026-01-15 shows `YF₁ = 30 ÷ 360` and ends with 5.01.
 - **e2e:**
   - the strip's result equals the hero for equal principal and interest-only;
   - the theme menu keyboard and click behaviour;
@@ -80,6 +93,8 @@ the live site are fixed too.
 - [ ] Theme menu behaves as in DESIGN §7.1 with mouse and keyboard.
 - [ ] No mid-word break without a hyphen in the repayment cards; no "CODE · CODE"
       currency options.
+- [ ] Day-count strips show `YF₁` as day counts, so a hand calculation from the strip
+      gives the posted `I₁`, ties included.
 - [ ] `npm run check` and `npm run e2e` pass; no golden vector changes (the reference
       does not produce `explain`).
 
