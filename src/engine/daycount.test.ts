@@ -335,7 +335,7 @@ describe('dayCountParts (SPEC §9.6 yf1Parts)', () => {
     expect(write('act-365f', '2026-01-15', '2026-02-15')).toBe('31/365');
   });
 
-  it('sums exactly to yearFraction for every method', () => {
+  it('sums exactly to yearFraction, and the actual methods count every day once', () => {
     fc.assert(
       fc.property(
         fc.constantFrom(...DAY_COUNT_IDS),
@@ -353,6 +353,12 @@ describe('dayCountParts (SPEC §9.6 yf1Parts)', () => {
             ZERO,
           );
           expect(sum).toEqual(fraction);
+          // yearFraction is that same sum, so the check above cannot catch wrong parts; the
+          // calendar days from daysBetween can, for the methods that count actual days.
+          if (method.startsWith('act-')) {
+            const days = parts.reduce((total, part) => total + part.days, 0);
+            expect(days).toBe(daysBetween(from, to));
+          }
         },
       ),
       { numRuns: 300 },
