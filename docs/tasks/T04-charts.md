@@ -80,7 +80,7 @@ chart tokens, identical in quality on screen and in print.
 
 ## Completion notes
 
-**Status:** done, in review in PR_LINK (branch `task/T04-charts`). The branch also
+**Status:** done, in review in [PR #14](https://github.com/MortlakeDev/LoanLogic/pull/14) (branch `task/T04-charts`). The branch also
 carries the T03a housekeeping: `repayment.equalPrincipal` in `ru.json` and `uk.json` is
 written with `\u00AD` escapes again, and a new `locales.test.ts` check fails on any
 literal invisible character (soft hyphen, zero-width characters, BOM) in a locale file.
