@@ -1,0 +1,438 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later */
+/* Copyright (C) 2026 Mortlake */
+
+/*
+ * The chart card (docs/DESIGN.md §8.11): header with the view switch and the table
+ * switch, the legend, the SVG chart with its tooltip, and the table alternative. The SVG
+ * is laid out in CSS pixels by layout.ts; colors come only from the chart tokens and the
+ * focus ring (§3.1).
+ */
+
+.chart {
+  display: grid;
+  /* One column no wider than the card: the table's nowrap cells scroll inside its own
+     region instead of widening the header and the switch with it. */
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-4);
+}
+
+.chart__header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-3) var(--space-4);
+}
+
+.chart__heading {
+  display: grid;
+  flex: 1 1 16rem;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.chart__title {
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-semibold);
+}
+
+.chart__subtitle {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+}
+
+.chart__controls {
+  display: flex;
+  flex: 0 1 30rem;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-2) var(--space-3);
+  min-width: 0;
+}
+
+.chart__switch {
+  flex: 1 1 18rem;
+  min-width: 0;
+}
+
+.chart__table-toggle {
+  flex: none;
+}
+
+/* A view switch: the selected look of the quiet segmented variant (DESIGN §8.3). */
+.chart__table-toggle[aria-pressed='true'] {
+  background: var(--color-surface-3);
+  box-shadow: inset 0 -2px 0 var(--color-text-primary);
+}
+
+/* ---------- Legend ---------- */
+
+.chart__legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-5);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+}
+
+.chart__legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.chart__swatch {
+  width: 0.75rem;
+  height: 0.75rem;
+  flex: none;
+}
+
+/* ---------- Plot ---------- */
+
+/* Clipped across only (the SVG is at least 200 px wide): a tooltip taller than the chart,
+   at a large text size, hangs below it instead of being cut off. */
+.chart__plot {
+  position: relative;
+  min-width: 0;
+  overflow-x: clip;
+}
+
+.chart__figure {
+  margin: 0;
+}
+
+.chart__svg {
+  overflow: hidden;
+}
+
+.chart__grid-line {
+  stroke: var(--color-chart-grid);
+  stroke-width: 1;
+}
+
+.chart__tick {
+  fill: var(--color-chart-axis);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs);
+  font-variant-numeric: tabular-nums;
+}
+
+.chart__principal,
+.chart__marker--principal,
+.chart__payoff {
+  fill: var(--color-chart-principal);
+}
+
+.chart__interest,
+.chart__marker--interest {
+  fill: var(--color-chart-interest);
+}
+
+.chart__fees {
+  fill: var(--color-chart-fees);
+}
+
+/* The interest hatch is drawn only in forced colors, where the fills are system colors. */
+.chart__hatch {
+  stroke: transparent;
+  stroke-width: 2;
+}
+
+/* The lines, the annotation and the focus ring are painted over the items' hit columns:
+   they let the pointer through to them. */
+.chart__line,
+.chart__annotation,
+.chart__focus {
+  pointer-events: none;
+}
+
+.chart__line {
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 2;
+}
+
+.chart__line--principal {
+  stroke: var(--color-chart-principal);
+}
+
+.chart__line--interest {
+  stroke: var(--color-chart-interest);
+}
+
+.chart__annotation-line {
+  stroke: var(--color-chart-axis);
+  stroke-dasharray: 4 3;
+  stroke-width: 1;
+}
+
+.chart__annotation-label {
+  fill: var(--color-chart-axis);
+  font-size: var(--font-size-xs);
+}
+
+/* The whole column takes the pointer, so thin bars are easy to hover; it lights up behind
+   the hovered bar or point. Half strength: every series keeps 3:1 against it (SC 1.4.11). */
+.chart__hit {
+  fill: transparent;
+}
+
+.chart__item:hover .chart__hit {
+  fill: var(--color-chart-grid);
+  fill-opacity: 0.5;
+}
+
+/* The focus ring is drawn in the SVG (.chart__focus): outlines on SVG are unreliable. */
+.chart__item:focus,
+.chart__item:focus-visible {
+  outline: none;
+}
+
+.chart__focus {
+  fill: none;
+  stroke: var(--color-focus-ring);
+  stroke-width: var(--focus-ring-width);
+}
+
+/* ---------- Bars grow in once (DESIGN §6) ---------- */
+
+.chart__series--intro .chart__up,
+.chart__series--intro .chart__down {
+  animation: chart-grow var(--duration-slow) var(--easing-standard) both;
+  transform-box: fill-box;
+}
+
+.chart__series--intro .chart__up {
+  transform-origin: 50% 100%;
+}
+
+.chart__series--intro .chart__down {
+  transform-origin: 50% 0;
+}
+
+@keyframes chart-grow {
+  from {
+    transform: scaleY(0);
+  }
+
+  to {
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .chart__series--intro .chart__up,
+  .chart__series--intro .chart__down {
+    animation: none;
+  }
+}
+
+/* ---------- Tooltip ---------- */
+
+/* The empty region lets the pointer through; the tooltip takes it, so the pointer can rest
+   on it (WCAG 1.4.13). Its top and left come from placeTooltip (layout.ts). */
+.chart__tooltip-region {
+  position: absolute;
+  inset: 0 0 auto;
+  height: 0;
+  pointer-events: none;
+}
+
+.chart__tooltip {
+  position: absolute;
+  z-index: 1;
+  pointer-events: auto;
+  display: grid;
+  gap: var(--space-2);
+  width: max-content;
+  max-width: min(20rem, 100%);
+  padding: var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-2);
+  box-shadow: var(--shadow-2);
+  font-size: var(--font-size-sm);
+}
+
+/* A touch screen has no pointer to rest on the tooltip: taps go through it to the bars. */
+@media (hover: none) {
+  .chart__tooltip {
+    pointer-events: none;
+  }
+}
+
+.chart__tooltip-title {
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-xs);
+}
+
+.chart__tooltip-list {
+  display: grid;
+  gap: var(--space-1);
+  margin: 0;
+}
+
+.chart__tooltip-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-4);
+}
+
+.chart__tooltip-row--total {
+  padding-top: var(--space-1);
+  border-top: 1px solid var(--color-border);
+  font-weight: var(--font-weight-semibold);
+}
+
+.chart__tooltip-name {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--color-text-secondary);
+}
+
+.chart__tooltip-value {
+  margin: 0;
+  color: var(--color-text-primary);
+  font-family: var(--font-mono);
+}
+
+/* ---------- Table alternative ---------- */
+
+.chart-table {
+  max-height: 24rem;
+  overflow: auto;
+}
+
+.chart-table:focus-visible {
+  outline-offset: calc(-1 * var(--focus-ring-width));
+}
+
+.chart-table__table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--font-size-sm);
+}
+
+.chart-table__table th,
+.chart-table__table td {
+  padding: var(--space-2) var(--space-3);
+  border-bottom: 1px solid var(--color-border);
+  font-weight: var(--font-weight-regular);
+  text-align: end;
+  white-space: nowrap;
+}
+
+.chart-table__table thead th {
+  position: sticky;
+  top: 0;
+  background: var(--color-surface-1);
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.chart-table__table .chart-table__start {
+  text-align: start;
+}
+
+.chart-table__table td {
+  font-family: var(--font-mono);
+}
+
+.chart-table__interest {
+  color: var(--color-accent);
+}
+
+/* ---------- Breakpoints, print, forced colors ---------- */
+
+@media (max-width: 63.99rem) {
+  .chart__title {
+    font-size: var(--font-size-xl);
+    font-weight: var(--font-weight-medium);
+  }
+}
+
+@media print {
+  .chart__tooltip-region {
+    display: none;
+  }
+}
+
+@media (forced-colors: active) {
+  .chart__svg,
+  .chart__swatch {
+    forced-color-adjust: none;
+  }
+
+  .chart__principal,
+  .chart__marker--principal,
+  .chart__payoff {
+    fill: CanvasText;
+  }
+
+  .chart__interest,
+  .chart__marker--interest {
+    fill: Highlight;
+  }
+
+  .chart__fees {
+    fill: GrayText;
+  }
+
+  .chart__hatch {
+    stroke: Canvas;
+  }
+
+  .chart__grid-line {
+    stroke: GrayText;
+  }
+
+  .chart__tick,
+  .chart__annotation-label {
+    fill: CanvasText;
+  }
+
+  .chart__annotation-line {
+    stroke: CanvasText;
+  }
+
+  .chart__line--principal {
+    stroke: CanvasText;
+  }
+
+  .chart__line--interest {
+    stroke: Highlight;
+    stroke-dasharray: 4 3;
+  }
+
+  .chart__focus {
+    stroke: CanvasText;
+  }
+
+  /* An outline, not a fill: nothing is painted under the marks or over the lines. */
+  .chart__item:hover .chart__hit {
+    fill: transparent;
+    stroke: GrayText;
+    stroke-width: 1;
+  }
+
+  .chart__table-toggle[aria-pressed='true'] {
+    forced-color-adjust: none;
+    border-color: Highlight;
+    background: Highlight;
+    color: HighlightText;
+  }
+
+  .chart__tooltip {
+    border-color: CanvasText;
+  }
+}
