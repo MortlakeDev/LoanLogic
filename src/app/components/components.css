@@ -432,9 +432,11 @@
 }
 
 @media (forced-colors: active) {
-  .segmented__input:checked + .segmented__face {
+  /* As specific as the variants' checked rules above, so this one wins in forced colors. */
+  .segmented .segmented__input:checked + .segmented__face {
     forced-color-adjust: none;
     background: Highlight;
+    box-shadow: none;
     color: HighlightText;
   }
 }
