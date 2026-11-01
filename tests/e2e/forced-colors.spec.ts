@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2026 Mortlake
 
-import { expect, test, type Locator, type Page } from '@playwright/test';
+import { expect, test, type Locator } from '@playwright/test';
 import {
   chooseTheme,
   gotoApp,
@@ -9,6 +9,7 @@ import {
   menuButton,
   openMenuSheet,
   openThemeMenu,
+  systemColor,
   themeButton,
   themeItem,
   themeRadio,
@@ -49,22 +50,6 @@ async function hasOutline(locator: Locator): Promise<boolean> {
       !/^(transparent|rgba\(0, 0, 0, 0\))$/.test(style.outlineColor)
     );
   });
-}
-
-/** A system color keyword as the browser resolves it in the current (forced) palette. */
-async function systemColor(page: Page, keyword: string): Promise<string> {
-  return page.evaluate((name) => {
-    const probe = document.createElement('div');
-    // Keep the keyword itself rather than the color forced colors would substitute.
-    probe.style.forcedColorAdjust = 'none';
-    probe.style.backgroundColor = name;
-    document.body.append(probe);
-    try {
-      return getComputedStyle(probe).backgroundColor;
-    } finally {
-      probe.remove();
-    }
-  }, keyword);
 }
 
 /** The computed background and text colors of an element. */

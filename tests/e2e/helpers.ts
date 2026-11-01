@@ -3,7 +3,8 @@
 
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { expect, type BrowserContext, type Locator, type Page } from '@playwright/test';
+import { AxeBuilder } from '@axe-core/playwright';
+import { expect, test, type BrowserContext, type Locator, type Page } from '@playwright/test';
 import { APP_NAME, AUTHOR, COPYRIGHT_YEAR } from '../../src/config.ts';
 import { LANGUAGES, type Language } from '../../src/i18n/languages.ts';
 
@@ -461,4 +462,78 @@ export async function linkTabKey(page: Page): Promise<TabKey | undefined> {
   } finally {
     await probe.close();
   }
+}
+
+type AxeResults = Awaited<ReturnType<AxeBuilder['analyze']>>;
+type AxeViolation = AxeResults['violations'][number];
+
+/** WCAG 2.2 AA, including the 2.0 and 2.1 A/AA rules it builds on. */
+const WCAG_TAGS = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa'];
+
+/** Impacts that fail the build (T01 acceptance: no serious or critical violations). */
+const BLOCKING_IMPACTS: ReadonlySet<string> = new Set(['serious', 'critical']);
+
+/**
+ * Formats axe violations for a failure message or annotation: per rule its impact, id, help
+ * text and URL, then the selector and failure summary of each failing node.
+ */
+function describeViolations(violations: readonly AxeViolation[]): string {
+  return violations
+    .map((violation) => {
+      const nodes = violation.nodes
+        .map((node) => {
+          const summary = node.failureSummary?.replace(/\s+/g, ' ').trim() ?? '';
+          return `    - ${node.target.join(' ')}${summary === '' ? '' : `: ${summary}`}`;
+        })
+        .join('\n');
+      return `[${violation.impact ?? 'unknown'}] ${violation.id}: ${violation.help}\n  ${violation.helpUrl}\n${nodes}`;
+    })
+    .join('\n\n');
+}
+
+/**
+ * Scans the current page with axe's WCAG 2.2 AA rules and fails on any serious or critical
+ * violation; moderate and minor ones are attached to the test as an annotation instead.
+ * Also fails if the contrast, title, lang or select-name rules were not evaluated, as on a
+ * page that has not rendered.
+ */
+export async function expectNoBlockingViolations(page: Page): Promise<void> {
+  const results = await new AxeBuilder({ page }).withTags(WCAG_TAGS).analyze();
+  const blocking = results.violations.filter((violation) =>
+    BLOCKING_IMPACTS.has(violation.impact ?? ''),
+  );
+  const minor = results.violations.filter((violation) => !blocking.includes(violation));
+  if (minor.length > 0) {
+    test.info().annotations.push({
+      type: 'axe (moderate/minor)',
+      description: describeViolations(minor),
+    });
+  }
+  expect(
+    blocking,
+    `axe found serious/critical violations:\n\n${describeViolations(blocking)}`,
+  ).toEqual([]);
+  // Guards against a scan of an empty page: contrast and naming rules must have run.
+  const evaluated = new Set(
+    [...results.passes, ...results.violations, ...results.incomplete].map((rule) => rule.id),
+  );
+  for (const rule of ['color-contrast', 'document-title', 'html-has-lang', 'select-name']) {
+    expect(evaluated, `axe should have evaluated "${rule}"`).toContain(rule);
+  }
+}
+
+/** A system color keyword as the browser resolves it in the current (forced) palette. */
+export async function systemColor(page: Page, keyword: string): Promise<string> {
+  return page.evaluate((name) => {
+    const probe = document.createElement('div');
+    // Keep the keyword itself rather than the color forced colors would substitute.
+    probe.style.forcedColorAdjust = 'none';
+    probe.style.backgroundColor = name;
+    document.body.append(probe);
+    try {
+      return getComputedStyle(probe).backgroundColor;
+    } finally {
+      probe.remove();
+    }
+  }, keyword);
 }

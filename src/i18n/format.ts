@@ -112,6 +112,36 @@ export function formatMoney(
   return numberFormat(locale, moneyOptions(currency, options)).format(toIntlValue(value));
 }
 
+/**
+ * Formats a monetary amount in compact notation, for chart axis labels (DESIGN §8.11):
+ * "$30K", "¥3万", "30 тыс. ₽", "1,5 млн ₴".
+ *
+ * @param value Amount in major units as a decimal string, e.g. "30000".
+ * @param currency ISO 4217 code, e.g. "USD".
+ * @param locale BCP 47 formatting locale, e.g. "en-US".
+ * @param maximumFractionDigits Fraction digits of the compact number (default 1: "$1.5K").
+ *   Labels of steps below 0.1 need more to stay distinct ("$0.05" next to "$0.10").
+ * @returns The localized compact amount; rounds half away from zero; an amount that rounds
+ *   to zero has no sign.
+ * @throws RangeError if `value` is not a finite decimal string.
+ */
+export function formatMoneyCompact(
+  value: string,
+  currency: string,
+  locale: string,
+  maximumFractionDigits = 1,
+): string {
+  return numberFormat(locale, {
+    style: 'currency',
+    currency,
+    currencyDisplay: 'symbol',
+    notation: 'compact',
+    roundingMode: 'halfExpand',
+    signDisplay: 'negative',
+    maximumFractionDigits,
+  }).format(toIntlValue(value));
+}
+
 /** The Intl options of every money formatter, so text and parts always agree. */
 function moneyOptions(currency: string, options: MoneyFormatOptions): Intl.NumberFormatOptions {
   const intlOptions: Intl.NumberFormatOptions = {

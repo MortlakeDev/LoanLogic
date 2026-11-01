@@ -189,6 +189,13 @@ const SAME_IN_EVERY_LANGUAGE: ReadonlySet<string> = new Set([
   'rateShort.irrEffective',
 ]);
 
+/**
+ * Characters no editor shows (the soft hyphen, zero-width characters, the BOM). A locale
+ * file writes them as `\u` escapes so a reviewer can see them; tools that decode the
+ * escapes while editing would otherwise leave invisible literals behind.
+ */
+const INVISIBLE_CHARACTERS: readonly number[] = [0xad, 0x200b, 0x200c, 0x200d, 0x2060, 0xfeff];
+
 const TRANSLATED: readonly Exclude<Language, 'en'>[] = LANGUAGES.filter(
   (language): language is Exclude<Language, 'en'> => language !== 'en',
 );
@@ -207,6 +214,16 @@ describe('locale files', () => {
     expect(duplicateKeys(entries)).toEqual([]);
     // The scanner and JSON.parse must agree, so the file is valid JSON as well.
     expect(Object.fromEntries(entries)).toEqual(JSON.parse(text));
+  });
+
+  it.each(LANGUAGES)('%s writes invisible characters as escapes, never literally', (language) => {
+    const text = rawLocale(language);
+    const literal = INVISIBLE_CHARACTERS.filter((code) =>
+      text.includes(String.fromCodePoint(code)),
+    );
+    expect(literal.map((code) => `U+${code.toString(16).toUpperCase().padStart(4, '0')}`)).toEqual(
+      [],
+    );
   });
 
   it.each(LANGUAGES)('%s is the catalog bundled for that language', (language) => {
