@@ -80,4 +80,109 @@ chart tokens, identical in quality on screen and in print.
 
 ## Completion notes
 
-_(to be filled by the implementer)_
+**Status:** done, in review in PR_LINK (branch `task/T04-charts`). The branch also
+carries the T03a housekeeping: `repayment.equalPrincipal` in `ru.json` and `uk.json` is
+written with `\u00AD` escapes again, and a new `locales.test.ts` check fails on any
+literal invisible character (soft hyphen, zero-width characters, BOM) in a locale file.
+
+**Acceptance criteria (local evidence, 2026-11-01, Windows, Node 24.19):**
+
+- Three views per DESIGN §8.11 in both themes:
+  [`T04-screenshots/`](T04-screenshots/) has bars, balance and cumulative in dark and
+  light at 1 280 px, the bars at 360 px and the table (2× pixel density, the design
+  scenario disbursed 2026-11-01).
+- Every number comes from the ledger's exact decimal strings:
+  - yearly buckets reuse `scheduleYears` (BigInt sums; loan year y = payments
+    (y − 1)·m + 1 … y·m);
+  - a property test on random engine loans, plus all 69 calculating golden vectors,
+    checks that the bucket sums equal `scheduleTotals` exactly and that principal +
+    interest + fees = payments in every bucket;
+  - the e2e test compares the tooltip and accessible name of all 30 bars with the
+    schedule table's yearly subtotals;
+  - the overtake year is 21 for `us-mortgage-30y-origination-fee` and 9 (第 9 年) for
+    `cn-mortgage-30y-equal-instalments`;
+  - axis labels format exact decimal tick strings (no float sums reach any text).
+- Keyboard and screen readers:
+  - the chart is a `figure` with `role="group"` and a localized `aria-roledescription`,
+    named by the card title and described by a summary ("Interest goes from $23,949 in
+    year 1 to $1,001 in year 30, principal from $3,642 to $26,591. Principal first
+    exceeds interest in year 21.");
+  - bars and points are `role="img"` ("Year 1: principal $3,641.84, interest
+    $23,949.16") in a roving tabindex: one tab stop; arrows, Home and End move between
+    them;
+  - the tooltip shows on focus and on hover; it sits in an `aria-live="polite"`,
+    `aria-atomic` region, can be hovered itself (SC 1.4.13) and Escape hides it;
+  - "Show as table" (`aria-pressed`) swaps in a table with the same aggregated values;
+  - axe finds no violations in any view or in the table, in dark and light at 360 and
+    1 280 px;
+  - in forced colors the chart uses system colors, interest bars keep a hatch, the
+    interest line is dashed and the selected view shows in Highlight;
+  - the bars grow in on their first render only, never on a recalculation, and not at
+    all with reduced motion.
+- Initial JS: 83.11 → 91.89 KiB gzip (+8.78 KiB), within the 150 KiB budget. No new
+  dependencies (no chart library, no d3).
+- `npm run check` passes: 2 922 unit tests, coverage 99.5 % statements, 98.35 %
+  branches. `npm run e2e`: 347 passed, 15 skipped (the WebKit cases the suite skips on
+  purpose: forced colors, the timing test, the known WebKit-on-Windows select and link
+  cases). `generate.py --check`: 106 vectors, unchanged.
+
+**Decisions:**
+
+1. Code layout: `src/app/charts/` has `model.ts` (buckets, crossovers, stacks, value
+   ranges), `scale.ts` (linear scale, nice ticks, x-label thinning, text width),
+   `layout.ts` (geometry, tooltip placement, label wrapping), `labels.ts` (wording) and
+   `view.ts` (signals). The components only render what these return. `formatMoneyCompact`
+   (`src/i18n/format.ts`) and `moneyCompact` (`display.ts`) format the axis labels.
+2. A loan with at least 2·m payments gets one bar per loan year; a shorter loan gets one
+   bar per payment ("Payment N"), up to 103 bars for a weekly loan just under 2 years.
+3. Stack order, bottom to top: principal, fees and insurance (only when non-zero),
+   interest. Negative amounts stack downwards from zero. A non-zero segment thinner than
+   1 px is drawn at 1 px, so a series named in the legend is always visible.
+4. The annotation marks the first loan year whose principal exceeds its interest by
+   exact comparison, year 1 included (an equal-principal loan gets "Year 1 · principal
+   overtakes interest").
+5. Balance view: one line with the payoff marked by a dot, a dashed line and "Paid off
+   Nov 2056" (`summary.payoffDate`). Cumulative view: two lines; the crossing is marked
+   only when interest led first (year 15 for the CN vector, none for the US one).
+6. Line views draw one point per loan year (or payment) plus a starting point at x = 0
+   (the opening balance, zero cumulatives). The starting point is drawn only: it is not
+   focusable and not in the table.
+7. The summary says "goes from … to …" rather than "falls" or "rises": the direction
+   differs between repayment types.
+8. View, table switch and "intro played" are module signals, so they survive invalid
+   input (the card unmounts while there is no result). The intro plays once per
+   session.
+9. Only a real pointer move gives a bar the tooltip (boundary events also fire when
+   content moves under a resting pointer); keyboard focus takes it over, Escape hides
+   it, and on touch screens (`hover: none`) it lets taps through.
+10. The geometry follows the rendered label size, so a larger browser font grows the
+    margins and the SVG instead of squeezing the plot. Long annotation labels wrap; for
+    Chinese they break between characters.
+11. Shared change: in forced colors the selected segment of every segmented control now
+    shows in Highlight (`components.css`). The variants' checked rules were more
+    specific and won before, against DESIGN §8.3; this also affects the payment
+    frequency control.
+12. Print: only the tooltip is hidden; the print layout is T14.
+13. e2e helpers `expectNoBlockingViolations` and `systemColor` moved into
+    `tests/e2e/helpers.ts` for reuse by the chart spec.
+
+**Open questions for the architect:**
+
+1. Axis labels are compact currency with the symbol ("$30K", "¥5万", "30 тыс. ₽"), as
+   the concept render's "$30k". DESIGN §8.11 lists "5万" and "30 тыс." without one.
+   Which is intended?
+2. The subtitle reads "Loan years 1–30 · 12 payments a year". The concept render adds
+   the amount ("12 payments of $2,299.25 a year"), which holds only for level payments
+   (not for equal principal, interest-only or a different final payment). Keep it
+   without the amount?
+3. The interest hatch (bars) and the dashed interest line appear only in forced colors;
+   in normal mode the series are told apart by the stack order, legend and tooltip
+   names, as the brief and DESIGN §8.11 say. The cost bar (§8.9) keeps its hatch in
+   every mode. Should the chart match the cost bar?
+4. The legend sits on its own row under the view switch and "Show as table"; the concept
+   render, drawn before the switch existed, has it top right.
+5. GLOSSARY: the uk view switch says «Залишок» (the full «Залишок заборгованості» does
+   not fit a third of the switch at 360 px; the title, legend and tooltip keep the full
+   term). Add the short form to GLOSSARY §2, or use the full term with soft hyphens?
+
+No SPEC questions: the engine's rows and summary carry everything the charts need.
