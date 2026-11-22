@@ -625,7 +625,9 @@ place is required → displayed with 1 dp.
     as 10 800 after one year gives 8 %.
   - Example 6 of the norm: 10 000 at 5.8 % in 12 payments of 859.75, plus a guarantee
     fee of 47.56 a period, shown as about 10.2 %, total 16 %. The IRR of all
-    normal-performance flows, annualized nominally, is 15.9993 %, so 16 %: that is what
+    normal-performance flows, annualized nominally, is 15.9993 % on the posted schedule
+    (eleven payments of 859.75 and a last one of 859.69; the unrounded 859.7453 gives the
+    same) and 16.0003 % if all twelve are 859.75, so 16 % either way: that is what
     `cnAnnualized` computes when every cost is a rate flow. Annualizing the fee's own
     flows (principal and fee) by IRR gives 10.285 %, and the per-item sum 16.08 %. The
     norm's figures match the total IRR with the fee taken as the difference
