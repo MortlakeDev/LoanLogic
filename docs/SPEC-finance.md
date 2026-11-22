@@ -620,8 +620,9 @@ place is required → displayed with 1 dp.
     2026), Art. 4, gives the method, as does the regulators' Q&A: each normal-performance
     item is annualized by the IRR method and the results are summed; daily or monthly
     rates may not replace the annual figure. Its nine examples in annex 1 (housing loans
-    included) annualize nominally, `12 r`: 10 000 repaid in 12 payments of 888.49 gives
-    12 % (compound 12.68 %).
+    included) annualize nominally, `r × m` with `m` payments a year: 10 000 repaid in 12
+    monthly payments of 888.49 gives `12 r` = 12 % (compound 12.68 %), and 10 000 repaid
+    as 10 800 after one year gives 8 %.
   - Example 6 of the norm: 10 000 at 5.8 % in 12 payments of 859.75, plus a guarantee
     fee of 47.56 a period, shown as about 10.2 %, total 16 %. The IRR of all
     normal-performance flows, annualized nominally, is 15.9993 %, so 16 %: that is what
