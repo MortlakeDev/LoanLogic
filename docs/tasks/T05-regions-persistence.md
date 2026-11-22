@@ -36,8 +36,8 @@ never touches a server (PLAN §5.5).
 - The T03 currency → method mapping is removed; the profile drives it. With INTL and a
   non-euro EU currency (PLN, CZK, HUF, RON, SEK, DKK) the headline method is `euAprc`.
 - The CN profile shows `cnAnnualized` with `irrEffective` beside it, as in the table. The
-  architect checked the 2026 rules (SPEC §9.3 d): their 年化综合融资成本 is a new figure
-  that comes later with deliverable R5 and a follow-up task, so T05 does not show it.
+  architect checked the 2026 rules (SPEC §9.3 d): the 年化综合融资成本 they require is
+  settled in deliverable R5 and comes with a follow-up task, so T05 does not show it.
 - Region names are translated in all four languages; no flags.
 
 ## 2. Presets (data, `src/app/presets.ts`)
