@@ -15,7 +15,7 @@ import {
   updateForm,
 } from '../state/loan';
 import { ChartCard } from './ChartCard';
-import { LABEL_PX } from './layout';
+import { LABEL_PX, PLOT_HEIGHT, SEGMENT_GAP, SEGMENT_RADIUS, TICK_GAP, WIDE_WIDTH } from './layout';
 import { estimateTextWidth } from './scale';
 import { chartTable, chartView, resetChartView, setChartView } from './view';
 
@@ -293,11 +293,11 @@ describe('ChartCard — payments per loan year (us-mortgage-30y-origination-fee)
     expect(segments[0]?.getAttribute('class')).toContain('chart__principal');
     expect(segments[1]?.getAttribute('fill')).toMatch(/^url\(#.+-hatch\)$/);
     expect(attr(segments[1], 'y')).toBeLessThan(attr(segments[0], 'y'));
-    // 2 px between the stacked segments.
+    // The segment gap and the corner radius of DESIGN §8.11.
     expect(
       attr(segments[0], 'y') - (attr(segments[1], 'y') + attr(segments[1], 'height')),
-    ).toBeCloseTo(2, 6);
-    expect(segments[0]?.getAttribute('rx')).toBe('1.5');
+    ).toBeCloseTo(SEGMENT_GAP, 6);
+    expect(attr(segments[0], 'rx')).toBe(SEGMENT_RADIUS);
     expect(legend()).toEqual(['Principal', 'Interest']);
   });
 
@@ -420,7 +420,7 @@ describe('ChartCard — other loans', () => {
       }
       // The plot keeps the height it has in a 240 or 200 px chart with 12 px labels; the SVG
       // grows with the bands around it (jsdom computes 16 px labels).
-      const plotHeight = width >= 640 ? 186 : 146;
+      const plotHeight = width >= WIDE_WIDTH ? PLOT_HEIGHT.wide : PLOT_HEIGHT.narrow;
       expect(attr(svg().querySelector('.chart__hit'), 'height')).toBe(plotHeight);
       expect(height()).toBeGreaterThan(plotHeight);
       // The line views: 100 points, lines through the origin and 100 year ends, all inside.
@@ -1088,6 +1088,6 @@ describe('ChartCard — label size', () => {
       expect(attr(text, 'x') - widest).toBeGreaterThanOrEqual(0);
     }
     const left = attr(svg().querySelector('.chart__grid-line'), 'x1');
-    expect(left).toBe(Math.ceil(widest) + 8);
+    expect(left).toBe(Math.ceil(widest) + TICK_GAP);
   });
 });

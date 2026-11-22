@@ -1,11 +1,14 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2026 Mortlake
 
+import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import {
   type LayoutInput,
   FALLBACK_WIDTH,
   LABEL_PX,
+  PLOT_HEIGHT,
+  TICK_GAP,
   bucketX,
   chartLayout,
   chartWidth,
@@ -72,7 +75,7 @@ describe('chartLayout', () => {
   it('leaves room left of the plot for the widest y label', () => {
     const layout = chartLayout(input({ tickText: (text) => `USD ${text}` }));
     const widest = Math.max(...layout.yTicks.map((tick) => estimateTextWidth(tick.text, LABEL_PX)));
-    expect(layout.left).toBe(Math.ceil(widest) + 8);
+    expect(layout.left).toBe(Math.ceil(widest) + TICK_GAP);
   });
 
   it('passes the tick fraction digits (at least 1) to the label formatter', () => {
@@ -141,23 +144,30 @@ describe('chartLayout', () => {
     expect(crowded[0]?.text).toBe('1');
   });
 
-  it.each([360, 640, 1280])('keeps bars and labels inside a %i px SVG', (width) => {
-    for (const count of [1, 3, 12, 30, 100, 103]) {
-      for (const points of [false, true]) {
-        const layout = chartLayout(input({ width, count, points }));
-        const half = layout.barWidth / 2;
-        expect(bucketX(layout, 1, points) - (points ? 0 : half)).toBeGreaterThanOrEqual(0);
-        expect(bucketX(layout, count, points) + (points ? 0 : half)).toBeLessThanOrEqual(width);
-        let previousEnd = -Infinity;
-        for (const label of layout.xLabels) {
-          const labelWidth = estimateTextWidth(label.text, LABEL_PX);
-          expect(label.x - labelWidth / 2).toBeGreaterThanOrEqual(0);
-          expect(label.x + labelWidth / 2).toBeLessThanOrEqual(width);
-          expect(label.x - labelWidth / 2).toBeGreaterThan(previousEnd);
-          previousEnd = label.x + labelWidth / 2;
-        }
-      }
-    }
+  it('keeps bars and labels inside the SVG for any width, bar count and mark (property)', () => {
+    // From the narrowest drawn chart (200 px) to a wide desktop; up to 120 buckets covers the
+    // 103 weekly payments and the 100 loan years of the longest schedules.
+    fc.assert(
+      fc.property(
+        fc.integer({ min: 200, max: 1600 }),
+        fc.integer({ min: 1, max: 120 }),
+        fc.boolean(),
+        (width, count, points) => {
+          const layout = chartLayout(input({ width, count, points }));
+          const half = layout.barWidth / 2;
+          expect(bucketX(layout, 1, points) - (points ? 0 : half)).toBeGreaterThanOrEqual(0);
+          expect(bucketX(layout, count, points) + (points ? 0 : half)).toBeLessThanOrEqual(width);
+          let previousEnd = -Infinity;
+          for (const label of layout.xLabels) {
+            const labelWidth = estimateTextWidth(label.text, LABEL_PX);
+            expect(label.x - labelWidth / 2).toBeGreaterThanOrEqual(0);
+            expect(label.x + labelWidth / 2).toBeLessThanOrEqual(width);
+            expect(label.x - labelWidth / 2).toBeGreaterThan(previousEnd);
+            previousEnd = label.x + labelWidth / 2;
+          }
+        },
+      ),
+    );
   });
 });
 
@@ -169,11 +179,11 @@ describe('the label size', () => {
     expect(base.labelPx).toBe(LABEL_PX);
     expect(large.labelPx).toBe(15);
     const widest = Math.max(...large.yTicks.map((tick) => estimateTextWidth(tick.text, 15)));
-    expect(large.left).toBe(Math.ceil(widest) + 8);
+    expect(large.left).toBe(Math.ceil(widest) + TICK_GAP);
     expect(large.left).toBeGreaterThan(base.left);
     expect(large.top).toBe(37.5);
     // The plot keeps its height; the SVG grows by the larger bands.
-    expect(large.bottom).toBe(37.5 + 146);
+    expect(large.bottom).toBe(37.5 + PLOT_HEIGHT.narrow);
     expect(large.height).toBe(large.bottom + 30);
     expect(large.xLabelY).toBe(large.bottom + 20);
     expect(base.xLabelY).toBe(base.bottom + 16);

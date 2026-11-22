@@ -12,6 +12,8 @@ import {
   type Box,
   type ChartLayout,
   LABEL_PX,
+  SEGMENT_GAP,
+  SEGMENT_RADIUS,
   bucketX,
   chartLayout,
   linePath,
@@ -35,9 +37,6 @@ const RING_GAP = 3;
 
 /** Pixels from a mark to the outer edge of its focus ring (the gap and half the 2 px stroke). */
 const RING_OUTSET = RING_GAP + 1;
-
-/** Pixels between stacked segments (DESIGN §8.11). */
-const SEGMENT_GAP = 2;
 
 /** The least height of a drawn segment: a small fee stays visible beside its legend entry. */
 const MIN_SEGMENT = 1;
@@ -284,7 +283,7 @@ function BarSeries(props: {
       y={rect.y}
       width={layout.barWidth}
       height={rect.height}
-      rx="1.5"
+      rx={SEGMENT_RADIUS}
     />
   );
   const bars = data.buckets.map((bucket, position) => {

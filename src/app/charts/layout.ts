@@ -57,11 +57,25 @@ const X_LABEL_DROP = 16;
 const RIGHT_PAD = 12;
 
 /** Space between the y tick labels and the plot. */
-const TICK_GAP = 8;
+export const TICK_GAP = 8;
+
+/**
+ * The plot's height in a 240 px chart (from `WIDE_WIDTH` on) and a 200 px one (below),
+ * with 12 px labels and a one-line annotation. It stays the same at any label size: the
+ * bands around it grow instead.
+ */
+export const PLOT_HEIGHT = {
+  wide: 240 - TOP_BAND - BOTTOM_BAND,
+  narrow: 200 - TOP_BAND - BOTTOM_BAND,
+} as const;
 
 /** Bars take this share of their column, up to `MAX_BAR` pixels. */
 const BAR_SHARE = 0.64;
 const MAX_BAR = 48;
+
+/** Pixels between stacked segments, and the corner radius of a segment (DESIGN §8.11). */
+export const SEGMENT_GAP = 2;
+export const SEGMENT_RADIUS = 1.5;
 
 /** A y-axis tick: pixel position and label. */
 export interface YTick {
@@ -218,7 +232,7 @@ export function bucketX(layout: ChartLayout, number: number, points: boolean): n
 export function chartLayout(input: LayoutInput): ChartLayout {
   const width = chartWidth(input.width);
   const wide = width >= WIDE_WIDTH;
-  const plotHeight = (wide ? 240 : 200) - TOP_BAND - BOTTOM_BAND;
+  const plotHeight = wide ? PLOT_HEIGHT.wide : PLOT_HEIGHT.narrow;
   const labelPx = input.labelPx ?? LABEL_PX;
   const scale = labelPx / LABEL_PX;
   const lineHeight = LINE_EM * labelPx;
