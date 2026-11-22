@@ -35,8 +35,9 @@ never touches a server (PLAN §5.5).
   format"); the override is stored with the settings.
 - The T03 currency → method mapping is removed; the profile drives it. With INTL and a
   non-euro EU currency (PLN, CZK, HUF, RON, SEK, DKK) the headline method is `euAprc`.
-- Before the CN profile ships, re-check the CN method against the 2026 rules named in
-  SPEC §9.3 (d) (open item); report the result in the PR.
+- The CN profile shows `cnAnnualized` with `irrEffective` beside it, as in the table. The
+  architect checked the 2026 rules (SPEC §9.3 d): their 年化综合融资成本 is a new figure
+  that comes later with deliverable R5 and a follow-up task, so T05 does not show it.
 - Region names are translated in all four languages; no flags.
 
 ## 2. Presets (data, `src/app/presets.ts`)
@@ -143,8 +144,6 @@ header next to the menu button (DESIGN §7.2). It opens a dialog (desktop) or sh
 
 - Preset rates are labelled examples, never market data; nothing is looked up over the
   network (rates, regions or locations).
-- The check of the CN method against the 2026 rules (SPEC §9.3 d) belongs to this task;
-  report its result in the PR.
 - Storage keys and the scenario model are versioned: a breaking change ships with a
   migration and its tests.
 
