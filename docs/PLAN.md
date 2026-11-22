@@ -309,6 +309,7 @@ Architect deliverables (Cowork) that gate tasks:
 | R2 | Design concept → `DESIGN.md` + `GLOSSARY.md` — delivered 2026-10-19 | T03 |
 | R3 | Event vectors (prepayments, rate changes, holidays, odd period) | T06 |
 | R4 | Analytics vectors (comparison, refinance, goal seek, affordability, deposits) | T08–T13 |
+| R5 | CN 年化综合融资成本 (2026 rules): SPEC method, reference, vectors from the industry norm's examples | the CN follow-up after T05 |
 
 ## 8. Workflow
 
