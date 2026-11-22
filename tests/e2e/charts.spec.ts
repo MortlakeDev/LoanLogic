@@ -74,6 +74,24 @@ function tooltip(card: Locator): Locator {
   return card.locator('.chart__tooltip');
 }
 
+/**
+ * Waits for two rendered frames: a change made before them has been styled, its animations
+ * have started (and sent `animationstart`), and the hover state under a resting pointer has
+ * been updated. Negative checks wait for this rather than for a fixed time.
+ */
+async function nextFrames(page: Page): Promise<void> {
+  await page.evaluate(
+    () =>
+      new Promise<void>((resolve) => {
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            resolve();
+          });
+        });
+      }),
+  );
+}
+
 /** Opens the app with the design scenario disbursed on a fixed date. */
 async function openDesignScenario(page: Page): Promise<void> {
   await gotoApp(page);
@@ -135,6 +153,33 @@ async function scheduleYear(page: Page, year: number): Promise<ScheduleYear> {
   return { heading: `${label} ${range}`.replace(/\s+/gu, ' ').trim(), ...figures };
 }
 
+/**
+ * Reads the group rows of every shown loan year in one call, in table order (index 0 is
+ * year 1): row by row, 30 years take most of a test's time limit in WebKit.
+ */
+async function scheduleYears(page: Page): Promise<ScheduleYear[]> {
+  const rows = await page
+    .locator('section.results .schedule-table tr.schedule-table__group')
+    .evaluateAll((elements) =>
+      elements.map((row) => ({
+        year: row.querySelector('.schedule-table__year')?.textContent ?? '',
+        range: row.querySelector('.schedule-table__range')?.textContent ?? '',
+        cells: Array.from(row.querySelectorAll('td.num'), (cell) => cell.textContent),
+      })),
+    );
+  return rows.map((row, index) => {
+    const label = text('schedule.year', { year: String(index + 1) });
+    expect(row.year, `group row ${String(index + 1)}`).toBe(label);
+    expect(row.cells, `${label} cells`).toHaveLength(3);
+    const [principal = '', interest = '', closing = ''] = row.cells;
+    const figures = { principal, interest, closing };
+    for (const [name, value] of Object.entries(figures)) {
+      expect(value, `${label} ${name}`).toMatch(AMOUNT);
+    }
+    return { heading: `${label} ${row.range}`.replace(/\s+/gu, ' ').trim(), ...figures };
+  });
+}
+
 /** An amount as shown ("27,591.00") in minor units, exactly. */
 function cents(amount: string): bigint {
   expect(amount).toMatch(AMOUNT);
@@ -151,7 +196,11 @@ function formatCents(value: bigint): string {
  * its focus ring drawn around it, and that its name and tooltip carry the loan year's exact
  * figures from the schedule table.
  */
-async function expectFocusedBar(page: Page, card: Locator, position: number): Promise<void> {
+async function expectFocusedBar(
+  card: Locator,
+  years: readonly ScheduleYear[],
+  position: number,
+): Promise<void> {
   const bar = chartItem(card, position);
   await expect(bar, `bar ${String(position + 1)} should be focused`).toBeFocused();
   await expect(card.locator('.chart__item[tabindex="0"]'), 'one tab stop').toHaveCount(1);
@@ -170,7 +219,11 @@ async function expectFocusedBar(page: Page, card: Locator, position: number): Pr
     );
   }
 
-  const year = await scheduleYear(page, position + 1);
+  const year = years[position];
+  expect(year, `schedule year ${String(position + 1)}`).toBeDefined();
+  if (year === undefined) {
+    return;
+  }
   const label = text('schedule.year', { year: String(position + 1) });
   await expect(bar).toHaveAttribute(
     'aria-label',
@@ -200,21 +253,21 @@ test.describe('the chart from the keyboard (1280 px)', () => {
   test.use({ viewport: { width: 1280, height: 900 }, colorScheme: 'dark' });
 
   test('one tab stop; arrow keys, Home and End move through the bars; the tooltip is exact', async ({
+    browserName,
     page,
   }) => {
+    // Thirteen focused bars, each checked in full: WebKit on a busy machine nears 30 s.
+    test.slow(browserName === 'webkit', 'Steps through 13 bars with every check');
     await openDesignScenario(page);
     await revealAllYears(page);
     const card = chartCard(page);
     await expect(card.locator('.chart__item')).toHaveCount(30);
+    const years = await scheduleYears(page);
+    expect(years).toHaveLength(30);
 
     // The annotation names the first year whose principal exceeds its interest.
-    let overtake = 0;
-    for (let year = 1; year <= 30 && overtake === 0; year += 1) {
-      const figures = await scheduleYear(page, year);
-      if (cents(figures.principal) > cents(figures.interest)) {
-        overtake = year;
-      }
-    }
+    const overtake =
+      years.findIndex((figures) => cents(figures.principal) > cents(figures.interest)) + 1;
     expect(overtake, 'the design scenario overtakes in year 21').toBe(21);
     await expect(card.locator('.chart__annotation-label')).toHaveText(
       text('chart.overtakes', { label: text('schedule.year', { year: String(overtake) }) }),
@@ -223,7 +276,7 @@ test.describe('the chart from the keyboard (1280 px)', () => {
     // Tab from the table switch lands on the first bar.
     await tableToggle(card).focus();
     await page.keyboard.press('Tab');
-    await expectFocusedBar(page, card, 0);
+    await expectFocusedBar(card, years, 0);
     // The ring is painted over the hit columns: it lets the pointer through to them.
     expect(
       await card.locator('.chart__focus').evaluate((ring) => getComputedStyle(ring).pointerEvents),
@@ -243,7 +296,7 @@ test.describe('the chart from the keyboard (1280 px)', () => {
     ];
     for (const [key, position] of moves) {
       await page.keyboard.press(key);
-      await expectFocusedBar(page, card, position);
+      await expectFocusedBar(card, years, position);
     }
 
     // Escape hides the tooltip and keeps focus (WCAG 1.4.13); the next move shows it again.
@@ -251,7 +304,7 @@ test.describe('the chart from the keyboard (1280 px)', () => {
     await expect(tooltip(card)).toBeHidden();
     await expect(chartItem(card, 1)).toBeFocused();
     await page.keyboard.press('ArrowRight');
-    await expectFocusedBar(page, card, 2);
+    await expectFocusedBar(card, years, 2);
 
     // Tab leaves the chart in one step; Shift+Tab comes back to the same bar.
     await page.keyboard.press('Tab');
@@ -259,7 +312,7 @@ test.describe('the chart from the keyboard (1280 px)', () => {
     await expect(tooltip(card)).toBeHidden();
     await expect(card.locator('.chart__focus')).toHaveCount(0);
     await page.keyboard.press('Shift+Tab');
-    await expectFocusedBar(page, card, 2);
+    await expectFocusedBar(card, years, 2);
   });
 
   test('the view switch and "Show as table" work from the keyboard', async ({ page }) => {
@@ -440,13 +493,25 @@ test.describe('the chart from the keyboard (1280 px)', () => {
     await expect(title).toHaveText(year3.heading);
     await page.keyboard.press('Escape');
     await expect(tooltip(card)).toBeHidden();
+    // Nothing brings it back but a move of the pointer: no timer, and not the boundary events
+    // a browser sends when the tooltip leaves from under a resting pointer (sent here as a
+    // browser does, so the check does not depend on when, or whether, the browser sends them).
     await page.evaluate(
-      () =>
-        new Promise<void>((resolve) => {
-          window.setTimeout(resolve, 250);
-        }),
+      ({ x, y }) => {
+        const target = document.elementFromPoint(x, y);
+        const init = { clientX: x, clientY: y, view: window };
+        target?.dispatchEvent(new MouseEvent('mouseover', { ...init, bubbles: true }));
+        for (let node = target; node !== null; node = node.parentElement) {
+          node.dispatchEvent(new MouseEvent('mouseenter', init));
+        }
+      },
+      { x: box.x + 16, y },
     );
+    await nextFrames(page);
     await expect(tooltip(card)).toBeHidden();
+    // A move brings it back.
+    await page.mouse.move(column.x + column.width / 2, y, { steps: 2 });
+    await expect(title).toHaveText(year3.heading);
   });
 
   test('a line point takes the pointer through its line; the hovered column stays under it', async ({
@@ -939,12 +1004,7 @@ test.describe('the bars grow in once (DESIGN §6)', () => {
 
     await page.locator('#field-amount').fill('300000.00');
     await expect(chartItem(card, 0)).not.toHaveAttribute('aria-label', firstBar);
-    await page.evaluate(
-      () =>
-        new Promise((resolve) => {
-          setTimeout(resolve, 500);
-        }),
-    );
+    await nextFrames(page);
     expect((await startedAnimations(page)).slice(before)).not.toContain('chart-grow');
   });
 
@@ -955,12 +1015,7 @@ test.describe('the bars grow in once (DESIGN §6)', () => {
       await recordAnimations(page);
       await gotoApp(page);
       await expect(chartItem(chartCard(page), 0)).toBeVisible();
-      await page.evaluate(
-        () =>
-          new Promise((resolve) => {
-            setTimeout(resolve, 500);
-          }),
-      );
+      await nextFrames(page);
       expect(await startedAnimations(page)).not.toContain('chart-grow');
     });
   });
