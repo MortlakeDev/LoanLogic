@@ -1,6 +1,6 @@
 # LoanLogic — Financial Methodology Specification
 
-Status: v0.2.4 · Normative for the engine (`src/engine`). Keywords MUST / SHOULD / MAY are
+Status: v0.2.5 · Normative for the engine (`src/engine`). Keywords MUST / SHOULD / MAY are
 used as in RFC 2119. If the code and this document disagree, this document wins. If this
 document is ambiguous or looks wrong, the implementer stops and reports — financial
 rules are never invented in code.
@@ -607,11 +607,35 @@ place is required → displayed with 1 dp.
   5.12 % (IRR); 100 000 with a 1 000 fee and 12 payments of 8 833.3 → 12.80 % (单利) and
   13.58 % (IRR).
 - Display 2 decimals.
-- **Open:** the NFRA/PBOC rules on disclosing the comprehensive financing cost of
-  personal loans (个人贷款业务明示综合融资成本规定, in force since 2026-08-01) and the
-  industry self-regulatory norm of September 2026 are reported to annualize each cost
-  item separately and sum the results. LoanLogic has not verified the primary texts;
-  the CN method is reviewed against them before the CN profile ships (T05).
+- **The 2026 rules** (checked 2026-11-22; a later SPEC version adds their figure):
+  - NFRA and PBOC, 个人贷款业务明示综合融资成本规定 (金规〔2026〕2号, dated 2026-03-03, in
+    force 2026-08-01). It covers personal consumption and business loans of banks,
+    consumer finance companies, microcredit companies and other lenders. A
+    综合融资成本明示表 lists every interest and fee item (who charges it, how, how much)
+    and the 年化综合融资成本 under normal performance. Each normal-performance item is
+    annualized as PBOC [2021] No. 3 requires (Art. 2). Contingent costs such as penalty
+    interest are listed apart with their charging standard and party, and are not part
+    of the annual figure. The rule itself has no formula.
+  - The industry norm 个人贷款业务明示综合融资成本自律规范 (five associations, September
+    2026), Art. 4, gives the method, as does the regulators' Q&A: each normal-performance
+    item is annualized by the IRR method and the results are summed; daily or monthly
+    rates may not replace the annual figure. Its nine examples in annex 1 (housing loans
+    included) annualize nominally, `r × m` with `m` payments a year: 10 000 repaid in 12
+    monthly payments of 888.49 gives `12 r` = 12 % (compound 12.68 %), and 10 000 repaid
+    as 10 800 after one year gives 8 %.
+  - Example 6 of the norm: 10 000 at 5.8 % in 12 payments of 859.75, plus a guarantee
+    fee of 47.56 a period, shown as about 10.2 %, total 16 %. The IRR of all
+    normal-performance flows, annualized nominally, is 15.9993 % on the posted schedule
+    (eleven payments of 859.75 and a last one of 859.69; the unrounded 859.7453 gives the
+    same) and 16.0003 % if all twelve are 859.75, so 16 % either way: that is what
+    `cnAnnualized` computes when every cost is a rate flow. Annualizing the fee's own
+    flows (principal and fee) by IRR gives 10.285 %, and the per-item sum 16.08 %. The
+    norm's figures match the total IRR with the fee taken as the difference
+    (16 − 5.8 = 10.2), not the literal per-item sum.
+  - `cnAnnualized` and `irrEffective` stay unchanged; they are also the 年化利率 of PBOC
+    [2021] No. 3. Deliverable R5 settles the 年化综合融资成本 against all nine examples:
+    the total, the level of each item, the label and the display precision. Only then
+    does the CN profile show the new figure.
 
 **(e) UA — реальна річна процентна ставка** (Law of Ukraine "On Consumer Credit"
 No. 1734-VIII; Rules for calculating the total cost of credit and the real annual
@@ -1026,8 +1050,16 @@ interface CashFlowInput {
 - Directive (EU) 2023/2225, Annex III (APRC, applicable from 20 November 2026).
 - PBOC Announcement [2021] No. 3 on disclosing annualized loan rates and its annex
   采用内部收益率法计算贷款年化利率示例 (examples 1–3).
-- NFRA and PBOC, 个人贷款业务明示综合融资成本规定 (announced 2026-03-15, in force
-  2026-08-01) — reported by Xinhua; primary text not yet checked (§9.3 d).
+- NFRA and PBOC, 个人贷款业务明示综合融资成本规定 (金规〔2026〕2号, dated 2026-03-03, in
+  force 2026-08-01; State Council Gazette 2026 No. 17), read in the copy of the Guangdong
+  Financial Office, <https://www.gdjr.gov.cn/gdjr/zwgk/jrzcfg/content/post_42333.html>,
+  and the regulators' Q&A of 2026-03-16,
+  <https://jrj.sh.gov.cn/jcgk-zcjd/20260316/aa54dc492f7a4745bab535defd92f8c3.html>.
+- 个人贷款业务明示综合融资成本自律规范 (National Internet Finance Association of China,
+  China Banking Association, China Trustee Association, China Association of Finance
+  Companies and China Microcredit Companies Association, in force from its issue in
+  September 2026), Art. 4 and annex 1 (examples 1–9),
+  <https://www.cnafc.org/cnafc/resources/front/upload/20260918162155_4937.pdf>.
 - Law of Ukraine "On Consumer Credit" (No. 1734-VIII); NBU Board Resolution No. 49
   of 08.06.2017 (as amended, latest checked No. 159 of 25.12.2025); NBU Board Resolution
   No. 16 of 11.02.2021 (non-bank lenders).
@@ -1040,6 +1072,14 @@ interface CashFlowInput {
 - Microsoft Support — XIRR function (example).
 
 ## 17. Change history
+
+**v0.2.5 (2026-11-22)** — editorial; no rule or vector changes:
+
+- §9.3 (d), §16: the 2026 CN rules on the comprehensive financing cost are checked
+  against the rule, the regulators' Q&A and the industry norm with its nine examples.
+  The norm's example 6 matches the nominally annualized IRR of all normal-performance
+  flows, not a literal sum of per-item IRRs. Deliverable R5 settles the
+  年化综合融资成本; `cnAnnualized` and `irrEffective` are unchanged.
 
 **v0.2.4 (2026-10-31)** — asked during T03a (PR #11); no vector changes:
 
