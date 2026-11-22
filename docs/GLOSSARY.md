@@ -22,6 +22,7 @@ to this file.
 | loan amount | Loan amount | 贷款金额 | Сумма кредита | Сума кредиту |
 | principal (column, part of a payment) | Principal | 本金 | Основной долг | Основний борг |
 | outstanding balance | Balance | 剩余本金 | Остаток долга | Залишок заборгованості |
+| outstanding balance, short label where space is tight (chart view switch only) | Balance | 剩余本金 | Остаток долга | Залишок |
 | interest (amount) | Interest | 利息 | Проценты | Проценти |
 | interest rate | Interest rate | 年利率 | Процентная ставка | Процентна ставка |
 | nominal annual rate (hint) | Nominal, per year | 名义年利率 | Номинальная, годовых | Номінальна, річних |

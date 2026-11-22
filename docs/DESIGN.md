@@ -484,7 +484,17 @@ legend with swatch, label, amount (mono) and percent. The bar is `role="img"` wi
 
 - Theme-aware SVG drawn with the chart tokens; no gradients; bars with 1.5 px radius and
   a 2 px gap between stacked segments; 1 px grid lines; axis labels xs mono in
-  `--color-chart-axis`, compact notation from Intl ("$30K", "5万", "30 тыс.").
+  `--color-chart-axis`, compact currency notation from Intl with the symbol, like every
+  amount in the app ("$30K", "¥5万", "30 тыс. ₽"; a currency the locale has no symbol for
+  shows its code, "30 тис. USD").
+- Header: title, then a subtitle with the loan years and payments per year ("Loan years
+  1–30 · 12 payments a year"), never a payment amount, which is level only for annuities.
+  Below it the view switch and "Show as table", then the legend on its own row, naming
+  only the series of the current view.
+- The interest hatch of the cost bar (§8.9) is not used on the chart bars: on 30–100
+  narrow bars it is noise. The stack order, the legend, the tooltip and the table carry
+  the meaning without color. Forced colors add the hatch and a dashed interest line,
+  because system colors replace the chart tokens there.
 - Default chart: payments per loan year (§8.10), stacked principal (bottom) and interest
   (top); annotation at the first loan year whose principal exceeds its interest (dashed
   vertical line + label "Year 21 · principal overtakes interest"; one bar per payment
