@@ -488,11 +488,10 @@ legend with swatch, label, amount (mono) and percent. The bar is `role="img"` wi
   amount in the app ("$30K", "¥5万", "30 тыс. ₽"; a currency the locale has no symbol for
   shows its code, "30 тис. USD").
 - Header: title, then a subtitle with the loan years and payments per year ("Loan years
-  1–30 · 12 payments a year"), never a payment amount: equal principal, interest-only,
-  balloon and periodic fees make the payments change, and the hero already shows the
-  payment.
-  Below it the view switch and "Show as table", then the legend on its own row, naming
-  only the series of the current view.
+  1–30 · 12 payments a year"), never a payment amount: payments can change with equal
+  principal, interest-only or balloon loans and with periodic fees (SPEC §5, §6), and
+  the hero already shows the payment. Below it the view switch and "Show as table",
+  then the legend on its own row, naming only the series of the current view.
 - The interest hatch of the cost bar (§8.9) is not used on the chart bars: on 30–100
   narrow bars it is noise. The stack order, the legend, the tooltip and the table carry
   the meaning without color. Forced colors add the hatch and a dashed interest line,
