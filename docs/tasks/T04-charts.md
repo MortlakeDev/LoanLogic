@@ -121,10 +121,11 @@ literal invisible character (soft hyphen, zero-width characters, BOM) in a local
     all with reduced motion.
 - Initial JS: 83.11 → 91.89 KiB gzip (+8.78 KiB), within the 150 KiB budget. No new
   dependencies (no chart library, no d3).
-- `npm run check` passes: 2 922 unit tests, coverage 99.5 % statements, 98.35 %
-  branches. `npm run e2e`: 347 passed, 15 skipped (the WebKit cases the suite skips on
-  purpose: forced colors, the timing test, the known WebKit-on-Windows select and link
-  cases). `generate.py --check`: 106 vectors, unchanged.
+- Re-run on 2026-11-23 after the review follow-up: `npm run check` passes with 2 920 unit
+  tests, coverage 99.5 % statements, 98.35 % branches. `npm run e2e`: 347 passed, 15
+  skipped (the WebKit cases the suite skips on purpose: forced colors, the timing test,
+  the known WebKit-on-Windows select and link cases). `generate.py --check`: 106 vectors,
+  unchanged.
 
 **Decisions:**
 
@@ -166,23 +167,26 @@ literal invisible character (soft hyphen, zero-width characters, BOM) in a local
 13. e2e helpers `expectNoBlockingViolations` and `systemColor` moved into
     `tests/e2e/helpers.ts` for reuse by the chart spec.
 
-**Open questions for the architect:**
+**Answered questions** (architect review of PR #14; DESIGN §8.11 and GLOSSARY §2 updated
+in #15, no code change):
 
-1. Axis labels are compact currency with the symbol ("$30K", "¥5万", "30 тыс. ₽"), as
-   the concept render's "$30k". DESIGN §8.11 lists "5万" and "30 тыс." without one.
-   Which is intended?
-2. The subtitle reads "Loan years 1–30 · 12 payments a year". The concept render adds
-   the amount ("12 payments of $2,299.25 a year"), which holds only for level payments
-   (not for equal principal, interest-only or a different final payment). Keep it
-   without the amount?
-3. The interest hatch (bars) and the dashed interest line appear only in forced colors;
-   in normal mode the series are told apart by the stack order, legend and tooltip
-   names, as the brief and DESIGN §8.11 say. The cost bar (§8.9) keeps its hatch in
-   every mode. Should the chart match the cost bar?
-4. The legend sits on its own row under the view switch and "Show as table"; the concept
-   render, drawn before the switch existed, has it top right.
-5. GLOSSARY: the uk view switch says «Залишок» (the full «Залишок заборгованості» does
-   not fit a third of the switch at 360 px; the title, legend and tooltip keep the full
-   term). Add the short form to GLOSSARY §2, or use the full term with soft hyphens?
+1. Axis labels keep the currency symbol ("$30K", "¥5万", "30 тыс. ₽"), as every amount
+   in the app has one; a currency the locale has no symbol for shows its code.
+2. The subtitle stays without a payment amount: payments can change.
+3. The hatch and the dashed interest line stay in forced colors only; the cost bar keeps
+   its hatch.
+4. The legend keeps its own row under the controls.
+5. The uk view switch keeps «Залишок», now the GLOSSARY's short label for that switch only.
+
+**Review follow-up** (CodeRabbit, before the merge): the component tests compare the
+geometry with constants exported by `layout.ts` (`SEGMENT_GAP`, `SEGMENT_RADIUS`,
+`TICK_GAP`, `PLOT_HEIGHT`); the layout invariant is a fast-check property over widths of
+200–1 600 px, 1–120 buckets and both mark types (an exhaustive sweep of the same ranges
+found no failure, so `chartLayout` is unchanged); the e2e negative checks wait two
+animation frames instead of a fixed time, and the tooltip check sends the boundary events
+itself (there is no app timer for `page.clock` to drive). Control runs that break each
+guarded behavior make the changed checks fail in Chromium and WebKit. The keyboard e2e
+test now reads the schedule's yearly rows in one call instead of row by row (in WebKit on
+a busy machine it came within reach of the 30 s test limit) and is marked slow in WebKit.
 
 No SPEC questions: the engine's rows and summary carry everything the charts need.
