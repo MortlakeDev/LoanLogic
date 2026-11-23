@@ -1,6 +1,6 @@
 # T04 — Charts (theme-aware SVG)
 
-- **Milestone:** M2 · **Status:** ready
+- **Milestone:** M2 · **Status:** done (PR #14)
 - **Depends on:** T03 ✓, T03a ✓ · **Blocks:** T14 (the print report uses the same charts)
 - **Branch:** `task/T04-charts`
 
@@ -63,10 +63,10 @@ chart tokens, identical in quality on screen and in print.
 
 ## Acceptance criteria
 
-- [ ] Three views match DESIGN §8.11 in both themes (screenshots in the PR).
-- [ ] Every number in charts and tooltips equals the schedule's exact values.
-- [ ] Keyboard and screen-reader access; table alternative; reduced motion respected.
-- [ ] Initial JS stays within budget (report the change in gzip size).
+- [x] Three views match DESIGN §8.11 in both themes (screenshots in the PR).
+- [x] Every number in charts and tooltips equals the schedule's exact values.
+- [x] Keyboard and screen-reader access; table alternative; reduced motion respected.
+- [x] Initial JS stays within budget (report the change in gzip size).
 
 ## Notes
 
@@ -80,8 +80,9 @@ chart tokens, identical in quality on screen and in print.
 
 ## Completion notes
 
-**Status:** done, in review in [PR #14](https://github.com/MortlakeDev/LoanLogic/pull/14) (branch `task/T04-charts`). The branch also
-carries the T03a housekeeping: `repayment.equalPrincipal` in `ru.json` and `uk.json` is
+**Status:** done, merged in [PR #14](https://github.com/MortlakeDev/LoanLogic/pull/14)
+on 2026-11-23 UTC (branch `task/T04-charts`). The branch also carries the T03a
+housekeeping: `repayment.equalPrincipal` in `ru.json` and `uk.json` is
 written with `\u00AD` escapes again, and a new `locales.test.ts` check fails on any
 literal invisible character (soft hyphen, zero-width characters, BOM) in a locale file.
 
@@ -97,8 +98,9 @@ literal invisible character (soft hyphen, zero-width characters, BOM) in a local
   - a property test on random engine loans, plus all 69 calculating golden vectors,
     checks that the bucket sums equal `scheduleTotals` exactly and that principal +
     interest + fees = payments in every bucket;
-  - the e2e test compares the tooltip and accessible name of all 30 bars with the
-    schedule table's yearly subtotals;
+  - the e2e keyboard test reads all 30 yearly subtotals of the schedule table and
+    compares the tooltip and accessible name of the bars it steps through (years 1, 2,
+    3 and 30) with them;
   - the overtake year is 21 for `us-mortgage-30y-origination-fee` and 9 (第 9 年) for
     `cn-mortgage-30y-equal-instalments`;
   - axis labels format exact decimal tick strings (no float sums reach any text).
@@ -113,8 +115,8 @@ literal invisible character (soft hyphen, zero-width characters, BOM) in a local
   - the tooltip shows on focus and on hover; it sits in an `aria-live="polite"`,
     `aria-atomic` region, can be hovered itself (SC 1.4.13) and Escape hides it;
   - "Show as table" (`aria-pressed`) swaps in a table with the same aggregated values;
-  - axe finds no violations in any view or in the table, in dark and light at 360 and
-    1 280 px;
+  - axe finds no serious or critical violations (the threshold of the e2e suite) in any
+    view or in the table, in dark and light at 360 and 1 280 px;
   - in forced colors the chart uses system colors, interest bars keep a hatch, the
     interest line is dashed and the selected view shows in Highlight;
   - the bars grow in on their first render only, never on a recalculation, and not at
@@ -190,3 +192,9 @@ test now reads the schedule's yearly rows in one call instead of row by row (in 
 a busy machine it came within reach of the 30 s test limit) and is marked slow in WebKit.
 
 No SPEC questions: the engine's rows and summary carry everything the charts need.
+
+**Last review round** (CodeRabbit on `fc77e6d`, six minor findings, accepted by the
+architect at the merge): the notes above now say which bars the keyboard test checks
+and name the axe threshold; the four code and test items (line markers and the pointer,
+stale keyboard focus, the tooltip at the chart's top edge, the label-spacing test) are
+task [T04a](T04a-chart-followups.md).

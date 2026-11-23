@@ -7,9 +7,9 @@ EU, China, Ukraine and beyond. It aims to reproduce a lender's schedule to the c
 real cost of credit the way your region defines it, and explain every number it shows. There is
 no server and no tracking, it works offline, and it is open source.
 
-> **Status: pre-alpha.** The financial engine (milestone M1) and the first version of the
-> loan calculator are in; try it at <https://mortlakedev.github.io/LoanLogic/>. Charts, region
-> profiles and everything else under "Planned" are still to come. See
+> **Status: pre-alpha.** The financial engine (milestone M1) and the loan calculator with
+> its charts are in; try it at <https://mortlakedev.github.io/LoanLogic/>. Region profiles
+> and everything else under "Planned" are still to come. See
 > [`docs/PLAN.md`](docs/PLAN.md) §7 for the milestones.
 
 ## Principles
@@ -37,14 +37,15 @@ Available now:
 - **Loan calculator.** Annuity, equal principal, interest-only with a bullet, and balloon
   loans. Term and payment frequency are set independently. Compounding, day-count conventions
   and rounding policy are configurable. Fees and insurance carry a per-fee APR flag. Every
-  loan gets a full schedule, the headline cost-of-credit rate and a "How it's calculated"
-  view.
+  loan gets a full schedule, the headline cost-of-credit rate, a "How it's calculated" view
+  and three charts (payments per loan year, the balance, principal and interest paid so
+  far), each also readable as a table.
 - **Experience.** Dark, light and system themes, a responsive layout, four languages, and a
   single self-contained HTML file.
 
 Planned:
 
-- **Loan calculator, continued.** Charts; prepayments, rate changes and payment holidays.
+- **Loan calculator, continued.** Prepayments, rate changes and payment holidays.
 - **Comparison.** The same loan under every repayment type, up to five offers side by side,
   the break-even reinvestment rate, a day-count comparison and what-if sliders.
 - **Prepayment, payoff and refinancing.** Invest vs prepay, borrow vs pay cash, the payoff
