@@ -51,9 +51,9 @@ edge cases the review found.
   The computed `pointer-events` of `.chart__marker` is `none`, as the keyboard test
   already checks for the focus ring.
 - **Component:** reproduce the stale index (the focused bar removed by a recalculation
-  with fewer buckets, with no `blur`, then the buckets grow again): no `.chart__focus`
-  and no tooltip. A focused bar that stays in range keeps its ring through the same
-  recalculation.
+  with fewer buckets, with no `blur`, then the buckets grow again): with nothing
+  hovered, no `.chart__focus` and no tooltip. A focused bar that stays in range keeps
+  its ring through the same recalculation.
 - **Unit (`layout.test.ts`):** the 200 px case above gives top 0; the existing placement
   cases keep their positions.
 - **Control runs:** each new or changed test fails without its fix; say so in the pull
@@ -63,8 +63,9 @@ edge cases the review found.
 
 - [ ] Moving the pointer across a line marker gives the tooltip to the point whose
       column is under the pointer.
-- [ ] After the buckets shrink and grow again, no focus ring or tooltip shows without
-      keyboard focus in the chart; a focus that stays in range keeps its ring.
+- [ ] After the buckets shrink and grow again, a stale focus brings back neither the
+      focus ring nor the tooltip (hovering a mark still shows its tooltip); a focus that
+      stays in range keeps its ring.
 - [ ] When the usual positions cover the mark, the tooltip goes to the chart's top edge
       if that covers less of it.
 - [ ] The label-spacing test estimates the labels at the size the chart lays them out
