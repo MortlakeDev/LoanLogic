@@ -17,6 +17,7 @@ import {
   type DateStyle,
   formatDate,
   formatMoney,
+  formatMoneyCompact,
   formatMoneyParts,
   formatMonthYear,
   formatNumber,
@@ -37,6 +38,14 @@ export const currencyDigits = computed(() => minorUnits(form.value.currency) ?? 
 /** An engine amount with the currency symbol: "$2,299.25", "12 345,67 ₴". */
 export function money(value: string, fractionDigits: number = currencyDigits.value): string {
   return formatMoney(value, currency.value, formatLocale.value, { fractionDigits });
+}
+
+/**
+ * An amount in compact notation, for chart axis labels (DESIGN §8.11): "$30K", "¥3万",
+ * "30 тыс. ₽". `maximumFractionDigits` applies to the compact number (default 1).
+ */
+export function moneyCompact(value: string, maximumFractionDigits = 1): string {
+  return formatMoneyCompact(value, currency.value, formatLocale.value, maximumFractionDigits);
 }
 
 /** An engine amount as Intl parts, for hero numbers (DESIGN §4.2). */

@@ -80,4 +80,113 @@ chart tokens, identical in quality on screen and in print.
 
 ## Completion notes
 
-_(to be filled by the implementer)_
+**Status:** done, in review in [PR #14](https://github.com/MortlakeDev/LoanLogic/pull/14) (branch `task/T04-charts`). The branch also
+carries the T03a housekeeping: `repayment.equalPrincipal` in `ru.json` and `uk.json` is
+written with `\u00AD` escapes again, and a new `locales.test.ts` check fails on any
+literal invisible character (soft hyphen, zero-width characters, BOM) in a locale file.
+
+**Acceptance criteria (local evidence, 2026-11-01, Windows, Node 24.19):**
+
+- Three views per DESIGN §8.11 in both themes:
+  [`T04-screenshots/`](T04-screenshots/) has bars, balance and cumulative in dark and
+  light at 1 280 px, the bars at 360 px and the table (2× pixel density, the design
+  scenario disbursed 2026-11-01).
+- Every number comes from the ledger's exact decimal strings:
+  - yearly buckets reuse `scheduleYears` (BigInt sums; loan year y = payments
+    (y − 1)·m + 1 … y·m);
+  - a property test on random engine loans, plus all 69 calculating golden vectors,
+    checks that the bucket sums equal `scheduleTotals` exactly and that principal +
+    interest + fees = payments in every bucket;
+  - the e2e test compares the tooltip and accessible name of all 30 bars with the
+    schedule table's yearly subtotals;
+  - the overtake year is 21 for `us-mortgage-30y-origination-fee` and 9 (第 9 年) for
+    `cn-mortgage-30y-equal-instalments`;
+  - axis labels format exact decimal tick strings (no float sums reach any text).
+- Keyboard and screen readers:
+  - the chart is a `figure` with `role="group"` and a localized `aria-roledescription`,
+    named by the card title and described by a summary ("Interest goes from $23,949 in
+    year 1 to $1,001 in year 30, principal from $3,642 to $26,591. Principal first
+    exceeds interest in year 21.");
+  - bars and points are `role="img"` ("Year 1: principal $3,641.84, interest
+    $23,949.16") in a roving tabindex: one tab stop; arrows, Home and End move between
+    them;
+  - the tooltip shows on focus and on hover; it sits in an `aria-live="polite"`,
+    `aria-atomic` region, can be hovered itself (SC 1.4.13) and Escape hides it;
+  - "Show as table" (`aria-pressed`) swaps in a table with the same aggregated values;
+  - axe finds no violations in any view or in the table, in dark and light at 360 and
+    1 280 px;
+  - in forced colors the chart uses system colors, interest bars keep a hatch, the
+    interest line is dashed and the selected view shows in Highlight;
+  - the bars grow in on their first render only, never on a recalculation, and not at
+    all with reduced motion.
+- Initial JS: 83.11 → 91.89 KiB gzip (+8.78 KiB), within the 150 KiB budget. No new
+  dependencies (no chart library, no d3).
+- Re-run on 2026-11-23 after the review follow-up: `npm run check` passes with 2 920 unit
+  tests, coverage 99.5 % statements, 98.35 % branches. `npm run e2e`: 347 passed, 15
+  skipped (the WebKit cases the suite skips on purpose: forced colors, the timing test,
+  the known WebKit-on-Windows select and link cases). `generate.py --check`: 106 vectors,
+  unchanged.
+
+**Decisions:**
+
+1. Code layout: `src/app/charts/` has `model.ts` (buckets, crossovers, stacks, value
+   ranges), `scale.ts` (linear scale, nice ticks, x-label thinning, text width),
+   `layout.ts` (geometry, tooltip placement, label wrapping), `labels.ts` (wording) and
+   `view.ts` (signals). The components only render what these return. `formatMoneyCompact`
+   (`src/i18n/format.ts`) and `moneyCompact` (`display.ts`) format the axis labels.
+2. A loan with at least 2·m payments gets one bar per loan year; a shorter loan gets one
+   bar per payment ("Payment N"), up to 103 bars for a weekly loan just under 2 years.
+3. Stack order, bottom to top: principal, fees and insurance (only when non-zero),
+   interest. Negative amounts stack downwards from zero. A non-zero segment thinner than
+   1 px is drawn at 1 px, so a series named in the legend is always visible.
+4. The annotation marks the first loan year whose principal exceeds its interest by
+   exact comparison, year 1 included (an equal-principal loan gets "Year 1 · principal
+   overtakes interest").
+5. Balance view: one line with the payoff marked by a dot, a dashed line and "Paid off
+   Nov 2056" (`summary.payoffDate`). Cumulative view: two lines; the crossing is marked
+   only when interest led first (year 15 for the CN vector, none for the US one).
+6. Line views draw one point per loan year (or payment) plus a starting point at x = 0
+   (the opening balance, zero cumulatives). The starting point is drawn only: it is not
+   focusable and not in the table.
+7. The summary says "goes from … to …" rather than "falls" or "rises": the direction
+   differs between repayment types.
+8. View, table switch and "intro played" are module signals, so they survive invalid
+   input (the card unmounts while there is no result). The intro plays once per
+   session.
+9. Only a real pointer move gives a bar the tooltip (boundary events also fire when
+   content moves under a resting pointer); keyboard focus takes it over, Escape hides
+   it, and on touch screens (`hover: none`) it lets taps through.
+10. The geometry follows the rendered label size, so a larger browser font grows the
+    margins and the SVG instead of squeezing the plot. Long annotation labels wrap; for
+    Chinese they break between characters.
+11. Shared change: in forced colors the selected segment of every segmented control now
+    shows in Highlight (`components.css`). The variants' checked rules were more
+    specific and won before, against DESIGN §8.3; this also affects the payment
+    frequency control.
+12. Print: only the tooltip is hidden; the print layout is T14.
+13. e2e helpers `expectNoBlockingViolations` and `systemColor` moved into
+    `tests/e2e/helpers.ts` for reuse by the chart spec.
+
+**Answered questions** (architect review of PR #14; DESIGN §8.11 and GLOSSARY §2 updated
+in #15, no code change):
+
+1. Axis labels keep the currency symbol ("$30K", "¥5万", "30 тыс. ₽"), as every amount
+   in the app has one; a currency the locale has no symbol for shows its code.
+2. The subtitle stays without a payment amount: payments can change.
+3. The hatch and the dashed interest line stay in forced colors only; the cost bar keeps
+   its hatch.
+4. The legend keeps its own row under the controls.
+5. The uk view switch keeps «Залишок», now the GLOSSARY's short label for that switch only.
+
+**Review follow-up** (CodeRabbit, before the merge): the component tests compare the
+geometry with constants exported by `layout.ts` (`SEGMENT_GAP`, `SEGMENT_RADIUS`,
+`TICK_GAP`, `PLOT_HEIGHT`); the layout invariant is a fast-check property over widths of
+200–1 600 px, 1–120 buckets and both mark types (an exhaustive sweep of the same ranges
+found no failure, so `chartLayout` is unchanged); the e2e negative checks wait two
+animation frames instead of a fixed time, and the tooltip check sends the boundary events
+itself (there is no app timer for `page.clock` to drive). Control runs that break each
+guarded behavior make the changed checks fail in Chromium and WebKit. The keyboard e2e
+test now reads the schedule's yearly rows in one call instead of row by row (in WebKit on
+a busy machine it came within reach of the 30 s test limit) and is marked slow in WebKit.
+
+No SPEC questions: the engine's rows and summary carry everything the charts need.

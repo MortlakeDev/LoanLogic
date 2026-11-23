@@ -186,6 +186,10 @@ describe('ResultsPanel: the design scenario', () => {
     expect(liveText(panel)).toBe('Monthly payment: $2,299.25. APR: 6.974%.');
     expect(panel.querySelector('[aria-busy]')).toBeNull();
     expect(panel.lastElementChild?.getAttribute('data-testid')).toBe('schedule-card');
+    // The chart sits between the overview and the schedule (DESIGN §7).
+    const chart = panel.lastElementChild?.previousElementSibling;
+    expect(chart?.matches('section.chart')).toBe(true);
+    expect(chart?.previousElementSibling?.classList.contains('results__overview')).toBe(true);
   });
 });
 

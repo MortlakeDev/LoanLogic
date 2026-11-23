@@ -5,6 +5,7 @@ import './results.css';
 import type { JSX } from 'preact';
 import { useEffect, useState } from 'preact/hooks';
 import type { FrequencyId, RateMethodId } from '../../engine';
+import { ChartCard } from '../charts/ChartCard';
 import { ScheduleCard } from '../schedule/ScheduleCard';
 import { money } from '../state/display';
 import { t } from '../state/i18n';
@@ -41,7 +42,8 @@ export function summaryText(
 
 /**
  * The results column (DESIGN §7.1): the payment hero with the rate card, warnings, KPI
- * tiles, the cost structure, then the schedule. Invalid input blanks every figure at once
+ * tiles, the cost structure, then the chart and the schedule (on mobile only these two:
+ * the chart follows the inputs, §7.2). Invalid input blanks every figure at once
  * (`aria-busy` on the figures) and lists what to fix after a pause (§8.13). Below 64rem the
  * overview is hidden: the mobile summary card carries it (§7.2).
  *
@@ -102,6 +104,7 @@ export function ResultsPanel(): JSX.Element {
           </>
         )}
       </div>
+      <ChartCard />
       <ScheduleCard />
     </section>
   );

@@ -6,6 +6,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   formatDate,
   formatMoney,
+  formatMoneyCompact,
   formatNumber,
   formatPercent,
   type CalendarDate,
@@ -177,6 +178,56 @@ describe('formatMoney', () => {
         expect(formatted.replace(/[$,]/g, '')).toBe(expected);
       }),
     );
+  });
+});
+
+describe('formatMoneyCompact', () => {
+  /** Intl separates the number and its unit with NBSP or narrow NBSP; compare with spaces. */
+  const spaced = (text: string): string => text.replace(/\s/gu, ' ');
+
+  it('writes axis labels in en-US: "$30K", one fraction digit at most', () => {
+    expect(formatMoneyCompact('30000', 'USD', 'en-US')).toBe('$30K');
+    expect(formatMoneyCompact('1500000', 'USD', 'en-US')).toBe('$1.5M');
+    expect(formatMoneyCompact('1250', 'USD', 'en-US')).toBe('$1.3K');
+    expect(formatMoneyCompact('999', 'USD', 'en-US')).toBe('$999');
+    expect(formatMoneyCompact('0.5', 'USD', 'en-US')).toBe('$0.5');
+  });
+
+  it('uses 万 in zh-CN', () => {
+    expect(formatMoneyCompact('50000', 'CNY', 'zh-CN')).toBe('¥5万');
+    expect(formatMoneyCompact('25000', 'CNY', 'zh-CN')).toBe('¥2.5万');
+    expect(formatMoneyCompact('1500000', 'CNY', 'zh-CN')).toBe('¥150万');
+  });
+
+  it.each([
+    ['ru-RU', 'RUB', '30 тыс. ₽', '1,5 млн ₽'],
+    ['uk-UA', 'UAH', '30 тис. ₴', '1,5 млн ₴'],
+  ])('uses the native abbreviations in %s', (locale, currency, thousands, millions) => {
+    expect(spaced(formatMoneyCompact('30000', currency, locale))).toBe(thousands);
+    expect(spaced(formatMoneyCompact('1500000', currency, locale))).toBe(millions);
+  });
+
+  it('writes zero without a sign, also for a negative amount that rounds to zero', () => {
+    expect(formatMoneyCompact('0', 'USD', 'en-US')).toBe('$0');
+    expect(formatMoneyCompact('0.00', 'USD', 'en-US')).toBe('$0');
+    expect(formatMoneyCompact('-0.04', 'USD', 'en-US')).toBe('$0');
+    expect(spaced(formatMoneyCompact('0', 'RUB', 'ru-RU'))).toBe('0 ₽');
+  });
+
+  it('writes negative amounts with a minus sign', () => {
+    expect(formatMoneyCompact('-25000', 'USD', 'en-US')).toBe('-$25K');
+    expect(formatMoneyCompact('-25000', 'CNY', 'zh-CN')).toBe('-¥2.5万');
+    expect(spaced(formatMoneyCompact('-25000', 'UAH', 'uk-UA'))).toBe('-25 тис. ₴');
+  });
+
+  it('shows more fraction digits on request, so small steps stay distinct', () => {
+    expect(formatMoneyCompact('0.05', 'USD', 'en-US', 2)).toBe('$0.05');
+    expect(formatMoneyCompact('0.10', 'USD', 'en-US', 2)).toBe('$0.1');
+    expect(formatMoneyCompact('0.05', 'USD', 'en-US')).toBe('$0.1');
+  });
+
+  it.each(['abc', '1,000', '', 'Infinity', '1e400'])('rejects %j with a RangeError', (value) => {
+    expect(() => formatMoneyCompact(value, 'USD', 'en-US')).toThrow(RangeError);
   });
 });
 

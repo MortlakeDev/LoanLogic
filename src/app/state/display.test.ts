@@ -10,6 +10,7 @@ import {
   currencySymbol,
   date,
   money,
+  moneyCompact,
   moneyParts,
   monthYear,
   percentToFraction,
@@ -113,6 +114,20 @@ describe('money and amounts', () => {
   it('falls back to 2 digits for a code outside the engine table', () => {
     updateForm({ currency: 'ZZZ' });
     expect(currencyDigits.value).toBe(2);
+  });
+});
+
+describe('moneyCompact', () => {
+  it('writes compact axis labels in the currency and language of the form', () => {
+    expect(moneyCompact('30000')).toBe('$30K');
+    expect(moneyCompact('-25000')).toBe('-$25K');
+    expect(moneyCompact('0.05', 2)).toBe('$0.05');
+    updateForm({ currency: 'CNY' });
+    setLanguage('zh-CN');
+    expect(moneyCompact('50000')).toBe('¥5万');
+    setLanguage('ru');
+    updateForm({ currency: 'RUB' });
+    expect(spaced(moneyCompact('30000'))).toBe('30 тыс. ₽');
   });
 });
 
