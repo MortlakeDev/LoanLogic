@@ -15,6 +15,7 @@ import {
   updateForm,
 } from '../state/loan';
 import { ChartCard } from './ChartCard';
+import { renderedLabelPx } from './ChartFigure';
 import { LABEL_PX, PLOT_HEIGHT, SEGMENT_GAP, SEGMENT_RADIUS, TICK_GAP, WIDE_WIDTH } from './layout';
 import { estimateTextWidth } from './scale';
 import { chartTable, chartView, resetChartView, setChartView } from './view';
@@ -405,9 +406,11 @@ describe('ChartCard — other loans', () => {
       }
       const texts = Array.from(svg().querySelectorAll('.chart__axes text'));
       expect(texts.length).toBeGreaterThan(0);
+      // At the size the chart laid the labels out with (16 px in jsdom), not the 12 px base.
+      const labelPx = renderedLabelPx(svg()) ?? LABEL_PX;
       let previousEnd = -Infinity;
       for (const text of texts) {
-        const labelWidth = estimateTextWidth(text.textContent, LABEL_PX);
+        const labelWidth = estimateTextWidth(text.textContent, labelPx);
         const x = attr(text, 'x');
         const anchor = text.getAttribute('text-anchor');
         const start = anchor === 'end' ? x - labelWidth : x - labelWidth / 2;
@@ -766,6 +769,48 @@ describe('ChartCard — keyboard, focus and tooltip', () => {
     expect(tooltip()).toBeNull();
   });
 
+  it('drops a focus past the last bucket: a regrown chart brings back no ring or tooltip', async () => {
+    renderCard();
+    // The focus state without DOM focus: the bar goes away and no blur follows, as a browser
+    // may do when it removes a focused element.
+    fireEvent.focus(item(29));
+    expect(svg().querySelector('.chart__focus')).not.toBeNull();
+    expect(tooltip()).not.toBeNull();
+    await act(() => {
+      updateForm({ termYears: '20' });
+    });
+    expect(items()).toHaveLength(20);
+    await act(() => {
+      updateForm({ termYears: '30' });
+    });
+    expect(items()).toHaveLength(30);
+    expect(svg().querySelector('.chart__focus')).toBeNull();
+    expect(tooltip()).toBeNull();
+    // Hovering a bar still shows its tooltip.
+    fireEvent.mouseMove(item(29));
+    expect(tooltip()?.querySelector('.chart__tooltip-title')?.textContent).toBe(
+      'Year 30 · Dec 2055 – Nov 2056',
+    );
+  });
+
+  it('keeps a focus that stays in range through the same recalculation', async () => {
+    renderCard();
+    fireEvent.focus(item(4));
+    const ring = (): Element | null => svg().querySelector('.chart__focus');
+    expect(ring()).not.toBeNull();
+    await act(() => {
+      updateForm({ termYears: '20' });
+    });
+    expect(ring()).not.toBeNull();
+    await act(() => {
+      updateForm({ termYears: '30' });
+    });
+    expect(ring()).not.toBeNull();
+    expect(tooltip()?.querySelector('.chart__tooltip-title')?.textContent).toBe(
+      'Year 5 · Dec 2030 – Nov 2031',
+    );
+  });
+
   it('names the payment and its date in the tooltip of a short loan', () => {
     loadVector('bullet-monthly-interest-only');
     renderCard();
@@ -1059,12 +1104,14 @@ describe('ChartCard — ru and uk wording', () => {
       expect(lines[0]).toBe(label);
       expect(lines.slice(1).join(' ')).toBe(phrase);
       const x = attr(text, 'x');
+      // At the size the chart laid the label out with (16 px in jsdom).
+      const labelPx = renderedLabelPx(svg()) ?? LABEL_PX;
       for (const line of lines) {
         expect(x).toBeGreaterThanOrEqual(0);
-        expect(x + estimateTextWidth(line, LABEL_PX)).toBeLessThanOrEqual(360);
+        expect(x + estimateTextWidth(line, labelPx)).toBeLessThanOrEqual(360);
       }
       // The band above the plot holds the extra lines: the first baseline stays an em down.
-      expect(attr(text, 'y')).toBeGreaterThanOrEqual(LABEL_PX);
+      expect(attr(text, 'y')).toBeGreaterThanOrEqual(labelPx);
     },
   );
 });

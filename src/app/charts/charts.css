@@ -142,11 +142,13 @@
   stroke-width: 2;
 }
 
-/* The lines, the annotation and the focus ring are painted over the items' hit columns:
-   they let the pointer through to them. */
+/* The lines, the annotation, the focus ring and a marked point's markers are painted over
+   the items' hit columns (a marker over its neighbours' when the points are close): they
+   let the pointer through, so only the hit columns decide which item has it. */
 .chart__line,
 .chart__annotation,
-.chart__focus {
+.chart__focus,
+.chart__marker {
   pointer-events: none;
 }
 

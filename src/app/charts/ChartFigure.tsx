@@ -77,19 +77,28 @@ function useContainerWidth(ref: RefObject<HTMLElement>): number {
 }
 
 /**
- * The rendered size of the axis labels in CSS pixels: xs is in rem, so it follows the
- * browser's font size, and the layout is computed for the measured size; `LABEL_PX` until
- * a label is rendered with styles (and in jsdom).
+ * The computed font size of the chart's axis labels in CSS pixels, read from a rendered
+ * tick of `svg`; `null` while no tick is rendered or it has no usable size.
+ */
+export function renderedLabelPx(svg: Element | null): number | null {
+  const tick = svg?.querySelector('.chart__tick');
+  if (tick === null || tick === undefined) {
+    return null;
+  }
+  const size = Number.parseFloat(getComputedStyle(tick).fontSize);
+  return Number.isFinite(size) && size > 0 ? size : null;
+}
+
+/**
+ * The size the axis labels are laid out with, in CSS pixels: xs is in rem, so it follows
+ * the browser's font size, and the layout is computed for the rendered size
+ * (`renderedLabelPx`); `LABEL_PX` until a tick is rendered.
  */
 function useLabelPx(ref: RefObject<SVGSVGElement>): number {
   const [labelPx, setLabelPx] = useState(LABEL_PX);
   useLayoutEffect(() => {
-    const tick = ref.current?.querySelector('.chart__tick');
-    const measured =
-      tick === null || tick === undefined
-        ? Number.NaN
-        : Number.parseFloat(getComputedStyle(tick).fontSize);
-    if (Number.isFinite(measured) && measured > 0 && measured !== labelPx) {
+    const measured = renderedLabelPx(ref.current);
+    if (measured !== null && measured !== labelPx) {
       setLabelPx(measured);
     }
   });
@@ -523,10 +532,14 @@ export function ChartFigure(props: {
     };
   }, [shown]);
 
-  // A recalculation with fewer buckets removes the hovered item without a mouseleave; its
-  // hover would come back if the buckets grew again.
+  // A recalculation with fewer buckets removes the hovered item without a mouseleave, and
+  // the focused item without a reliable blur; either would come back (ring and tooltip
+  // without DOM focus) if the buckets grew again. A hover or focus still in range stays.
   useEffect(() => {
-    setHovered((position) => (position !== null && position > last ? null : position));
+    const drop = (position: number | null): number | null =>
+      position !== null && position > last ? null : position;
+    setHovered(drop);
+    setFocused(drop);
   }, [last]);
 
   const annotation = annotationText(view, model);
