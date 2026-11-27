@@ -85,4 +85,66 @@ edge cases the review found.
 
 ## Completion notes
 
-_(to be filled by the implementer)_
+**Status:** done, in review in
+[PR #18](https://github.com/MortlakeDev/LoanLogic/pull/18) (branch
+`task/T04a-chart-followups`, from `main` at `806cacb`).
+
+**Acceptance criteria (local evidence, 2026-11-23, Windows, Node 24.19):**
+
+- Line markers: `.chart__marker` joins the lines, the annotation and the focus ring in
+  the `pointer-events: none` rule of `charts.css`. The e2e test (360 px, Chromium and
+  WebKit) uses a 100-year loan in the balance view, where a marker (8 px across) is
+  wider than a point's column (the test asserts this):
+  - the pointer hovers year 51, then moves onto the part of its marker that lies over
+    year 50's column, and year 50 gets the tooltip;
+  - the marker of the newly marked point computes `pointer-events: none`.
+- Stale focus: the effect keyed by `last` in `ChartFigure.tsx` now drops a focus past
+  the last bucket, as it already did for a hover. Component tests:
+  - bar 30 has the focus state without DOM focus (so no blur follows), then the term
+    goes to 20 years and back to 30: no `.chart__focus` and no tooltip, and hovering
+    bar 30 still shows its tooltip;
+  - a focused bar 5 keeps its ring through the same recalculation.
+- Tooltip at the top edge: `placeTooltip` tries 0 as its last candidate. Unit tests:
+  - the brief's case (a 100 px box over a mark at 100–116 in a 200 px chart) gives
+    top 0;
+  - a mark that the usual top already clears keeps top 4 (a tie keeps the earlier
+    candidate);
+  - the existing placement cases are unchanged.
+- Label spacing: `renderedLabelPx` (exported from `ChartFigure.tsx`) reads the computed
+  font size of a rendered tick, `null` when there is none. `useLabelPx` and the
+  `long-term-1200-payments` test both use it, the test with `LABEL_PX` when there is
+  no tick.
+- `npm run check` passes: 2 923 unit tests, coverage 99.47 % statements, 98.31 %
+  branches. Initial JS is 91.92 KiB gzip (+0.03 KiB) of the 150 KiB budget.
+- `npm run e2e`: 349 passed, 15 skipped (the WebKit cases the suite skips on purpose).
+- `generate.py --check`: 106 vectors, unchanged.
+
+**Control runs:** each fix was undone in a copy of its file, which was restored byte
+for byte afterwards.
+
+- Without `.chart__marker` in the rule, the e2e test fails in Chromium and WebKit: the
+  tooltip stays on "Year 51".
+- Without dropping the focus, the stale-focus test fails. Dropping the focus
+  unconditionally fails the keep-in-range test.
+- Without the 0 candidate, the top-edge test fails; the existing placement tests pass.
+- With the labels laid out at 12 px whatever their rendered size, the new label tests
+  fail at 360 and 1 280 px. The old `long-term-1200-payments` test from `main` passes
+  in the same run, which shows it missed the case.
+
+**Decisions:**
+
+1. `renderedLabelPx` stays in `ChartFigure.tsx`, next to `useLabelPx`, its other user:
+   no new module for one function.
+2. The ru/uk crossing-label wrap test in `ChartCard.test.tsx` had the same 12 px
+   estimate, in its width check and in its first-baseline check. It now uses the
+   laid-out size too. This goes one test beyond item 4, in the same file and with the
+   same helper.
+3. The stale-focus test sets the focus state with `fireEvent.focus`, without DOM focus.
+   The removed bar then gets no blur in any environment, which is the case the brief
+   describes.
+4. In the e2e test the computed-style check runs after the pointer move. A run without
+   the fix then fails on the behaviour (the tooltip stays on year 51), not on the style.
+5. `useLabelPx`'s doc comment said that `LABEL_PX` applies in jsdom. jsdom computes
+   16 px, so the comment now says `LABEL_PX` applies until a tick is rendered.
+
+No SPEC, DESIGN or GLOSSARY change, no new strings and no new dependencies.

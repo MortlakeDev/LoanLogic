@@ -331,6 +331,18 @@ describe('placeTooltip', () => {
       top: 4,
     });
   });
+
+  it("goes to the chart's top edge when that is the only place that clears the mark", () => {
+    // A 100 px box over a focus box at 100–116 in a 200 px chart: the usual top covers 4 px
+    // of it, below it there is no room, the bottom covers all 16; the top edge covers none.
+    const mark = { left: 92, right: 110, top: 100, bottom: 116 };
+    const box = { width: 200, height: 100 };
+    expect(placeTooltip(mark, 5, box, { width: 300, height: 200 })).toEqual({ left: 100, top: 0 });
+    // A mark the usual top already clears keeps the usual top (a tie keeps the earlier place).
+    expect(
+      placeTooltip({ ...mark, top: 104, bottom: 120 }, 5, box, { width: 300, height: 200 }),
+    ).toEqual({ left: 100, top: 4 });
+  });
 });
 
 describe('placeLabel', () => {

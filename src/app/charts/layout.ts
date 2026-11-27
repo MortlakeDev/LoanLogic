@@ -334,10 +334,10 @@ function covered(from: number, to: number, low: number, high: number): number {
  * the side with more room, `TOOLTIP_GAP` away but never past the edge of the mark's column
  * (`column` is half its width), so the pointer moves from the mark onto the tooltip
  * without crossing another item (WCAG 1.4.13, hoverable); clamped inside the chart. When
- * the chart is too narrow and the box comes over the mark, it goes below the mark, else
- * where it covers the least of it (the usual top or the chart's bottom; a box that fits
- * above the mark already clears it at the usual top): the mark and its focus ring stay in
- * view.
+ * the chart is too narrow and the box comes over the mark, it goes where it covers the
+ * least of the mark: the usual top, below the mark, the chart's bottom or its top edge, in
+ * that order of preference on a tie (the top edge clears a mark that the usual top only
+ * just reaches). The mark and its focus ring stay in view as far as the chart allows.
  *
  * @param mark The mark's box with room for its focus ring.
  * @param box The tooltip's measured size.
@@ -356,7 +356,7 @@ export function placeTooltip(
   if (left >= mark.right || left + box.width <= mark.left) {
     return { left, top: TOOLTIP_TOP };
   }
-  const candidates = [TOOLTIP_TOP, mark.bottom + TOOLTIP_GAP, chart.height - box.height];
+  const candidates = [TOOLTIP_TOP, mark.bottom + TOOLTIP_GAP, chart.height - box.height, 0];
   let top = TOOLTIP_TOP;
   let least = Infinity;
   for (const candidate of candidates) {

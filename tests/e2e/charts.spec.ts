@@ -921,6 +921,56 @@ test.describe('narrow screens (360 × 740)', () => {
     });
   }
 
+  test('the pointer crosses a line marker to the point whose column is under it', async ({
+    page,
+  }) => {
+    // 100 loan years at 360 px: the points are closer than a marker's diameter, so a marked
+    // point's marker lies over its neighbours' columns.
+    await gotoApp(page);
+    await page.locator('#field-term-years').fill('100');
+    await page.locator('#field-term-months').fill('0');
+    const card = chartCard(page);
+    await showView(card, 'balance');
+    await expect(card.locator('.chart__item')).toHaveCount(100);
+    await card.locator('svg.chart__svg').scrollIntoViewIfNeeded();
+    const title = tooltip(card).locator('.chart__tooltip-title');
+    const heading = (year: number): RegExp =>
+      new RegExp(`^${text('schedule.year', { year: String(year) })} · `);
+
+    const column = await chartItem(card, 50).locator('.chart__hit').boundingBox();
+    const previous = await chartItem(card, 49).locator('.chart__hit').boundingBox();
+    expect(column, 'column of year 51').not.toBeNull();
+    expect(previous, 'column of year 50').not.toBeNull();
+    if (column === null || previous === null) {
+      return;
+    }
+    await page.mouse.move(column.x + column.width / 2, column.y + column.height / 2);
+    await expect(title).toHaveText(heading(51));
+    const marker = chartItem(card, 50).locator('.chart__marker');
+    await expect(marker).toHaveCount(1);
+    const dot = await marker.boundingBox();
+    expect(dot, 'marker box').not.toBeNull();
+    if (dot === null) {
+      return;
+    }
+    const target = { x: previous.x + previous.width / 2, y: dot.y + dot.height / 2 };
+    // The marker reaches over the previous column: the target lies on it.
+    expect(dot.width, 'marker wider than a column').toBeGreaterThan(column.width);
+    expect(target.x, 'target on the marker').toBeGreaterThan(dot.x);
+
+    await page.mouse.move(column.x + column.width / 2, target.y);
+    await expect(title).toHaveText(heading(51));
+    await page.mouse.move(target.x, target.y, { steps: 2 });
+    await expect(title).toHaveText(heading(50));
+    // The markers let the pointer through, as the lines and the focus ring do.
+    expect(
+      await chartItem(card, 49)
+        .locator('.chart__marker')
+        .evaluate((circle) => getComputedStyle(circle).pointerEvents),
+      'marker pointer events',
+    ).toBe('none');
+  });
+
   test('the tooltip of a focused balance point never covers the point or its focus ring', async ({
     page,
   }) => {
