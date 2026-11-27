@@ -85,8 +85,9 @@ edge cases the review found.
 
 ## Completion notes
 
-**Status:** done, in review (pull request to follow; branch `task/T04a-chart-followups`,
-from `main` at `806cacb`).
+**Status:** done, in review in
+[PR #18](https://github.com/MortlakeDev/LoanLogic/pull/18) (branch
+`task/T04a-chart-followups`, from `main` at `806cacb`).
 
 **Acceptance criteria (local evidence, 2026-11-23, Windows, Node 24.19):**
 
