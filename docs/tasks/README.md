@@ -22,8 +22,8 @@ to the task file. If anything in the brief or the SPEC is unclear, stop and ask.
 | [T03](T03-calculator-ui.md) | Calculator UI: design tokens, inputs, results summary, schedule table, explain | M2 | done (PR #8) | T02 ✓, R2 ✓ |
 | [T03a](T03a-ui-followups.md) | UI follow-ups from the T03 review: explain payloads (SPEC v0.2.3), amount group label, theme menu, two live-site fixes | M2 | done (PR #11) | T03 ✓ |
 | [T04](T04-charts.md) | Charts (theme-aware SVG) | M2 | done (PR #14) | T03 ✓, T03a ✓ |
-| [T04a](T04a-chart-followups.md) | Chart follow-ups from the T04 review: line markers and the pointer, stale keyboard focus, tooltip at the chart's top edge, label-spacing test | M2 | ready (can run in parallel with T05) | T04 ✓ |
-| [T05](T05-regions-persistence.md) | Region profiles, presets, URL & local persistence | M2 | ready (can run in parallel with T04a) | T03 ✓, T03a ✓ |
+| [T04a](T04a-chart-followups.md) | Chart follow-ups from the T04 review: line markers and the pointer, stale keyboard focus, tooltip at the chart's top edge, label-spacing test | M2 | done (PR #18) | T04 ✓ |
+| [T05](T05-regions-persistence.md) | Region profiles, presets, URL & local persistence | M2 | ready | T03 ✓, T03a ✓ |
 | T06 | Events engine: prepayments, rate changes, holidays, odd first period, semi-monthly | M3 | planned | T02, R3 |
 | T07 | Events UI | M3 | planned | T06, T03 |
 | T08 | Comparison: repayment types, offers, break-even, what-if, day-count | M4 | planned | T05, R4 |

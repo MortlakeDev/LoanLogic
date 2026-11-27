@@ -1,6 +1,6 @@
 # T04a — Chart follow-ups from the T04 review
 
-- **Milestone:** M2 · **Status:** ready (can run in parallel with T05)
+- **Milestone:** M2 · **Status:** done (PR #18)
 - **Depends on:** T04 ✓ · **Blocks:** —
 - **Branch:** `task/T04a-chart-followups`
 
@@ -61,16 +61,16 @@ edge cases the review found.
 
 ## Acceptance criteria
 
-- [ ] Moving the pointer across a line marker gives the tooltip to the point whose
+- [x] Moving the pointer across a line marker gives the tooltip to the point whose
       column is under the pointer.
-- [ ] After the buckets shrink and grow again, a stale focus brings back neither the
+- [x] After the buckets shrink and grow again, a stale focus brings back neither the
       focus ring nor the tooltip (hovering a mark still shows its tooltip); a focus that
       stays in range keeps its ring.
-- [ ] When the usual positions cover the mark, the tooltip goes to the chart's top edge
+- [x] When the usual positions cover the mark, the tooltip goes to the chart's top edge
       if that covers less of it.
-- [ ] The label-spacing test estimates the labels at the size the chart lays them out
+- [x] The label-spacing test estimates the labels at the size the chart lays them out
       with.
-- [ ] `npm run check` and `npm run e2e` pass; no golden vector changes; initial JS stays
+- [x] `npm run check` and `npm run e2e` pass; no golden vector changes; initial JS stays
       within budget.
 
 ## Notes
@@ -85,9 +85,9 @@ edge cases the review found.
 
 ## Completion notes
 
-**Status:** done, in review in
-[PR #18](https://github.com/MortlakeDev/LoanLogic/pull/18) (branch
-`task/T04a-chart-followups`, from `main` at `806cacb`).
+**Status:** done, merged in [PR #18](https://github.com/MortlakeDev/LoanLogic/pull/18)
+on 2026-11-27 UTC (branch `task/T04a-chart-followups`, from `main` at `806cacb`). The
+architect accepted it without changes: CI green, no CodeRabbit findings.
 
 **Acceptance criteria (local evidence, 2026-11-23, Windows, Node 24.19):**
 
